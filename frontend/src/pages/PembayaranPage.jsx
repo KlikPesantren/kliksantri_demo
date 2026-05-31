@@ -33,13 +33,6 @@ function PembayaranPage() {
 
   const [
 
-    jenisTagihan,
-    setJenisTagihan
-
-  ] = useState([]);
-
-  const [
-
     form,
     setForm
 
@@ -47,7 +40,7 @@ function PembayaranPage() {
 
     santri_id: "",
 
-    jenis_tagihan_id: "",
+    nama_tagihan: "",
 
     bulan: "",
 
@@ -58,6 +51,27 @@ function PembayaranPage() {
     nominal_bayar: ""
 
   });
+
+   const [
+
+  modeGenerate,
+
+  setModeGenerate
+
+] = useState(
+
+  "semua"
+
+);
+
+const [
+
+  selectedSantri,
+
+  setSelectedSantri
+
+] = useState([]);
+
 
   // ======================
   // GET PEMBAYARAN
@@ -122,44 +136,49 @@ function PembayaranPage() {
   };
 
   // ======================
-  // GET JENIS TAGIHAN
-  // ======================
-
-  const getJenisTagihan =
-  async () => {
-
-    try {
-
-      const response =
-
-        await api.get(
-          "/jenis-tagihan"
-        );
-
-      setJenisTagihan(
-
-        response.data.data || []
-
-      );
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-    }
-
-  };
-
-  // ======================
   // CREATE PEMBAYARAN
   // ======================
 
   const createPembayaran =
-  async () => {
+async () => {
 
-    try {
+  try {
+
+    let targetSantri = [];
+
+    if (
+
+      modeGenerate ===
+      "semua"
+
+    ) {
+
+      targetSantri =
+
+        santri.map(
+
+          (s) => s.id
+
+        );
+
+    }
+
+    else {
+
+      targetSantri =
+        selectedSantri;
+
+    }
+
+    for (
+
+      const santriId
+
+      of
+
+      targetSantri
+
+    ) {
 
       await api.post(
 
@@ -167,7 +186,17 @@ function PembayaranPage() {
 
         {
 
-          ...form,
+          santri_id:
+          santriId,
+
+          nama_tagihan:
+          form.nama_tagihan,
+
+          bulan:
+          form.bulan,
+
+          tahun:
+          form.tahun,
 
           nominal_tagihan:
           Number(
@@ -176,36 +205,37 @@ function PembayaranPage() {
 
           ),
 
-          nominal_bayar:
-          Number(
-
-            form.nominal_bayar
-
-          )
+          nominal_bayar: 0
 
         }
 
       );
 
-      alert(
-        "Pembayaran berhasil"
-      );
-
-      getPembayaran();
-
     }
 
-    catch (err) {
+    alert(
 
-      console.log(err);
+      "Tagihan berhasil dibuat"
 
-      alert(
-        "Gagal tambah pembayaran"
-      );
+    );
 
-    }
+    getPembayaran();
 
-  };
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    alert(
+
+      "Gagal membuat tagihan"
+
+    );
+
+  }
+
+};
 
   // ======================
   // LOAD
@@ -216,8 +246,6 @@ function PembayaranPage() {
     getPembayaran();
 
     getSantri();
-
-    getJenisTagihan();
 
   }, []);
 
@@ -282,6 +310,138 @@ function PembayaranPage() {
 
           <br />
 
+          <label>
+
+  <input
+
+    type="radio"
+
+    checked={
+      modeGenerate ===
+      "semua"
+    }
+
+    onChange={()=>
+
+      setModeGenerate(
+        "semua"
+      )
+
+    }
+
+  />
+
+  Semua Santri
+
+</label>
+
+<br />
+
+<label>
+
+  <input
+
+    type="radio"
+
+    checked={
+      modeGenerate ===
+      "pilih"
+    }
+
+    onChange={()=>
+
+      setModeGenerate(
+        "pilih"
+      )
+
+    }
+
+  />
+
+  Pilih Santri
+
+</label>
+
+<br />
+<br />
+
+{
+
+  modeGenerate ===
+  "pilih"
+
+  &&
+
+  santri.map((s)=>(
+
+    <div key={s.id}>
+
+      <label>
+
+        <input
+
+          type="checkbox"
+
+          checked={
+
+            selectedSantri.includes(
+              s.id
+            )
+
+          }
+
+          onChange={(e)=>{
+
+            if(
+
+              e.target.checked
+
+            ){
+
+              setSelectedSantri(
+
+                [
+
+                  ...selectedSantri,
+
+                  s.id
+
+                ]
+
+              );
+
+            }
+
+            else{
+
+              setSelectedSantri(
+
+                selectedSantri.filter(
+
+                  (id)=>
+
+                  id !== s.id
+
+                )
+
+              );
+
+            }
+
+          }}
+
+        />
+
+        {s.nama}
+
+      </label>
+
+    </div>
+
+  ))
+
+}
+
           {/* SANTRI */}
 
           <select
@@ -338,54 +498,28 @@ function PembayaranPage() {
 
           {/* TAGIHAN */}
 
-          <select
+        <input
 
-            value={
-              form.jenis_tagihan_id
-            }
+  type="text"
 
-            onChange={(e) =>
+  placeholder="Nama Tagihan"
 
-              setForm({
+  value={form.nama_tagihan}
 
-                ...form,
+  onChange={(e)=>
 
-                jenis_tagihan_id:
-                e.target.value
+    setForm({
 
-              })
+      ...form,
 
-            }
+      nama_tagihan:
+      e.target.value
 
-          >
+    })
 
-            <option value="">
+  }
 
-              Pilih Tagihan
-
-            </option>
-
-            {
-
-              jenisTagihan.map((j) => (
-
-                <option
-
-                  key={j.id}
-
-                  value={j.id}
-
-                >
-
-                  {j.nama_tagihan}
-
-                </option>
-
-              ))
-
-            }
-
-          </select>
+/>
 
           <br />
           <br />

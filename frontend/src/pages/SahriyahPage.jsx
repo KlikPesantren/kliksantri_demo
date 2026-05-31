@@ -143,12 +143,17 @@ const lihatRiwayat = async (id) => {
 
     );
 
-const response = await api.get(
+const freshData = await api.get(
   `/sahriyah?t=${Date.now()}`
 );
 
+console.log(
+  "SET DATA BARU",
+  freshData.data.data
+);
+
 setData(
-  response.data.data
+  freshData.data.data
 );
 
 setShowBayar(false);

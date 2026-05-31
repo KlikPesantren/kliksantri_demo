@@ -29,25 +29,13 @@ router.get(
 
           `
 
-          SELECT
+         SELECT
 
-            pembayaran.*,
+  pembayaran.*,
 
-            santri.nama,
-
-            jenis_tagihan.nama_tagihan
+  santri.nama
 
           FROM pembayaran
-
-          LEFT JOIN santri
-
-          ON pembayaran.santri_id =
-          santri.id
-
-          LEFT JOIN jenis_tagihan
-
-          ON pembayaran.jenis_tagihan_id =
-          jenis_tagihan.id
 
           ORDER BY pembayaran.id DESC
 
@@ -100,7 +88,7 @@ router.post(
       const {
 
         santri_id,
-        jenis_tagihan_id,
+        nama_tagihan,
         bulan,
         tahun,
         nominal_tagihan,
@@ -143,16 +131,16 @@ router.post(
 
           INSERT INTO pembayaran (
 
-            santri_id,
-            jenis_tagihan_id,
-            bulan,
-            tahun,
-            nominal_tagihan,
-            nominal_bayar,
-            sisa_tunggakan,
-            status
+  santri_id,
+  nama_tagihan,
+  bulan,
+  tahun,
+  nominal_tagihan,
+  nominal_bayar,
+  sisa_tunggakan,
+  status
 
-          )
+)
 
           VALUES (
 
@@ -166,16 +154,16 @@ router.post(
 
           [
 
-            santri_id,
-            jenis_tagihan_id,
-            bulan,
-            tahun,
-            nominal_tagihan,
-            nominal_bayar,
-            sisa_tunggakan,
-            status
+  santri_id,
+  nama_tagihan,
+  bulan,
+  tahun,
+  nominal_tagihan,
+  nominal_bayar,
+  sisa_tunggakan,
+  status
 
-          ]
+]
 
         );
 
