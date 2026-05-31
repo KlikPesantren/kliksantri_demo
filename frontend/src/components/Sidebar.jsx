@@ -295,6 +295,16 @@ if (
 
     {
 
+     name: "Setting Sahriyah",
+
+     icon: <FaMoneyBill />,
+
+     path: "/sahriyah-setting"
+
+    },
+
+    {
+
       name: "Audit",
 
       icon: <FaClipboardList />,

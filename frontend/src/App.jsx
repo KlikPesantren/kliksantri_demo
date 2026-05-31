@@ -61,6 +61,9 @@ from "./pages/BukuKasPage";
 import SahriyahPage
 from "./pages/SahriyahPage";
 
+import SahriyahSettingPage
+from "./pages/SahriyahSettingPage";
+
 function App() {
 
   return (
@@ -210,6 +213,12 @@ function App() {
   }
 
 />
+
+<Route
+  path="/sahriyah-setting"
+  element={<SahriyahSettingPage />}
+/>
+
 
         {/* ====================== */}
         {/* ABSENSI */}

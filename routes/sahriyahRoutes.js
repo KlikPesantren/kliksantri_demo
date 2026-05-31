@@ -278,31 +278,41 @@ router.put(
 
       const {
 
-        petugas
+  nominal,
+  beras,
+  petugas
 
-      } = req.body;
+} = req.body;
 
-      const tagihan =
+const tagihan =
 
-        await pool.query(
+  await pool.query(
 
-          `
+    `
 
-          SELECT *
+    SELECT
 
-          FROM tagihan_sahriyah
+      t.*,
 
-          WHERE id = $1
+      s.nama
 
-          `,
+    FROM tagihan_sahriyah t
 
-          [
+    LEFT JOIN santri s
 
-            req.params.id
+    ON t.santri_id = s.id
 
-          ]
+    WHERE t.id = $1
 
-        );
+    `,
+
+    [
+
+      req.params.id
+
+    ]
+
+  );
 
       if (
 
@@ -324,41 +334,184 @@ router.put(
 
         tagihan.rows[0];
 
-      await pool.query(
+      const totalBayarBaru =
 
-        `
+        Number(
+          data.total_bayar || 0
+        )
 
-        UPDATE
+        +
 
-        tagihan_sahriyah
+        Number(
+          nominal
+        );
 
-        SET
+      const sisaTagihanBaru =
 
-          status =
-          'Lunas',
+        Number(
+          data.nominal
+        )
 
-          tanggal_bayar =
-          CURRENT_DATE,
+        -
 
-          petugas = $1
+        totalBayarBaru;
 
-        WHERE id = $2
+      const berasTerbayarBaru =
 
-        `,
+  Number(
+    data.beras_terbayar || 0
+  )
 
-        [
+  +
 
-          petugas,
+  Number(
+    beras || 0
+  );
 
-          req.params.id
+const sisaBerasBaru =
 
-        ]
+  Number(
+    data.nominal_beras || 0
+  )
 
-      );
+  -
 
-      // ===================
-      // MASUK BUKU KAS
-      // ===================
+  berasTerbayarBaru;
+
+  let status =
+
+  "Belum Lunas";
+
+if (
+
+  totalBayarBaru > 0 ||
+  berasTerbayarBaru > 0
+
+) {
+
+  status =
+
+    "Cicilan";
+
+}
+
+if (
+
+  sisaTagihanBaru <= 0 &&
+
+  sisaBerasBaru <= 0
+
+) {
+
+  status =
+
+    "Lunas";
+
+}
+
+      const tanggalBayar =
+
+  status === "Lunas"
+
+    ? new Date()
+
+    : data.tanggal_bayar;
+
+await pool.query(
+
+  `
+
+  UPDATE
+
+  tagihan_sahriyah
+
+  SET
+
+  total_bayar = $1,
+
+  sisa_tagihan = $2,
+
+  beras_terbayar = $3,
+
+  sisa_beras = $4,
+
+  status = $5,
+
+  petugas = $6,
+
+  tanggal_bayar = $7
+
+WHERE id = $8
+
+  `,
+
+  [
+
+  totalBayarBaru,
+
+  Math.max(
+    0,
+    sisaTagihanBaru
+  ),
+
+  berasTerbayarBaru,
+
+  Math.max(
+    0,
+    sisaBerasBaru
+  ),
+
+  status,
+
+  petugas,
+
+  tanggalBayar,
+
+  req.params.id
+
+]
+
+);
+
+await pool.query(
+
+  `
+
+  INSERT INTO
+
+  pembayaran_sahriyah(
+
+    tagihan_id,
+
+    nominal,
+
+    petugas
+
+  )
+
+  VALUES(
+
+    $1,
+
+    $2,
+
+    $3
+
+  )
+
+  `,
+
+  [
+
+    req.params.id,
+
+    nominal,
+
+    petugas
+
+  ]
+
+);
 
       await pool.query(
 
@@ -390,7 +543,7 @@ router.put(
 
           'Sahriyah',
 
-          'Pembayaran Sahriyah',
+          $3,
 
           $1,
 
@@ -402,19 +555,41 @@ router.put(
 
         [
 
-          data.nominal,
+  nominal,
 
-          petugas
+  petugas,
 
-        ]
+  `Pembayaran Sahriyah - ${data.nama}`
+
+]
 
       );
 
-      res.json({
+     res.json({
 
-        success:true
+  success:true,
 
-      });
+  total_bayar:
+  totalBayarBaru,
+
+  sisa_tagihan:
+  Math.max(
+    0,
+    sisaTagihanBaru
+  ),
+
+  beras_terbayar:
+  berasTerbayarBaru,
+
+  sisa_beras:
+  Math.max(
+    0,
+    sisaBerasBaru
+  ),
+
+  status
+
+});
 
     }
 
@@ -428,6 +603,66 @@ router.put(
 
         error:
         err.message
+
+      });
+
+    }
+
+  }
+
+);
+
+router.get(
+
+  "/riwayat/:id",
+
+  async (req,res) => {
+
+    try {
+
+      const result =
+
+        await pool.query(
+
+          `
+
+          SELECT *
+
+          FROM pembayaran_sahriyah
+
+          WHERE tagihan_id = $1
+
+          ORDER BY tanggal DESC
+
+          `,
+
+          [
+
+            req.params.id
+
+          ]
+
+        );
+
+      res.json({
+
+        success:true,
+
+        data: result.rows
+
+      });
+
+    }
+
+    catch(err){
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success:false,
+
+        error: err.message
 
       });
 

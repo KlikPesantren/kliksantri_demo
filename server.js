@@ -81,6 +81,10 @@ require( "./routes/bukuKasRoutes" );
 const sahriyahRoutes =
 require( "./routes/sahriyahRoutes" );
 
+const sahriyahSettingRoutes =
+require(
+"./routes/sahriyahSettingRoutes"
+);
 
 // =====================
 // DB
@@ -288,6 +292,11 @@ app.use(
 app.use(
 "/sahriyah",
 sahriyahRoutes
+);
+
+app.use(
+"/sahriyah-setting",
+sahriyahSettingRoutes
 );
 
 // =====================

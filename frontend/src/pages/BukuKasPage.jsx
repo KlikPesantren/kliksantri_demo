@@ -851,7 +851,14 @@ const jumlahTransaksi =
 
           filtered.map((d)=>(
 
-            <div key={d.id}>
+            <div
+  key={d.id}
+  style={{
+    border:"1px solid #ddd",
+    padding:"10px",
+    marginBottom:"8px"
+  }}
+>
 
   {d.tanggal}
 
@@ -863,9 +870,13 @@ const jumlahTransaksi =
 
   {d.kategori}
 
-  {" | "}
+{" | "}
 
-  Rp {
+{d.keterangan}
+
+{" | "}
+
+Rp {
 
     Number(
 
