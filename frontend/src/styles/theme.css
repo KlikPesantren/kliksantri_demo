@@ -19,3 +19,14 @@
     0 4px 20px rgba(0,0,0,.08);
 
 }
+body {
+
+  font-family: "Inter";
+
+  background: var(--bg);
+
+  color: var(--text);
+
+  margin:0;
+
+}
