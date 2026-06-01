@@ -20,6 +20,13 @@ useState({
 
 });
   const [search, setSearch] = useState("");
+  const [
+
+  showRiwayat,
+
+  setShowRiwayat
+
+] = useState(false);
   const [riwayat, setRiwayat] = useState([]);
   const [bulan, setBulan] = useState(
     new Date().getMonth() + 1
@@ -79,7 +86,8 @@ useState({
 
 };
 
-const lihatRiwayat = async (id) => {
+const lihatRiwayat =
+async (id) => {
 
   try {
 
@@ -91,6 +99,10 @@ const lihatRiwayat = async (id) => {
 
     setRiwayat(
       response.data.data
+    );
+
+    setShowRiwayat(
+      true
     );
 
   }
@@ -152,16 +164,26 @@ console.log(
   freshData.data.data
 );
 
-setData(
-  freshData.data.data
-);
+setData([
+  ...freshData.data.data
+]);
 
 setShowBayar(false);
 
 setSelectedTagihan(null);
 
-alert(
-  "Pembayaran berhasil"
+setFormBayar({
+
+  nominal:"",
+
+  beras:"",
+
+  petugas:""
+
+});
+
+console.log(
+  "PEMBAYARAN BERHASIL"
 );
 
   }
@@ -181,6 +203,9 @@ alert(
  console.log(
   "FILTERED",
   filtered.length
+);
+console.log(
+  "RENDER SAHRIYAH"
 );
 
   return (
@@ -411,68 +436,7 @@ alert(
         </table>
         <br />
 
-<hr />
 
-<h3>
-  Riwayat Pembayaran
-</h3>
-
-<table
-  border="1"
-  cellPadding="8"
->
-
-  <thead>
-
-    <tr>
-
-      <th>Tanggal</th>
-
-      <th>Nominal</th>
-
-      <th>Petugas</th>
-
-    </tr>
-
-  </thead>
-
-  <tbody>
-
-    {
-
-      riwayat.map((r) => (
-
-        <tr key={r.id}>
-
-          <td>
-            {r.tanggal}
-          </td>
-
-          <td>
-            Rp {
-
-              Number(
-                r.nominal || 0
-              )
-
-              .toLocaleString()
-
-            }
-          </td>
-
-          <td>
-            {r.petugas}
-          </td>
-
-        </tr>
-
-      ))
-
-    }
-
-  </tbody>
-
-</table>
       </div>
 
 {
@@ -618,11 +582,186 @@ Simpan
 
 <button
 
-  onClick={()=>
+onClick={() => {
 
-    setShowBayar(false)
+  setShowBayar(false);
 
-  }
+  setSelectedTagihan(null);
+
+  setFormBayar({
+
+    nominal:"",
+
+    beras:"",
+
+    petugas:""
+
+  });
+
+}}
+
+>
+
+Tutup
+
+</button>
+
+</div>
+
+</div>
+
+)
+
+}
+
+{
+
+showRiwayat && (
+
+<div
+
+  style={{
+
+    position:"fixed",
+
+    top:0,
+
+    left:0,
+
+    width:"100%",
+
+    height:"100%",
+
+    background:
+    "rgba(0,0,0,.5)",
+
+    display:"flex",
+
+    justifyContent:"center",
+
+    alignItems:"center"
+
+  }}
+
+>
+
+<div
+
+  style={{
+
+    background:"#fff",
+
+    padding:"20px",
+
+    width:"600px",
+
+    borderRadius:"10px"
+
+  }}
+
+>
+
+<h3>
+
+Histori Pembayaran Sahriyah
+
+</h3>
+
+<hr />
+
+<table
+
+  border="1"
+
+  width="100%"
+
+  cellPadding="8"
+
+>
+
+<thead>
+
+<tr>
+
+<th>Tanggal</th>
+
+<th>Nominal</th>
+
+<th>Beras</th>
+
+<th>Petugas</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{
+
+riwayat.map((r)=>(
+
+<tr key={r.id}>
+
+<td>
+
+{r.tanggal}
+
+</td>
+
+<td>
+
+Rp {
+
+Number(
+r.nominal || 0
+)
+
+.toLocaleString()
+
+}
+
+</td>
+
+<td>
+
+{
+
+Number(
+r.nominal_beras || 0
+)
+
+} Kg
+
+</td>
+
+<td>
+
+{r.petugas}
+
+</td>
+
+</tr>
+
+))
+
+}
+
+</tbody>
+
+</table>
+
+<br />
+
+<button
+
+onClick={()=>
+
+setShowRiwayat(
+false
+)
+
+}
 
 >
 

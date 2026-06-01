@@ -33,6 +33,13 @@ function PembayaranPage() {
 
   const [
 
+  kelas,
+  setKelas
+
+] = useState([]);
+
+  const [
+
     form,
     setForm
 
@@ -72,37 +79,69 @@ const [
 
 ] = useState([]);
 
+const [
+
+  selectedKelas,
+
+  setSelectedKelas
+
+] = useState("");
+
+const [
+
+  showRiwayat,
+
+  setShowRiwayat
+
+] = useState(false);
+
+const [
+
+  riwayat,
+
+  setRiwayat
+
+] = useState([]);
+
 
   // ======================
   // GET PEMBAYARAN
   // ======================
 
-  const getPembayaran =
-  async () => {
+const getPembayaran =
+async () => {
 
-    try {
+  try {
 
-      const response =
+    const response =
 
-        await api.get(
-          "/pembayaran"
-        );
-
-      setPembayaran(
-
-        response.data.data || []
-
+      await api.get(
+        "/pembayaran"
       );
 
-    }
+    console.log(
+      "DATA BARU",
+      response.data.data
+    );
 
-    catch (err) {
+    setPembayaran(
+      [...response.data.data]
+    );
 
-      console.log(err);
+    console.log(
+  "RENDER",
+  response.data.data[0]
+);
 
-    }
+  }
 
-  };
+  catch (err) {
+
+    console.log(err);
+
+  }
+
+};
 
   // ======================
   // GET SANTRI
@@ -135,6 +174,36 @@ const [
 
   };
 
+
+  // ======================
+  // GET KELAS
+  // ======================
+
+  const getKelas =
+async () => {
+
+  try {
+
+    const response =
+
+      await api.get(
+        "/kelas"
+      );
+
+    setKelas(
+      response.data.data
+    );
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+  }
+
+};
+
   // ======================
   // CREATE PEMBAYARAN
   // ======================
@@ -146,29 +215,64 @@ async () => {
 
     let targetSantri = [];
 
-    if (
+if (
 
-      modeGenerate ===
-      "semua"
+  modeGenerate ===
+  "semua"
 
-    ) {
+) {
 
-      targetSantri =
+  targetSantri =
 
-        santri.map(
+    santri.map(
+      (s) => s.id
+    );
 
-          (s) => s.id
+}
 
-        );
+else if (
 
-    }
+  modeGenerate ===
+  "kelas"
 
-    else {
+) {
 
-      targetSantri =
-        selectedSantri;
+  targetSantri =
 
-    }
+    santri
+
+      .filter(
+
+        (s)=>
+
+          Number(
+            s.kelas_id
+          )
+
+          ===
+
+          Number(
+            selectedKelas
+          )
+
+      )
+
+      .map(
+
+        (s)=>
+
+        s.id
+
+      );
+
+}
+
+else {
+
+  targetSantri =
+    selectedSantri;
+
+}
 
     for (
 
@@ -237,17 +341,193 @@ async () => {
 
 };
 
+const bukaBayar =
+(tagihan) => {
+
+  setSelectedTagihan(
+    tagihan
+  );
+
+  setShowBayar(
+    true
+  );
+
+};
+
+const tutupBayar =
+() => {
+
+  setShowBayar(
+    false
+  );
+
+  setSelectedTagihan(
+    null
+  );
+
+  setNominalBayar(
+    ""
+  );
+
+};
+
+const simpanPembayaran =
+async () => {
+
+  try {
+
+    await api.put(
+
+      `/pembayaran/bayar/${selectedTagihan.id}`,
+
+      {
+
+        nominal:
+        Number(
+          nominalBayar
+        ),
+
+        petugas:
+        "Aiky"
+
+      }
+
+    );
+
+    alert(
+      "Pembayaran berhasil"
+    );
+
+   await getPembayaran();
+
+setShowBayar(false);
+
+setSelectedTagihan(null);
+
+setNominalBayar("");
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    alert(
+      "Gagal bayar"
+    );
+
+  }
+
+};
+
+const hapusTagihan =
+async (id) => {
+
+  const yakin =
+
+    window.confirm(
+
+      "Hapus tagihan?"
+
+    );
+
+  if (!yakin) return;
+
+  try {
+
+    await api.delete(
+
+      `/pembayaran/${id}`
+
+    );
+
+    await getPembayaran();
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    alert(
+
+      "Gagal hapus"
+
+    );
+
+  }
+
+};
+
+const lihatRiwayat =
+async (tagihan) => {
+
+  try {
+
+    const response =
+
+      await api.get(
+
+        `/pembayaran/riwayat/${tagihan.id}`
+
+      );
+
+    setRiwayat(
+
+      response.data.data
+
+    );
+
+    setShowRiwayat(
+      true
+    );
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+  }
+
+};
   // ======================
   // LOAD
   // ======================
 
-  useEffect(() => {
+useEffect(() => {
 
-    getPembayaran();
+  getPembayaran();
 
-    getSantri();
+  getSantri();
 
-  }, []);
+  getKelas();
+
+}, []);
+
+const [
+
+  showBayar,
+
+  setShowBayar
+
+] = useState(false);
+
+const [
+
+  selectedTagihan,
+
+  setSelectedTagihan
+
+] = useState(null);
+
+const [
+
+  nominalBayar,
+
+  setNominalBayar
+
+] = useState("");
 
   return (
 
@@ -365,6 +645,35 @@ async () => {
 <br />
 <br />
 
+
+<label>
+
+  <input
+
+    type="radio"
+
+    checked={
+      modeGenerate ===
+      "kelas"
+    }
+
+    onChange={()=>
+
+      setModeGenerate(
+        "kelas"
+      )
+
+    }
+
+  />
+
+  Berdasarkan Kelas
+
+</label>
+
+<br />
+<br />
+
 {
 
   modeGenerate ===
@@ -441,58 +750,118 @@ async () => {
   ))
 
 }
+{
+
+  modeGenerate ===
+  "kelas"
+
+  &&
+
+  <select
+
+    value={
+      selectedKelas
+    }
+
+    onChange={(e)=>
+
+      setSelectedKelas(
+        e.target.value
+      )
+
+    }
+
+  >
+
+    <option value="">
+
+      Pilih Kelas
+
+    </option>
+
+    {
+
+      kelas.map((k)=>(
+
+        <option
+
+          key={k.id}
+
+          value={k.id}
+
+        >
+
+          {k.nama_kelas}
+
+        </option>
+
+      ))
+
+    }
+
+  </select>
+
+}
 
           {/* SANTRI */}
 
-          <select
+          {
 
-            value={
-              form.santri_id
-            }
+  modeGenerate ===
+  "pilih"
 
-            onChange={(e) =>
+  &&
 
-              setForm({
+  <select
 
-                ...form,
+    value={
+      form.santri_id
+    }
 
-                santri_id:
-                e.target.value
+    onChange={(e)=>
 
-              })
+      setForm({
 
-            }
+        ...form,
 
-          >
+        santri_id:
+        e.target.value
 
-            <option value="">
+      })
 
-              Pilih Santri
+    }
 
-            </option>
+  >
 
-            {
+    <option value="">
 
-              santri.map((s) => (
+      Pilih Santri
 
-                <option
+    </option>
 
-                  key={s.id}
+    {
 
-                  value={s.id}
+      santri.map((s)=>(
 
-                >
+        <option
 
-                  {s.nama}
+          key={s.id}
 
-                </option>
+          value={s.id}
 
-              ))
+        >
 
-            }
+          {s.nama}
 
-          </select>
+        </option>
 
+      ))
+
+    }
+
+  </select>
+
+}
           <br />
           <br />
 
@@ -610,31 +979,6 @@ async () => {
           <br />
           <br />
 
-          <input
-
-            type="number"
-
-            placeholder="Nominal Bayar"
-
-            value={
-              form.nominal_bayar
-            }
-
-            onChange={(e) =>
-
-              setForm({
-
-                ...form,
-
-                nominal_bayar:
-                e.target.value
-
-              })
-
-            }
-
-          />
-
           <br />
           <br />
 
@@ -668,17 +1012,8 @@ async () => {
 
               </th>
 
-              <th>
-
-                Tagihan
-
-              </th>
-
-              <th>
-
-                Tagihan
-
-              </th>
+              <th>Nama Tagihan</th>
+<th>Nominal</th>
 
               <th>
 
@@ -698,6 +1033,12 @@ async () => {
 
               </th>
 
+              <th>
+
+  Aksi
+
+</th>
+
             </tr>
 
           </thead>
@@ -707,26 +1048,376 @@ async () => {
             {
 
               pembayaran.map((p) => (
+<tr key={p.id}>
 
-                <tr key={p.id}>
+  <td>
+
+    {p.nama}
+
+  </td>
+
+  <td>
+
+    {p.nama_tagihan}
+
+  </td>
+
+  <td>
+    
+    Rp {Number(p.nominal_tagihan || 0).toLocaleString()}
+
+  </td>
+
+  <td>
+
+    Rp {Number(p.nominal_bayar || 0).toLocaleString()}
+
+  </td>
+
+  <td>
+
+    Rp {Number(p.sisa_tunggakan || 0).toLocaleString()}
+
+  </td>
+
+  <td>
+
+    {p.status}
+
+  </td>
+
+  <td>
+
+<button
+
+  onClick={()=>
+
+    bukaBayar(p)
+
+  }
+
+>
+
+  Bayar
+
+</button>
+
+{" "}
+
+<button
+
+  onClick={()=>
+
+    lihatRiwayat(p)
+
+  }
+
+>
+
+  Histori
+
+</button>
+
+{" "}
+
+<button
+
+  onClick={()=>
+
+    hapusTagihan(p.id)
+
+  }
+
+>
+
+  Hapus
+
+</button>
+
+</td>
+
+</tr>
+              ))
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+{
+
+  showBayar &&
+
+  selectedTagihan && (
+
+    <div
+
+      style={{
+
+        position:"fixed",
+
+        top:0,
+
+        left:0,
+
+        right:0,
+
+        bottom:0,
+
+        background:
+        "rgba(0,0,0,.5)",
+
+        display:"flex",
+
+        alignItems:
+        "center",
+
+        justifyContent:
+        "center"
+
+      }}
+
+    >
+
+      <div
+
+        style={{
+
+          background:"#fff",
+
+          padding:"20px",
+
+          width:"400px",
+
+          borderRadius:"10px"
+
+        }}
+
+      >
+
+        <h3>
+
+          Pembayaran Tagihan
+
+        </h3>
+
+        <hr />
+
+        <p>
+
+          <b>Santri:</b>
+
+          {" "}
+
+          {
+
+            selectedTagihan.nama
+
+          }
+
+        </p>
+
+        <p>
+
+          <b>Tagihan:</b>
+
+          {" "}
+
+          {
+
+            selectedTagihan.nama_tagihan
+
+          }
+
+        </p>
+
+        <p>
+
+          <b>Sisa:</b>
+
+          Rp {
+
+            Number(
+
+              selectedTagihan
+              .sisa_tunggakan || 0
+
+            )
+
+            .toLocaleString()
+
+          }
+
+        </p>
+
+        <input
+
+          type="number"
+
+          placeholder=
+          "Nominal Bayar"
+
+          value={
+            nominalBayar
+          }
+
+          onChange={(e)=>
+
+            setNominalBayar(
+              e.target.value
+            )
+
+          }
+
+        />
+
+        <br />
+        <br />
+
+        <button
+
+  onClick={
+
+    simpanPembayaran
+
+  }
+
+>
+
+  Simpan
+
+</button>
+
+        {" "}
+
+        <button
+
+          onClick={
+            tutupBayar
+          }
+
+        >
+
+          Tutup
+
+        </button>
+
+      </div>
+
+    </div>
+
+  )
+
+}
+
+{
+
+  showRiwayat && (
+
+    <div
+
+      style={{
+
+        position:"fixed",
+
+        top:0,
+
+        left:0,
+
+        right:0,
+
+        bottom:0,
+
+        background:
+        "rgba(0,0,0,.5)",
+
+        display:"flex",
+
+        alignItems:
+        "center",
+
+        justifyContent:
+        "center"
+
+      }}
+
+    >
+
+      <div
+
+        style={{
+
+          background:"#fff",
+
+          padding:"20px",
+
+          width:"500px",
+
+          borderRadius:"10px"
+
+        }}
+
+      >
+
+        <h3>
+
+          Histori Pembayaran
+
+        </h3>
+
+        <hr />
+
+        <table
+
+          width="100%"
+
+          border="1"
+
+        >
+
+          <thead>
+
+            <tr>
+
+              <th>
+
+                Tanggal
+
+              </th>
+
+              <th>
+
+                Nominal
+
+              </th>
+
+              <th>
+
+                Petugas
+
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {
+
+              riwayat.map((r)=>(
+
+                <tr
+                  key={r.id}
+                >
 
                   <td>
 
-                    {p.nama}
+                    {
 
-                  </td>
-
-                  <td>
-
-                    {p.nama_tagihan}
-
-                  </td>
-
-                  <td>
-
-                    Rp {
-
-                      p.nominal_tagihan
+                      r.tanggal
 
                     }
 
@@ -736,7 +1427,11 @@ async () => {
 
                     Rp {
 
-                      p.nominal_bayar
+                      Number(
+                        r.nominal
+                      )
+
+                      .toLocaleString()
 
                     }
 
@@ -744,17 +1439,7 @@ async () => {
 
                   <td>
 
-                    Rp {
-
-                      p.sisa_tunggakan
-
-                    }
-
-                  </td>
-
-                  <td>
-
-                    {p.status}
+                    {r.petugas}
 
                   </td>
 
@@ -768,8 +1453,31 @@ async () => {
 
         </table>
 
+        <br />
+
+        <button
+
+          onClick={()=>
+
+            setShowRiwayat(
+              false
+            )
+
+          }
+
+        >
+
+          Tutup
+
+        </button>
+
       </div>
 
+    </div>
+
+  )
+
+}
     </div>
 
   );

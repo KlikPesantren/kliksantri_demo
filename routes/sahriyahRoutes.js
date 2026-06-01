@@ -473,43 +473,47 @@ WHERE id = $8
 
 );
 
+console.log(
+  "BERAS MASUK:",
+  beras
+);
+
 await pool.query(
 
   `
 
-  INSERT INTO
+INSERT INTO pembayaran_sahriyah(
 
-  pembayaran_sahriyah(
+  tagihan_id,
 
-    tagihan_id,
+  nominal,
 
-    nominal,
+  nominal_beras,
 
-    petugas
+  petugas
 
-  )
+)
 
-  VALUES(
+VALUES(
 
-    $1,
+  $1,
 
-    $2,
+  $2,
 
-    $3
+  $3,
 
-  )
+  $4
+
+)
 
   `,
 
   [
-
-    req.params.id,
-
-    nominal,
-
-    petugas
-
-  ]
+  req.params.id,
+  nominal,
+  beras,
+  petugas
+]
 
 );
 
