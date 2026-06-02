@@ -47,6 +47,7 @@ router.get(
 
         );
 
+
       // ======================
       // ABSENSI SANTRI
       // ======================
@@ -403,6 +404,7 @@ console.log(
   persentaseSantri
 );
 
+
 // ======================
 // DASHBOARD KEUANGAN
 // ======================
@@ -673,6 +675,33 @@ LIMIT 10
 
 );
 
+
+      // ======================
+      // DAFTAR TAMU
+      // ======================
+
+const tamuHariIni =
+await pool.query(`
+SELECT COUNT(*) total
+FROM tamu
+WHERE tanggal = CURRENT_DATE
+`);
+
+const tamuBulanIni =
+await pool.query(`
+SELECT COUNT(*) total
+FROM tamu
+WHERE EXTRACT(MONTH FROM tanggal)=EXTRACT(MONTH FROM CURRENT_DATE)
+AND EXTRACT(YEAR FROM tanggal)=EXTRACT(YEAR FROM CURRENT_DATE)
+`);
+
+const tamuMasihDidalam =
+await pool.query(`
+SELECT COUNT(*) total
+FROM tamu
+WHERE status='Masuk'
+`);
+
       res.json({
 
         success: true,
@@ -772,7 +801,22 @@ pembayaran_terbaru:
   pembayaranTerbaru.rows,
 
 top_tunggakan:
-  topTunggakan.rows
+topTunggakan.rows,
+
+tamu_hari_ini:
+Number(
+  tamuHariIni.rows[0].total
+),
+
+tamu_bulan_ini:
+Number(
+  tamuBulanIni.rows[0].total
+),
+
+tamu_masih_didalam:
+Number(
+  tamuMasihDidalam.rows[0].total
+)
 
         }
 

@@ -86,6 +86,9 @@ require(
 "./routes/sahriyahSettingRoutes"
 );
 
+const tamuRoutes =
+require("./routes/tamuRoutes");
+
 // =====================
 // DB
 // =====================
@@ -297,6 +300,11 @@ sahriyahRoutes
 app.use(
 "/sahriyah-setting",
 sahriyahSettingRoutes
+);
+
+app.use(
+  "/tamu",
+  tamuRoutes
 );
 
 // =====================

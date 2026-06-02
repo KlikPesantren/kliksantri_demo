@@ -1282,6 +1282,54 @@ const grafikKas =
 
 </div>
 
+<div style={cardStyle}>
+
+  <h3>
+
+    Tamu Hari Ini
+
+  </h3>
+
+  <h1>
+
+    {summary.tamu_hari_ini || 0}
+
+  </h1>
+
+</div>
+
+<div style={cardStyle}>
+
+  <h3>
+
+    Tamu Bulan Ini
+
+  </h3>
+
+  <h1>
+
+    {summary.tamu_bulan_ini || 0}
+
+  </h1>
+
+</div>
+
+<div style={cardStyle}>
+
+  <h3>
+
+    Tamu Masih Di Dalam
+
+  </h3>
+
+  <h1>
+
+    {summary.tamu_masih_didalam || 0}
+
+  </h1>
+
+</div>
+
             </div>
 
           )

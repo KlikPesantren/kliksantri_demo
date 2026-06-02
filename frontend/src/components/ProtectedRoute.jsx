@@ -65,6 +65,8 @@ function ProtectedRoute({
 
       "/pelanggaran",
 
+      "/tamu",
+
       "/devices",
 
       "/audit"
@@ -113,7 +115,9 @@ function ProtectedRoute({
 
       "/perizinan",
 
-      "/pelanggaran"
+      "/pelanggaran",
+
+      "/tamu"
 
     ]
 

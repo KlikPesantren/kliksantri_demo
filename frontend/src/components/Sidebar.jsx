@@ -202,6 +202,12 @@ if (
     },
 
     {
+  name: "Daftar Hadir Tamu",
+  icon: <FaClipboardList />,
+  path: "/tamu"
+    },
+
+    {
 
       name: "Perangkat",
 
@@ -433,6 +439,12 @@ if (
 
       path: "/pelanggaran"
 
+    },
+
+    {
+  name: "Daftar Hadir Tamu",
+  icon: <FaClipboardList />,
+  path: "/tamu"
     }
 
   ];

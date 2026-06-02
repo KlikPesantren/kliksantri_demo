@@ -64,6 +64,9 @@ from "./pages/SahriyahPage";
 import SahriyahSettingPage
 from "./pages/SahriyahSettingPage";
 
+import TamuPage
+from "./pages/TamuPage";
+
 function App() {
 
   return (
@@ -334,6 +337,19 @@ function App() {
 
   }
 
+/>
+
+        {/* ====================== */}
+        {/* TAMU */}
+        {/* ====================== */}
+
+<Route
+  path="/tamu"
+  element={
+    <ProtectedRoute>
+      <TamuPage />
+    </ProtectedRoute>
+  }
 />
 
         {/* ====================== */}
