@@ -541,7 +541,7 @@ VALUES(
 
         VALUES(
 
-          CURRENT_DATE,
+          CURRENT_TIMESTAMP,
 
           'Masuk',
 
@@ -653,6 +653,80 @@ router.get(
         success:true,
 
         data: result.rows
+
+      });
+
+    }
+
+    catch(err){
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success:false,
+
+        error: err.message
+
+      });
+
+    }
+
+  }
+
+);
+
+// ======================
+// HAPUS TAGIHAN SAHRIYAH
+// ======================
+
+router.delete(
+
+  "/:id",
+
+  async (req,res) => {
+
+    try {
+
+      await pool.query(
+
+        `
+
+        DELETE FROM pembayaran_sahriyah
+
+        WHERE tagihan_id = $1
+
+        `,
+
+        [
+
+          req.params.id
+
+        ]
+
+      );
+
+      await pool.query(
+
+        `
+
+        DELETE FROM tagihan_sahriyah
+
+        WHERE id = $1
+
+        `,
+
+        [
+
+          req.params.id
+
+        ]
+
+      );
+
+      res.json({
+
+        success:true
 
       });
 

@@ -128,6 +128,30 @@ if (
     },
 
     {
+  name: "Buku Kas",
+  icon: <FaMoneyBill />,
+  path: "/buku-kas"
+   },
+
+   {
+  name: "Sahriyah",
+  icon: <FaMoneyBill />,
+  path: "/sahriyah"
+   },
+
+   {
+  name: "Setting Sahriyah",
+  icon: <FaMoneyBill />,
+  path: "/sahriyah-setting"
+   },
+
+   {
+  name: "Absensi Guru",
+  icon: <FaClipboardList />,
+  path: "/absensi-guru"
+    },
+
+    {
 
       name: "Absensi",
 
@@ -427,10 +451,10 @@ if (
 
         overflowY: "auto",
 
-        background: "white",
+        background: "#0F766E",
 
-        borderRight:
-          "1px solid #ddd",
+        boxShadow:
+"4px 0 20px rgba(0,0,0,.08)",
 
         fontSize: "14px",
 
@@ -454,17 +478,48 @@ if (
 
       <div>
 
-        <h1>
+       <div className="mb-10">
 
-          BSI
+<div className="flex items-center gap-3">
 
-        </h1>
+<div
+className="
+w-12
+h-12
+rounded-xl
+bg-emerald-600
+"
+/>
 
-        <p>
+<div>
 
-          Bank Syirkah Indonesia
+<h2
+className="
+font-bold
+text-slate-900
+"
+>
 
-        </p>
+KlikSantri
+
+</h2>
+
+<p
+className="
+text-xs
+text-slate-500
+"
+>
+
+Pesantren Digital
+
+</p>
+
+</div>
+
+</div>
+
+</div>
 
         <br />
 
@@ -497,21 +552,17 @@ if (
 
                 background:
 
-                  location.pathname
-                  === menu.path
+location.pathname
+=== menu.path
 
-                  ? "#e8f0ff"
+? "rgba(255,255,255,.15)"
 
-                  : "white",
+: "transparent",
 
-                color:
+                color:"white",
 
-                  location.pathname
-                  === menu.path
-
-                  ? "#2563eb"
-
-                  : "#333",
+                transition:
+                "0.2s",
 
                 textDecoration:
                   "none"
@@ -540,11 +591,13 @@ if (
 
         style={{
 
-          background: "red",
+          background:
+          "rgba(255,255,255,.15)",
 
           color: "white",
 
-          border: "none",
+          border:
+          "1px solid rgba(255,255,255,.2)",
 
           padding: "12px",
 

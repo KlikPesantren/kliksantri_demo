@@ -91,15 +91,13 @@ router.post(
         `,
 
         [
-
-          tanggal,
-          jenis,
-          kategori,
-          keterangan,
-          nominal,
-          petugas
-
-        ]
+  tanggal || new Date().toISOString().split("T")[0],
+  jenis,
+  kategori,
+  keterangan,
+  nominal,
+  petugas
+]
 
       );
 

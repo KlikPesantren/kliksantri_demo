@@ -11,6 +11,11 @@ from "../services/api";
 import Sidebar
 from "../components/Sidebar";
 
+import {
+ exportExcel
+}
+from "../utils/exportExcel";
+
 function AbsensiPage() {
 
   // ======================
@@ -340,6 +345,53 @@ function AbsensiPage() {
       0
 
     ).getDate();
+
+  const handleExport =
+() => {
+
+  const rows = [];
+
+  santri.forEach((s) => {
+
+    sesiList.forEach((sesi) => {
+
+      for (
+        let hari = 1;
+        hari <= totalHari;
+        hari++
+      ) {
+
+        rows.push({
+
+          Nama:
+            s.nama,
+
+          Sesi:
+            sesi,
+
+          Tanggal:
+            `${hari}/${bulan}/${tahun}`,
+
+          Status:
+
+            absensi[
+              `${sesi}-${s.id}-${hari}`
+            ] || "-"
+
+        });
+
+      }
+
+    });
+
+  });
+
+  exportExcel(
+    rows,
+    "Absensi"
+  );
+
+};
 
   return (
 
@@ -773,6 +825,23 @@ function AbsensiPage() {
           ))
 
         }
+
+        <button
+
+  onClick={
+    handleExport
+  }
+
+  style={{
+    padding:"10px 20px",
+    marginRight:"10px"
+  }}
+
+>
+
+  Export Excel
+
+</button>
 
         <button
 

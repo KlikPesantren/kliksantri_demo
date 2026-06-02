@@ -11,6 +11,9 @@ from "../services/api";
 import Sidebar
 from "../components/Sidebar";
 
+import { exportExcel }
+from "../utils/exportExcel";
+
 function PembayaranPage() {
 
   // ======================
@@ -529,6 +532,45 @@ const [
 
 ] = useState("");
 
+
+const handleExport = () => {
+
+  const rows =
+    pembayaran.map((p) => ({
+
+      Santri:
+        p.nama,
+
+      Tagihan:
+        p.nama_tagihan,
+
+      Nominal:
+        Number(
+          p.nominal_tagihan
+        ),
+
+      Dibayar:
+        Number(
+          p.nominal_bayar
+        ),
+
+      Sisa:
+        Number(
+          p.sisa_tunggakan
+        ),
+
+      Status:
+        p.status
+
+    }));
+
+  exportExcel(
+    rows,
+    "Pembayaran"
+  );
+
+};
+
   return (
 
     <div
@@ -993,6 +1035,16 @@ const [
           </button>
 
         </div>
+
+
+        <button
+  onClick={handleExport}
+>
+ Export Excel
+</button>
+
+<br />
+<br />
 
         {/* TABLE */}
 

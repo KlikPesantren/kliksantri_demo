@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import Sidebar from "../components/Sidebar";
+import { exportExcel }
+from "../utils/exportExcel";
+
 
 function SahriyahPage() {
   const [data, setData] = useState([]);
@@ -36,20 +39,28 @@ useState({
     new Date().getFullYear()
   );
 
-  const getData = async () => {
-    try {
-      const response = await api.get(
-  `/sahriyah?t=${Date.now()}`
-);
-      setData(response.data.data);
-      console.log(
-  "DATA BARU",
-  response.data.data
-);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+const getData = async () => {
+
+  try {
+
+    const response =
+      await api.get(
+        `/sahriyah?t=${Date.now()}`
+      );
+
+    setData(
+      [...response.data.data]
+    );
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+  }
+
+};
 
   const generateTagihan = async () => {
     try {
@@ -128,63 +139,93 @@ async (id) => {
       d.tahun === tahun
   );
 
-  const simpanPembayaran = async () => {
+  useEffect(() => {
+
+}, [data]);
+
+const simpanPembayaran = async () => {
 
   try {
 
     await api.put(
-
       `/sahriyah/bayar/${selectedTagihan.id}`,
-
       {
-
-        nominal:
-        Number(
-          formBayar.nominal || 0
-        ),
-
-        beras:
-        Number(
-          formBayar.beras || 0
-        ),
-
-        petugas:
-        formBayar.petugas
-
+        nominal: Number(formBayar.nominal || 0),
+        beras: Number(formBayar.beras || 0),
+        petugas: formBayar.petugas
       }
-
     );
 
-const freshData = await api.get(
+const response = await api.get(
   `/sahriyah?t=${Date.now()}`
 );
 
 console.log(
-  "SET DATA BARU",
-  freshData.data.data
+  "SETELAH BAYAR",
+  response.data.data.find(
+    x => x.id === selectedTagihan.id
+  )
 );
 
-setData([
-  ...freshData.data.data
-]);
+setData([]);
+
+setTimeout(() => {
+
+  setData([
+    ...response.data.data
+  ]);
+
+}, 10);
 
 setShowBayar(false);
 
 setSelectedTagihan(null);
 
 setFormBayar({
-
   nominal:"",
-
   beras:"",
-
   petugas:""
-
 });
 
-console.log(
-  "PEMBAYARAN BERHASIL"
-);
+    setSelectedTagihan(null);
+
+    setFormBayar({
+      nominal:"",
+      beras:"",
+      petugas:""
+    });
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    alert("Pembayaran gagal");
+
+  }
+
+};
+
+const hapusTagihan = async (id) => {
+
+  const yakin = window.confirm(
+    "Yakin hapus tagihan sahriyah ini?"
+  );
+
+  if (!yakin) return;
+
+  try {
+
+    await api.delete(
+      `/sahriyah/${id}`
+    );
+
+    await getData();
+
+    alert(
+      "Tagihan berhasil dihapus"
+    );
 
   }
 
@@ -193,20 +234,63 @@ console.log(
     console.log(err);
 
     alert(
-      "Pembayaran gagal"
+      "Gagal menghapus tagihan"
     );
 
   }
 
 };
 
- console.log(
-  "FILTERED",
-  filtered.length
-);
-console.log(
-  "RENDER SAHRIYAH"
-);
+
+const handleExport = () => {
+
+  const rows =
+    filtered.map((d) => ({
+
+      Nama:
+        d.nama,
+
+      Tagihan:
+        Number(
+          d.nominal
+        ),
+
+      SudahBayar:
+        Number(
+          d.total_bayar
+        ),
+
+      Sisa:
+        Number(
+          d.sisa_tagihan
+        ),
+
+      Beras:
+        Number(
+          d.nominal_beras
+        ),
+
+      BerasMasuk:
+        Number(
+          d.beras_terbayar
+        ),
+
+      SisaBeras:
+        Number(
+          d.sisa_beras
+        ),
+
+      Status:
+        d.status
+
+    }));
+
+  exportExcel(
+    rows,
+    "Sahriyah"
+  );
+
+};
 
   return (
     <div style={{ display: "flex" }}>
@@ -316,6 +400,12 @@ console.log(
             .toLocaleString()}
         </div>
 
+        <button
+ onClick={handleExport}
+>
+ Export Excel
+</button>
+
         <br />
 
         <hr />
@@ -351,7 +441,13 @@ console.log(
             {filtered.map((d) => (
   <tr key={d.id}>
 
-  <td>{d.nama}</td>
+  <td>
+  {d.nama}
+  <br />
+  ID:{d.id}
+  <br />
+  Bayar:{d.total_bayar}
+</td>
 
   <td>
     Rp {Number(d.nominal || 0).toLocaleString()}
@@ -427,6 +523,23 @@ console.log(
   >
     Riwayat
   </button>
+
+  <button
+  onClick={() =>
+    hapusTagihan(d.id)
+  }
+  style={{
+    marginLeft:"8px",
+    background:"#dc2626",
+    color:"#fff",
+    border:"none",
+    padding:"6px 10px",
+    borderRadius:"6px",
+    cursor:"pointer"
+  }}
+>
+  Hapus
+</button>
 
 </td>
 
@@ -586,18 +699,6 @@ onClick={() => {
 
   setShowBayar(false);
 
-  setSelectedTagihan(null);
-
-  setFormBayar({
-
-    nominal:"",
-
-    beras:"",
-
-    petugas:""
-
-  });
-
 }}
 
 >
@@ -632,10 +733,10 @@ showRiwayat && (
 
     height:"100%",
 
-    background:
+   background:
     "rgba(0,0,0,.5)",
 
-    display:"flex",
+   display:"flex",
 
     justifyContent:"center",
 

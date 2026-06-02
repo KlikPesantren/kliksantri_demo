@@ -9,6 +9,9 @@ from "../services/api";
 import Sidebar
 from "../components/Sidebar";
 
+import { exportExcel }
+from "../utils/exportExcel";
+
 function BukuKasPage() {
 
   const [
@@ -87,6 +90,16 @@ function BukuKasPage() {
       await api.get(
         "/buku-kas"
       );
+
+      console.log(
+  "TANGGAL DB",
+  response.data.data[0]?.tanggal
+);
+
+      console.log(
+  response.data.data
+    .slice(0,5)
+);
 
     setData(
       response.data.data
@@ -267,35 +280,21 @@ const editData =
   }, []);
 
 const dataTahunan =
-
   data.filter(
-
     (d) =>
-
-      new Date(
-
-        d.tanggal
-
-      ).getFullYear()
-
-      === tahun
-
+      Number(
+        String(d.tanggal)
+          .split("-")[0]
+      ) === tahun
   );
 
 const dataBulanan =
-
   dataTahunan.filter(
-
     (d) =>
-
-      new Date(
-
-        d.tanggal
-
-      ).getMonth() + 1
-
-      === bulan
-
+      Number(
+        String(d.tanggal)
+          .split("-")[1]
+      ) === bulan
   );
 
   const totalMasuk =
@@ -407,6 +406,45 @@ const saldoKas =
 const jumlahTransaksi =
 
   filtered.length;
+
+
+  const handleExport = () => {
+
+  const rows =
+    filtered.map((d) => ({
+
+      Tanggal:
+        new Date(
+          d.tanggal
+        ).toLocaleDateString(
+          "id-ID"
+        ),
+
+      Jenis:
+        d.jenis,
+
+      Kategori:
+        d.kategori,
+
+      Keterangan:
+        d.keterangan,
+
+      Nominal:
+        Number(
+          d.nominal
+        ),
+
+      Petugas:
+        d.petugas
+
+    }));
+
+  exportExcel(
+    rows,
+    "BukuKas"
+  );
+
+};
 
   return (
 
@@ -842,6 +880,15 @@ const jumlahTransaksi =
 
 />
 
+<button
+ onClick={handleExport}
+>
+ Export Excel
+</button>
+
+<br />
+<br />
+
 <br />
 <br />
 
@@ -860,7 +907,17 @@ const jumlahTransaksi =
   }}
 >
 
-  {d.tanggal}
+  {
+  new Date(d.tanggal)
+    .toLocaleDateString(
+      "id-ID",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      }
+    )
+}
 
   {" | "}
 

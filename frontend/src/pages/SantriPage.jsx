@@ -14,6 +14,11 @@ from "../components/Sidebar";
 import Topbar
 from "../components/Topbar";
 
+import {
+  exportExcel
+}
+from "../utils/exportExcel";
+
 function SantriPage() {
 
   // ======================
@@ -320,6 +325,43 @@ function SantriPage() {
 
   };
 
+const handleExport =
+() => {
+
+  const rows =
+
+    santri.map((item) => ({
+
+      NIS:
+        item.nis,
+
+      Nama:
+        item.nama,
+
+      Kelas:
+        item.nama_kelas,
+
+      Wali:
+        item.nama_wali,
+
+      NomorHP:
+        item.nomor_hp,
+
+      RFID:
+        item.uid_rfid,
+
+      Saldo:
+        item.saldo
+
+    }));
+
+  exportExcel(
+    rows,
+    "Santri"
+  );
+
+};
+
   return (
 
     <div>
@@ -537,6 +579,12 @@ function SantriPage() {
             }
 
           </button>
+
+        <button
+  onClick={handleExport}
+>
+  Export Excel
+</button>
 
         </div>
 

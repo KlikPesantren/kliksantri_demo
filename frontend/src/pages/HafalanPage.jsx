@@ -11,6 +11,11 @@ from "../services/api";
 import Sidebar
 from "../components/Sidebar";
 
+import {
+ exportExcel
+}
+from "../utils/exportExcel";
+
 function HafalanPage() {
 
   // ======================
@@ -342,6 +347,54 @@ useEffect(() => {
     }
 
   };
+
+const handleExport =
+() => {
+
+  const rows = [];
+
+  santri.forEach((s) => {
+
+    pekanList.forEach((p) => {
+
+      const data =
+
+        hafalan[
+          `${p}-${s.id}`
+        ] || {};
+
+      rows.push({
+
+        Nama:
+          s.nama,
+
+        Pekan:
+          p,
+
+        Kitab:
+          data.kitab || "",
+
+        Awal:
+          data.awal || "",
+
+        Akhir:
+          data.akhir || "",
+
+        Catatan:
+          data.catatan || ""
+
+      });
+
+    });
+
+  });
+
+  exportExcel(
+    rows,
+    "Hafalan"
+  );
+
+};
 
   return (
 
@@ -764,6 +817,23 @@ useEffect(() => {
           ))
 
         }
+
+        <button
+
+  onClick={
+    handleExport
+  }
+
+  style={{
+    padding:"10px 20px",
+    marginRight:"10px"
+  }}
+
+>
+
+  Export Excel
+
+</button>
 
         <button
 

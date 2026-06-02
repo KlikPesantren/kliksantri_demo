@@ -403,6 +403,276 @@ console.log(
   persentaseSantri
 );
 
+// ======================
+// DASHBOARD KEUANGAN
+// ======================
+
+const kasMasuk =
+await pool.query(
+
+`
+
+SELECT
+
+COALESCE(
+SUM(nominal),
+0
+) AS total
+
+FROM buku_kas
+
+WHERE jenis = 'Masuk'
+
+AND EXTRACT(
+MONTH FROM tanggal
+) = $1
+
+AND EXTRACT(
+YEAR FROM tanggal
+) = $2
+
+`,
+
+[
+new Date().getMonth()+1,
+new Date().getFullYear()
+]
+
+);
+
+const kasKeluar =
+await pool.query(
+
+`
+
+SELECT
+
+COALESCE(
+SUM(nominal),
+0
+) AS total
+
+FROM buku_kas
+
+WHERE jenis = 'Keluar'
+
+AND EXTRACT(
+MONTH FROM tanggal
+) = $1
+
+AND EXTRACT(
+YEAR FROM tanggal
+) = $2
+
+`,
+
+[
+new Date().getMonth()+1,
+new Date().getFullYear()
+]
+
+);
+
+const pembayaranSahriyah =
+await pool.query(
+
+`
+
+SELECT
+
+COALESCE(
+SUM(total_bayar),
+0
+) AS total
+
+FROM tagihan_sahriyah
+
+`
+
+);
+
+const tunggakanSahriyah =
+await pool.query(
+
+`
+
+SELECT
+
+COALESCE(
+SUM(sisa_tagihan),
+0
+) AS total
+
+FROM tagihan_sahriyah
+
+`
+
+);
+
+// ======================
+// GRAFIK KAS
+// ======================
+
+const grafikKas =
+await pool.query(
+
+`
+
+SELECT
+
+EXTRACT(
+MONTH FROM tanggal
+) AS bulan,
+
+COALESCE(
+
+SUM(
+
+CASE
+
+WHEN jenis = 'Masuk'
+
+THEN nominal
+
+ELSE 0
+
+END
+
+),
+
+0
+
+) AS masuk,
+
+COALESCE(
+
+SUM(
+
+CASE
+
+WHEN jenis = 'Keluar'
+
+THEN nominal
+
+ELSE 0
+
+END
+
+),
+
+0
+
+) AS keluar
+
+FROM buku_kas
+
+WHERE
+
+EXTRACT(
+YEAR FROM tanggal
+) = $1
+
+GROUP BY bulan
+
+ORDER BY bulan
+
+`,
+
+[
+new Date().getFullYear()
+]
+
+);
+
+// ======================
+// TRANSAKSI TERBARU
+// ======================
+
+const transaksiTerbaru =
+await pool.query(
+
+`
+
+SELECT
+
+id,
+tanggal,
+jenis,
+kategori,
+keterangan,
+nominal,
+petugas
+
+FROM buku_kas
+
+ORDER BY tanggal DESC,
+id DESC
+
+LIMIT 10
+
+`
+
+);
+
+// ======================
+// PEMBAYARAN TERBARU
+// ======================
+
+const pembayaranTerbaru =
+await pool.query(
+
+`
+
+SELECT
+
+p.id,
+p.nama_tagihan,
+p.nominal_bayar,
+p.sisa_tunggakan,
+p.status,
+
+s.nama
+
+FROM pembayaran p
+
+LEFT JOIN santri s
+
+ON p.santri_id = s.id
+
+ORDER BY p.id DESC
+
+LIMIT 10
+
+`
+
+);
+
+// ======================
+// TOP TUNGGAKAN
+// ======================
+
+const topTunggakan =
+await pool.query(
+
+`
+
+SELECT
+
+nama,
+sisa_tagihan
+
+FROM tagihan_sahriyah
+
+WHERE sisa_tagihan > 0
+
+ORDER BY sisa_tagihan DESC
+
+LIMIT 10
+
+`
+
+);
+
       res.json({
 
         success: true,
@@ -461,7 +731,48 @@ total_pelanggaran:
   ),
 
 persentase_melanggar:
-  persentaseMelanggar
+  persentaseMelanggar,
+
+  kas_masuk:
+  Number(
+    kasMasuk.rows[0].total
+  ),
+
+kas_keluar:
+  Number(
+    kasKeluar.rows[0].total
+  ),
+
+saldo_kas:
+  Number(
+    kasMasuk.rows[0].total
+  )
+  -
+  Number(
+    kasKeluar.rows[0].total
+  ),
+
+total_pembayaran:
+  Number(
+    pembayaranSahriyah.rows[0].total
+  ),
+
+total_tunggakan:
+  Number(
+    tunggakanSahriyah.rows[0].total
+  ),
+
+grafik_kas:
+  grafikKas.rows,
+
+transaksi_terbaru:
+  transaksiTerbaru.rows,
+
+pembayaran_terbaru:
+  pembayaranTerbaru.rows,
+
+top_tunggakan:
+  topTunggakan.rows
 
         }
 

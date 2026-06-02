@@ -11,6 +11,11 @@ from "../services/api";
 import Sidebar
 from "../components/Sidebar";
 
+import {
+ exportExcel
+}
+from "../utils/exportExcel";
+
 function NilaiPage() {
 
   // ======================
@@ -309,6 +314,48 @@ useEffect(() => {
     }
 
   };
+
+const handleExport =
+() => {
+
+  const rows = [];
+
+  santri.forEach((s) => {
+
+    mapelList.forEach((m) => {
+
+      rows.push({
+
+        Nama:
+          s.nama,
+
+        MataPelajaran:
+          m,
+
+        Nilai:
+
+          nilai[
+            `${s.id}-${m}`
+          ] || 0,
+
+        Bulan:
+          bulan,
+
+        Tahun:
+          tahun
+
+      });
+
+    });
+
+  });
+
+  exportExcel(
+    rows,
+    "Nilai"
+  );
+
+};
 
   return (
 
@@ -674,6 +721,23 @@ useEffect(() => {
         </table>
 
         <br />
+
+        <button
+
+  onClick={
+    handleExport
+  }
+
+  style={{
+    padding:"10px 20px",
+    marginRight:"10px"
+  }}
+
+>
+
+  Export Excel
+
+</button>
 
         <button
 

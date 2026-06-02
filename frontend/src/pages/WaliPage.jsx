@@ -11,6 +11,11 @@ from "../services/api";
 import Sidebar
 from "../components/Sidebar";
 
+import {
+  exportExcel
+}
+from "../utils/exportExcel";
+
 function WaliPage() {
 
   // ======================
@@ -298,6 +303,35 @@ function WaliPage() {
 
   };
 
+
+const handleExport =
+() => {
+
+  const rows =
+
+    wali.map((item) => ({
+
+      Nama:
+        item.nama,
+
+      NomorHP:
+        item.nomor_hp,
+
+      Alamat:
+        item.alamat,
+
+      Santri:
+        item.nama_santri
+
+    }));
+
+  exportExcel(
+    rows,
+    "WaliSantri"
+  );
+
+};
+
   return (
 
     <div
@@ -477,6 +511,12 @@ function WaliPage() {
             }
 
           </button>
+
+        <button
+  onClick={handleExport}
+>
+  Export Excel
+</button>
 
         </div>
 

@@ -14,6 +14,11 @@ from "../components/Sidebar";
 import Topbar
 from "../components/Topbar";
 
+import {
+  exportExcel
+}
+from "../utils/exportExcel";
+
 function KelasPage() {
 
   // ======================
@@ -138,6 +143,28 @@ function KelasPage() {
 
     };
 
+const handleExport =
+() => {
+
+  const rows =
+
+    kelas.map((item) => ({
+
+      ID:
+        item.id,
+
+      NamaKelas:
+        item.nama_kelas
+
+    }));
+
+  exportExcel(
+    rows,
+    "Kelas"
+  );
+
+};
+
   return (
 
     <div>
@@ -204,6 +231,12 @@ function KelasPage() {
             Tambah
 
           </button>
+
+        <button
+  onClick={handleExport}
+>
+  Export Excel
+</button>
 
         </div>
 
