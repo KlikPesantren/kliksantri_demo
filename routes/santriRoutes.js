@@ -342,5 +342,60 @@ router.delete(
 
 );
 
+// ======================
+// RFID LOOKUP
+// ======================
+
+router.get(
+  "/rfid/:uid",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await pool.query(
+          `
+          SELECT
+            id,
+            nama,
+            uid_rfid,
+            saldo,
+            limit_harian
+          FROM santri
+          WHERE uid_rfid=$1
+          `,
+          [req.params.uid]
+        );
+
+      if (
+        result.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+          success: false
+        });
+
+      }
+
+      res.json(
+        result.rows[0]
+      );
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        success: false,
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
 module.exports =
 router;

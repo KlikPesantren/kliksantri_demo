@@ -89,6 +89,27 @@ require(
 const tamuRoutes =
 require("./routes/tamuRoutes");
 
+const rfidRoutes =
+require("./routes/rfidRoutes");
+
+const rfidMerchantRoutes =
+require(
+"./routes/rfidMerchantRoutes"
+);
+
+const rfidDeviceRoutes =
+require(
+"./routes/rfidDeviceRoutes"
+);
+
+const rfidSyncRoutes =
+require(
+"./routes/rfidSyncRoutes"
+);
+
+const rfidMonitorRoutes =
+require("./routes/rfidMonitorRoutes");
+
 // =====================
 // DB
 // =====================
@@ -305,6 +326,31 @@ sahriyahSettingRoutes
 app.use(
   "/tamu",
   tamuRoutes
+);
+
+app.use(
+  "/rfid",
+  rfidRoutes
+);
+
+app.use(
+  "/rfid/merchant",
+  rfidMerchantRoutes
+);
+
+app.use(
+  "/rfid/device",
+  rfidDeviceRoutes
+);
+
+app.use(
+  "/rfid/sync",
+  rfidSyncRoutes
+);
+
+app.use(
+  "/rfid/monitor",
+  rfidMonitorRoutes
 );
 
 // =====================

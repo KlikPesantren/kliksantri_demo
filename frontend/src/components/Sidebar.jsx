@@ -6,7 +6,8 @@ import {
   FaMicrochip,
   FaClipboardList,
   FaSchool,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaWifi
 
 } from "react-icons/fa";
 
@@ -143,6 +144,12 @@ if (
   name: "Setting Sahriyah",
   icon: <FaMoneyBill />,
   path: "/sahriyah-setting"
+   },
+
+   {
+  name:"RFID Monitor",
+  icon:<FaWifi />,
+  path:"/rfid-monitor"
    },
 
    {
@@ -331,6 +338,12 @@ if (
 
      path: "/sahriyah-setting"
 
+    },
+
+    {
+  name:"RFID Monitor",
+  icon:<FaWifi />,
+  path:"/rfid-monitor"
     },
 
     {

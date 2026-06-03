@@ -67,6 +67,9 @@ from "./pages/SahriyahSettingPage";
 import TamuPage
 from "./pages/TamuPage";
 
+import RFIDMonitorPage
+from "./pages/RFIDMonitorPage";
+
 function App() {
 
   return (
@@ -222,6 +225,15 @@ function App() {
   element={<SahriyahSettingPage />}
 />
 
+        {/* ====================== */}
+        {/* RFID MONITOR */}
+        {/* ====================== */}
+
+
+<Route
+  path="/rfid-monitor"
+  element={<RFIDMonitorPage />}
+/>
 
         {/* ====================== */}
         {/* ABSENSI */}
