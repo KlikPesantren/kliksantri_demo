@@ -147,9 +147,27 @@ if (
    },
 
    {
+  name:"RFID Dashboard",
+  path:"/rfid-dashboard"
+   },
+
+   {
   name:"RFID Monitor",
   icon:<FaWifi />,
   path:"/rfid-monitor"
+   },
+
+   {
+  name:
+    "RFID Transactions",
+
+  path:
+    "/rfid-transactions"
+   },
+
+   {
+  name:"RFID Topup",
+  path:"/rfid-topup"
    },
 
    {
@@ -341,9 +359,27 @@ if (
     },
 
     {
+  name:"RFID Dashboard",
+  path:"/rfid-dashboard"
+    },
+
+    {
   name:"RFID Monitor",
   icon:<FaWifi />,
   path:"/rfid-monitor"
+    },
+
+    {
+  name:
+    "RFID Transactions",
+
+  path:
+    "/rfid-transactions"
+    },
+
+    {
+  name:"RFID Topup",
+  path:"/rfid-topup"
     },
 
     {

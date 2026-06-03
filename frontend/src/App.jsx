@@ -70,6 +70,14 @@ from "./pages/TamuPage";
 import RFIDMonitorPage
 from "./pages/RFIDMonitorPage";
 
+import RFIDDashboardPage
+from "./pages/RFIDDashboardPage";
+
+import RFIDTransactionPage
+from "./pages/RFIDTransactionPage";
+
+import RFIDTopupPage
+from "./pages/RFIDTopupPage";
 function App() {
 
   return (
@@ -233,6 +241,35 @@ function App() {
 <Route
   path="/rfid-monitor"
   element={<RFIDMonitorPage />}
+/>
+
+        {/* ====================== */}
+        {/* RFID MONITOR */}
+        {/* ====================== */}
+
+<Route
+  path="/rfid-dashboard"
+  element={<RFIDDashboardPage />}
+/>
+
+        {/* ====================== */}
+        {/* RFID TRANSACTION */}
+        {/* ====================== */}
+
+<Route
+  path="/rfid-transactions"
+  element={
+    <RFIDTransactionPage />
+  }
+/>
+
+        {/* ====================== */}
+        {/* TOPUP RFID */}
+        {/* ====================== */}
+
+<Route
+  path="/rfid-topup"
+  element={<RFIDTopupPage />}
 />
 
         {/* ====================== */}

@@ -259,49 +259,126 @@ exports.rfidPayment = async (req, res) => {
 // ==========================
 // DASHBOARD RFID
 // ==========================
-
 exports.getDashboard =
-  async (req, res) => {
+async (req,res)=>{
 
-    try {
+  try{
 
-      const result =
-        await pool.query(`
+    const totalSaldo =
+      await pool.query(`
         SELECT
-
-        (SELECT COUNT(*) FROM merchant_rfid)
-        AS total_merchant,
-
-        (SELECT COUNT(*) FROM devices)
-        AS total_device,
-
-        (SELECT COUNT(*) FROM transaksi_rfid)
-        AS total_transaksi,
-
-        (
-          SELECT COALESCE(SUM(saldo),0)
-          FROM santri
-        )
-        AS total_saldo
+        COALESCE(
+          SUM(saldo),
+          0
+        ) total
+        FROM santri
       `);
 
-      res.json({
-        success: true,
-        data: result.rows[0]
-      });
+    const totalMerchant =
+      await pool.query(`
+        SELECT COUNT(*)
+        FROM merchant_rfid
+        WHERE status=true
+      `);
 
-    } catch (err) {
+    const totalDevice =
+      await pool.query(`
+        SELECT COUNT(*)
+        FROM devices
+      `);
 
-      console.log(err);
+    const online =
+      await pool.query(`
+        SELECT COUNT(*)
+        FROM devices
+        WHERE status='online'
+      `);
 
-      res.status(500).json({
-        success: false
-      });
+    const offline =
+      await pool.query(`
+        SELECT COUNT(*)
+        FROM devices
+        WHERE status!='online'
+      `);
 
-    }
+    const transaksiHariIni =
+      await pool.query(`
+        SELECT
+        COALESCE(
+          SUM(nominal),
+          0
+        ) total
+        FROM transaksi_rfid
+        WHERE DATE(created_at)
+        = CURRENT_DATE
+      `);
+
+    const pending =
+      await pool.query(`
+        SELECT COUNT(*)
+        FROM rfid_sync_queue
+        WHERE sync_status='pending'
+      `);
+
+    const failed =
+      await pool.query(`
+        SELECT COUNT(*)
+        FROM rfid_sync_queue
+        WHERE sync_status='failed'
+      `);
+
+    const kartuAktif =
+      await pool.query(`
+        SELECT COUNT(*)
+        FROM santri
+        WHERE uid_rfid
+        IS NOT NULL
+      `);
+
+    res.json({
+
+      total_saldo:
+        totalSaldo.rows[0].total,
+
+      belanja_hari_ini:
+        transaksiHariIni.rows[0].total,
+
+      merchant_aktif:
+        totalMerchant.rows[0].count,
+
+      total_device:
+        totalDevice.rows[0].count,
+
+      device_online:
+        online.rows[0].count,
+
+      device_offline:
+        offline.rows[0].count,
+
+      pending_sync:
+        pending.rows[0].count,
+
+      failed_sync:
+        failed.rows[0].count,
+
+      kartu_aktif:
+        kartuAktif.rows[0].count
+
+    });
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false
+    });
+
+  }
 
 };
-
 // ==========================
 // RFID TRANSACTIONS
 // ==========================
@@ -342,5 +419,242 @@ exports.getTransactions =
       });
 
     }
+
+};
+
+exports.getTransactions =
+async(req,res)=>{
+
+  try{
+
+    const result =
+      await pool.query(
+        `
+        SELECT
+
+          tr.*,
+
+          s.nama
+          AS nama_santri,
+
+          m.nama_merchant,
+
+          d.device_id
+
+        FROM transaksi_rfid tr
+
+        LEFT JOIN santri s
+        ON s.id =
+        tr.santri_id
+
+        LEFT JOIN merchant_rfid m
+        ON m.id =
+        tr.merchant_id
+
+        LEFT JOIN devices d
+        ON d.id =
+        tr.device_id
+
+        ORDER BY
+        tr.created_at DESC
+
+        LIMIT 500
+        `
+      );
+
+    res.json({
+      success:true,
+      data:
+        result.rows
+    });
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false
+    });
+
+  }
+
+};
+
+// ==========================
+// RFID TOPUP
+// ==========================
+
+exports.topupSaldo =
+async(req,res)=>{
+
+  const client =
+    await pool.connect();
+
+  try{
+
+    const {
+      santri_id,
+      nominal,
+      user_id
+    } = req.body;
+
+    await client.query(
+      "BEGIN"
+    );
+
+    const santri =
+      await client.query(
+        `
+        SELECT *
+        FROM santri
+        WHERE id=$1
+        `,
+        [santri_id]
+      );
+
+    if(
+      santri.rows.length===0
+    ){
+      throw new Error(
+        "Santri tidak ditemukan"
+      );
+    }
+
+    const saldoAwal =
+      Number(
+        santri.rows[0].saldo
+      );
+
+    const saldoAkhir =
+      saldoAwal +
+      Number(nominal);
+
+    await client.query(
+      `
+      UPDATE santri
+      SET saldo=$1
+      WHERE id=$2
+      `,
+      [
+        saldoAkhir,
+        santri_id
+      ]
+    );
+
+    const trxId =
+      `TOPUP-${Date.now()}`;
+
+    await client.query(
+      `
+      INSERT INTO transaksi
+      (
+        santri_id,
+        jenis,
+        nominal,
+        keterangan,
+        created_by,
+        trx_id
+      )
+      VALUES
+      (
+        $1,
+        'TOPUP RFID',
+        $2,
+        'Topup Saldo RFID',
+        $3,
+        $4
+      )
+      `,
+      [
+        santri_id,
+        nominal,
+        user_id,
+        trxId
+      ]
+    );
+
+    await client.query(
+      `
+      INSERT INTO buku_kas
+      (
+        tanggal,
+        jenis,
+        kategori,
+        keterangan,
+        nominal
+      )
+      VALUES
+      (
+        CURRENT_DATE,
+        'Masuk',
+        'RFID Topup',
+        $1,
+        $2
+      )
+      `,
+      [
+        santri.rows[0].nama,
+        nominal
+      ]
+    );
+
+   await client.query(
+  `
+  INSERT INTO audit_logs
+  (
+    device_id,
+    event_type,
+    detail
+  )
+  VALUES
+  (
+    $1,
+    $2,
+    $3
+  )
+  `,
+  [
+    "BACKEND",
+    "RFID_TOPUP",
+    `${santri.rows[0].nama} | Rp ${nominal}`
+  ]
+);
+
+    await client.query(
+      "COMMIT"
+    );
+
+    res.json({
+      success:true,
+      saldo_awal:
+        saldoAwal,
+      saldo_akhir:
+        saldoAkhir
+    });
+
+  }
+
+  catch(err){
+
+    await client.query(
+      "ROLLBACK"
+    );
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false,
+      error:err.message
+    });
+
+  }
+
+  finally{
+
+    client.release();
+
+  }
 
 };
