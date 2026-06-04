@@ -134,6 +134,10 @@ function RFIDTransactionPage() {
                 </th>
 
                 <th style={th}>
+                  Tipe
+                </th>
+
+                <th style={th}>
                   Merchant
                 </th>
 
@@ -183,6 +187,20 @@ function RFIDTransactionPage() {
                     <td style={td}>
                       {trx.nama_santri}
                     </td>
+
+                    <td style={td}>
+
+  {
+    trx.trx_type === "payment"
+      ? "🛒 Payment"
+      : trx.trx_type === "topup"
+      ? "💰 Topup"
+      : trx.trx_type === "refund"
+      ? "↩️ Refund"
+      : trx.trx_type
+  }
+
+</td>
 
                     <td style={td}>
                       {trx.nama_merchant}

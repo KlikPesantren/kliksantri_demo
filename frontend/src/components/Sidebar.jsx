@@ -181,6 +181,16 @@ if (
    },
 
    {
+  name:"RFID Refund",
+  path:"/rfid-refund"
+   },
+
+   {
+  name:"RFID Mutasi",
+  path:"/rfid-mutasi"
+   },
+
+   {
   name: "Absensi Guru",
   icon: <FaClipboardList />,
   path: "/absensi-guru"
@@ -400,6 +410,16 @@ if (
     {
   name:"RFID Devices",
   path:"/rfid-devices"
+    },
+
+    {
+  name:"RFID Refund",
+  path:"/rfid-refund"
+    },
+ 
+    {
+  name:"RFID Mutasi",
+  path:"/rfid-mutasi"
     },
 
     {

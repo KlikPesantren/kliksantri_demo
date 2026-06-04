@@ -88,6 +88,12 @@ from "./pages/RFIDDevicePage";
 import RFIDAuditPage
 from "./pages/RFIDAuditPage";
 
+import RFIDMutasiPage
+from "./pages/RFIDMutasiPage";
+
+import RFIDRefundPage
+from "./pages/RFIDRefundPage";
+
 function App() {
 
   return (
@@ -301,6 +307,15 @@ function App() {
   }
 />
 
+<Route
+  path="/rfid-mutasi"
+  element={<RFIDMutasiPage />}
+/>
+
+<Route
+  path="/rfid-refund"
+  element={<RFIDRefundPage />}
+/>
 
         {/* ====================== */}
         {/* ABSENSI */}

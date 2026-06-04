@@ -160,6 +160,14 @@ exports.rfidPayment = async (req, res) => {
       const trxUuid =
         crypto.randomUUID();
 
+      console.log("PAYMENT MASUK");
+console.log({
+  uid_rfid,
+  nominal,
+  device_id,
+  trx_id
+});
+
       await client.query(
         `
         INSERT INTO transaksi_rfid
@@ -192,6 +200,10 @@ exports.rfidPayment = async (req, res) => {
           override_limit
         ]
       );
+
+      console.log(
+  "INSERT transaksi_rfid BERHASIL"
+);
 
       await client.query(
         `
@@ -533,6 +545,9 @@ async(req,res)=>{
       saldoAwal +
       Number(nominal);
 
+        const trxId =
+      `TOPUP-${Date.now()}`;
+
     await client.query(
       `
       UPDATE santri
@@ -545,8 +560,39 @@ async(req,res)=>{
       ]
     );
 
-    const trxId =
-      `TOPUP-${Date.now()}`;
+    await client.query(
+`
+INSERT INTO transaksi_rfid
+(
+  trx_uuid,
+  trx_id,
+  santri_id,
+  nominal,
+  saldo_awal,
+  saldo_akhir,
+  trx_type,
+  sync_status
+)
+VALUES
+(
+  gen_random_uuid(),
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  'topup',
+  'synced'
+)
+`,
+[
+  trxId,
+  santri_id,
+  nominal,
+  saldoAwal,
+  saldoAkhir
+]
+);
 
     await client.query(
       `
@@ -812,6 +858,222 @@ async(req,res)=>{
 
     res.status(500).json({
       success:false
+    });
+
+  }
+
+};
+
+exports.refundTransaction =
+async(req,res)=>{
+
+  const client =
+    await pool.connect();
+
+  try{
+
+    const {
+      transaksi_id
+    } = req.body;
+
+    await client.query(
+      "BEGIN"
+    );
+
+    const trx =
+      await client.query(
+        `
+        SELECT *
+        FROM transaksi_rfid
+        WHERE id=$1
+        `,
+        [transaksi_id]
+      );
+
+    if(
+      trx.rows.length===0
+    ){
+      throw new Error(
+        "Transaksi tidak ditemukan"
+      );
+    }
+
+    const data =
+      trx.rows[0];
+
+    const santri =
+      await client.query(
+        `
+        SELECT *
+        FROM santri
+        WHERE id=$1
+        `,
+        [data.santri_id]
+      );
+
+    const saldoAwal =
+      Number(
+        santri.rows[0].saldo
+      );
+
+    const saldoAkhir =
+      saldoAwal +
+      Number(data.nominal);
+
+    await client.query(
+      `
+      UPDATE santri
+      SET saldo=$1
+      WHERE id=$2
+      `,
+      [
+        saldoAkhir,
+        data.santri_id
+      ]
+    );
+
+    await client.query(
+      `
+      INSERT INTO transaksi_rfid
+      (
+        trx_uuid,
+        trx_id,
+        santri_id,
+        merchant_id,
+        device_id,
+        nominal,
+        saldo_awal,
+        saldo_akhir,
+        trx_type,
+        sync_status
+      )
+      VALUES
+      (
+        gen_random_uuid(),
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        'refund',
+        'synced'
+      )
+      `,
+      [
+        `REFUND-${Date.now()}`,
+        data.santri_id,
+        data.merchant_id,
+        data.device_id,
+        data.nominal,
+        saldoAwal,
+        saldoAkhir
+      ]
+    );
+
+    await client.query(
+      `
+      INSERT INTO audit_logs
+      (
+        device_id,
+        event_type,
+        detail
+      )
+      VALUES
+      (
+        'BACKEND',
+        'RFID_REFUND',
+        $1
+      )
+      `,
+      [
+        `TRX ${data.trx_id}`
+      ]
+    );
+
+    await client.query(
+      "COMMIT"
+    );
+
+    res.json({
+      success:true
+    });
+
+  }
+
+  catch(err){
+
+    await client.query(
+      "ROLLBACK"
+    );
+
+    res.status(500).json({
+      success:false,
+      error:err.message
+    });
+
+  }
+
+  finally{
+
+    client.release();
+
+  }
+
+};
+
+exports.getMutasi =
+async(req,res)=>{
+
+  try{
+
+    const {
+      santri_id
+    } = req.query;
+
+    const result =
+      await pool.query(
+        `
+        SELECT
+
+  tr.created_at,
+  tr.trx_type,
+  tr.nominal,
+  tr.saldo_awal,
+  tr.saldo_akhir,
+  tr.trx_id,
+
+  s.nama,
+  s.uid_rfid,
+  s.saldo
+
+FROM transaksi_rfid tr
+
+LEFT JOIN santri s
+ON s.id = tr.santri_id
+
+WHERE tr.santri_id = $1
+
+ORDER BY tr.created_at DESC
+        `,
+        [santri_id]
+      );
+
+    res.json({
+      success:true,
+      data:result.rows
+    });
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false,
+      error:err.message
     });
 
   }

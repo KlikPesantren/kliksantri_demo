@@ -394,11 +394,16 @@ if (
 
           saldo - nominalInt;
 
+      const saldoAwal = saldo;
+      const saldoAkhir = saldoBaru;
+
       await pool.query(
 
         `UPDATE santri
          SET saldo = $1
          WHERE uid_rfid = $2`,
+
+         
 
         [
 
@@ -408,6 +413,70 @@ if (
         ]
 
       );
+
+  const deviceResult =
+  await pool.query(
+    `
+    SELECT id
+    FROM devices
+    WHERE device_id = $1
+    `,
+    [device_id]
+  );
+
+const deviceDbId =
+  deviceResult.rows[0]?.id || null;
+
+console.log(
+  "INSERT RFID START"
+);
+
+await pool.query(
+`
+INSERT INTO transaksi_rfid
+(
+  trx_uuid,
+  trx_id,
+  santri_id,
+  nominal,
+  saldo_awal,
+  saldo_akhir,
+  trx_type,
+  sync_status,
+  device_id
+)
+VALUES
+(
+  gen_random_uuid(),
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  'synced',
+  $7
+)
+`,
+[
+  trx_id,
+  data.id,
+  nominalInt,
+  saldoAwal,
+  saldoAkhir,
+
+  is_topup
+    ? "topup"
+    : "payment",
+
+  deviceDbId
+]
+);
+
+console.log(
+  "INSERT RFID DONE"
+);
+
 
      await pool.query(
 

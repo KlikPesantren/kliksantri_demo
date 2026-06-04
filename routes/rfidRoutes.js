@@ -52,5 +52,15 @@ router.get(
   rfidController.exportTopup
 );
 
+router.post(
+  "/refund",
+  rfidController.refundTransaction
+);
+
+router.get(
+  "/mutasi",
+  rfidController.getMutasi
+);
+
 module.exports =
 router;
