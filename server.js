@@ -115,6 +115,9 @@ require(
 "./routes/rfidAuditRoutes"
 );
 
+const waliAppRoutes =
+require("./routes/waliAppRoutes");
+
 // =====================
 // DB
 // =====================
@@ -362,6 +365,12 @@ app.use(
   "/rfid/audit",
   rfidAuditRoutes
 );
+
+app.use(
+  "/wali-app",
+  waliAppRoutes
+);
+
 // =====================
 // UPDATE SANTRI
 // =====================
