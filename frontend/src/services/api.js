@@ -1,9 +1,10 @@
 import axios from "axios";
 
-const api = axios.create({
+const api =
+axios.create({
 
   baseURL:
-  "http://10.105.143.56:3000"
+    "http://localhost:3000"
 
 });
 

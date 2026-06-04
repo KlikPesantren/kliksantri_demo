@@ -34,12 +34,22 @@ router.get(
   rfidController.getTransactions
 );
 
+router.get(
+  "/transactions/export",
+  rfidController.exportTransactions
+);
+
 // ======================
 // TOPUP
 // ======================
 router.post(
   "/topup",
   rfidController.topupSaldo
+);
+
+router.get(
+  "/topup/export",
+  rfidController.exportTopup
 );
 
 module.exports =

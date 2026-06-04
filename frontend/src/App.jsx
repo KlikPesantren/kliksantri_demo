@@ -78,6 +78,16 @@ from "./pages/RFIDTransactionPage";
 
 import RFIDTopupPage
 from "./pages/RFIDTopupPage";
+
+import RFIDMerchantPage
+from "./pages/RFIDMerchantPage";
+
+import RFIDDevicePage
+from "./pages/RFIDDevicePage";
+
+import RFIDAuditPage
+from "./pages/RFIDAuditPage";
+
 function App() {
 
   return (
@@ -271,6 +281,26 @@ function App() {
   path="/rfid-topup"
   element={<RFIDTopupPage />}
 />
+
+
+        {/* ====================== */}
+        {/* RFID MERCHANT */}
+        {/* ====================== */}
+
+<Route
+  path="/rfid-merchant"
+  element={
+    <RFIDMerchantPage />
+  }
+/>
+
+<Route
+  path="/rfid-devices"
+  element={
+    <RFIDDevicePage />
+  }
+/>
+
 
         {/* ====================== */}
         {/* ABSENSI */}

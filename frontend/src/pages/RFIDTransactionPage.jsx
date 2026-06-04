@@ -87,6 +87,25 @@ function RFIDTransactionPage() {
 
         </div>
 
+        <button
+  onClick={()=>{
+    window.open(
+      "http://localhost:3000/rfid/transactions/export",
+      "_blank"
+    );
+  }}
+  style={{
+    background:"#16A34A",
+    color:"white",
+    border:"none",
+    padding:"12px 18px",
+    borderRadius:"10px",
+    cursor:"pointer"
+  }}
+>
+  Export Excel
+</button>
+
         <div style={cardStyle}>
 
           <table

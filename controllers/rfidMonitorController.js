@@ -4,6 +4,26 @@ exports.getMonitor = async (req, res) => {
 
   try {
 
+    // =====================
+    // AUTO OFFLINE DETECTION
+    // =====================
+
+    await pool.query(`
+      UPDATE devices
+      SET status = 'offline'
+      WHERE
+        last_ping IS NOT NULL
+        AND last_ping < NOW() - INTERVAL '60 seconds'
+    `);
+
+    await pool.query(`
+      UPDATE devices
+      SET status = 'online'
+      WHERE
+        last_ping IS NOT NULL
+        AND last_ping >= NOW() - INTERVAL '60 seconds'
+    `);
+
     const result = await pool.query(`
       SELECT
 

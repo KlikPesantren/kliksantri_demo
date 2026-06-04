@@ -2,6 +2,8 @@ const pool = require("../db");
 const auditService = require("../services/auditService");
 
 const crypto = require("crypto");
+
+const XLSX = require("xlsx");
 // ==========================
 // RFID PAYMENT
 // ==========================
@@ -654,6 +656,163 @@ async(req,res)=>{
   finally{
 
     client.release();
+
+  }
+
+};
+
+exports.exportTransactions =
+async(req,res)=>{
+
+  try{
+
+    const result =
+      await pool.query(`
+        SELECT
+
+          tr.created_at,
+          s.nama AS nama_santri,
+          m.nama_merchant,
+          d.device_id,
+          tr.nominal,
+          tr.saldo_awal,
+          tr.saldo_akhir,
+          tr.sync_status
+
+        FROM transaksi_rfid tr
+
+        LEFT JOIN santri s
+        ON s.id = tr.santri_id
+
+        LEFT JOIN merchant_rfid m
+        ON m.id = tr.merchant_id
+
+        LEFT JOIN devices d
+        ON d.id = tr.device_id
+
+        ORDER BY tr.created_at DESC
+      `);
+
+    const worksheet =
+      XLSX.utils.json_to_sheet(
+        result.rows
+      );
+
+    const workbook =
+      XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "RFID Transactions"
+    );
+
+    const buffer =
+      XLSX.write(
+        workbook,
+        {
+          type:"buffer",
+          bookType:"xlsx"
+        }
+      );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=rfid-transactions.xlsx"
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.send(buffer);
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false
+    });
+
+  }
+
+};
+
+exports.exportTopup =
+async(req,res)=>{
+
+  try{
+
+    const result =
+      await pool.query(`
+        SELECT
+
+          t.created_at,
+          s.nama,
+          t.nominal,
+          t.created_by,
+          t.trx_id
+
+        FROM transaksi t
+
+        LEFT JOIN santri s
+        ON s.id = t.santri_id
+
+        WHERE t.jenis =
+        'TOPUP RFID'
+
+        ORDER BY
+        t.created_at DESC
+      `);
+
+    const worksheet =
+      XLSX.utils.json_to_sheet(
+        result.rows
+      );
+
+    const workbook =
+      XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "RFID Topup"
+    );
+
+    const buffer =
+      XLSX.write(
+        workbook,
+        {
+          type:"buffer",
+          bookType:"xlsx"
+        }
+      );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=rfid-topup.xlsx"
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.send(buffer);
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false
+    });
 
   }
 

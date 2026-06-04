@@ -239,6 +239,25 @@ ${res.data.saldo_akhir}`
 
           </button>
 
+          <button
+  onClick={()=>{
+    window.open(
+      "http://localhost:3000/rfid/topup/export",
+      "_blank"
+    );
+  }}
+  style={{
+    background:"#16A34A",
+    color:"white",
+    border:"none",
+    padding:"12px 18px",
+    borderRadius:"10px",
+    cursor:"pointer"
+  }}
+>
+  Export Excel
+</button>
+
         </div>
 
       </div>

@@ -110,6 +110,11 @@ require(
 const rfidMonitorRoutes =
 require("./routes/rfidMonitorRoutes");
 
+const rfidAuditRoutes =
+require(
+"./routes/rfidAuditRoutes"
+);
+
 // =====================
 // DB
 // =====================
@@ -353,6 +358,10 @@ app.use(
   rfidMonitorRoutes
 );
 
+app.use(
+  "/rfid/audit",
+  rfidAuditRoutes
+);
 // =====================
 // UPDATE SANTRI
 // =====================

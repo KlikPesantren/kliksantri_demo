@@ -171,6 +171,16 @@ if (
    },
 
    {
+  name:"RFID Merchant",
+  path:"/rfid-merchant"
+   },
+
+   {
+  name:"RFID Devices",
+  path:"/rfid-devices"
+   },
+
+   {
   name: "Absensi Guru",
   icon: <FaClipboardList />,
   path: "/absensi-guru"
@@ -380,6 +390,16 @@ if (
     {
   name:"RFID Topup",
   path:"/rfid-topup"
+    },
+
+    {
+  name:"RFID Merchant",
+  path:"/rfid-merchant"
+    },
+
+    {
+  name:"RFID Devices",
+  path:"/rfid-devices"
     },
 
     {
