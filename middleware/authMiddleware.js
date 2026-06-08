@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const jwt =
   require("jsonwebtoken");
 
@@ -34,7 +36,7 @@ const authMiddleware = (
 
         token,
 
-        "RAHASIA_ADMIN_SANTRI"
+        process.env.JWT_SECRET
 
       );
 

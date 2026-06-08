@@ -1,0 +1,36 @@
+export const colors = {
+  primary: '#1a7f5a',
+  primaryLight: '#e8f5f0',
+  primaryDark: '#155f44',
+
+  secondary: '#f0a500',
+  secondaryLight: '#fff8e6',
+
+  danger: '#e53e3e',
+  dangerLight: '#fff5f5',
+  warning: '#d97706',
+  warningLight: '#fffbeb',
+  success: '#16a34a',
+  successLight: '#f0fdf4',
+  info: '#2563eb',
+  infoLight: '#eff6ff',
+
+  white: '#ffffff',
+  black: '#111827',
+  gray50: '#f9fafb',
+  gray100: '#f3f4f6',
+  gray200: '#e5e7eb',
+  gray300: '#d1d5db',
+  gray400: '#9ca3af',
+  gray500: '#6b7280',
+  gray600: '#4b5563',
+  gray700: '#374151',
+  gray800: '#1f2937',
+
+  background: '#f4f6f9',
+  card: '#ffffff',
+  border: '#e5e7eb',
+  text: '#1f2937',
+  textSecondary: '#6b7280',
+  textMuted: '#9ca3af',
+};

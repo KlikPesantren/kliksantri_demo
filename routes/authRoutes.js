@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express =
   require("express");
 
@@ -15,7 +17,7 @@ const router =
 // =====================
 
 const SECRET_KEY =
-  "PESANTREN_SECRET";
+  process.env.JWT_SECRET;
 
 // =====================
 // LOGIN
@@ -105,9 +107,6 @@ router.post(
       // JWT
       // ======================
 
-      const jwt =
-        require("jsonwebtoken");
-
       const token =
 
         jwt.sign(
@@ -128,7 +127,7 @@ router.post(
 
           },
 
-          "SECRET_KEY",
+          SECRET_KEY,
 
           {
 
