@@ -10,6 +10,8 @@ import { AkademikStack } from './AkademikStack';
 import { KeamananStack } from './KeamananStack';
 import { ProfilStack } from './ProfilStack';
 import { AnakPilihScreen } from '../screens/anak/AnakPilihScreen';
+import { PengumumanScreen } from '../screens/pengumuman/PengumumanScreen';
+import { DetailPengumumanScreen } from '../screens/pengumuman/DetailPengumumanScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -27,6 +29,26 @@ function MainStack() {
         component={AnakPilihScreen}
         options={{
           title: 'Pilih Anak',
+          headerStyle: { backgroundColor: colors.primary },
+          headerTintColor: colors.white,
+          headerTitleStyle: { fontWeight: '700' },
+        }}
+      />
+      <Stack.Screen
+        name="PengumumanList"
+        component={PengumumanScreen}
+        options={{
+          title: 'Pengumuman',
+          headerStyle: { backgroundColor: colors.primary },
+          headerTintColor: colors.white,
+          headerTitleStyle: { fontWeight: '700' },
+        }}
+      />
+      <Stack.Screen
+        name="DetailPengumuman"
+        component={DetailPengumumanScreen}
+        options={{
+          title: 'Detail Pengumuman',
           headerStyle: { backgroundColor: colors.primary },
           headerTintColor: colors.white,
           headerTitleStyle: { fontWeight: '700' },

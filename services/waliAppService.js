@@ -53,17 +53,16 @@ const normalizePhone = (raw) => {
 
   }
 
-  if (digits.startsWith("0")) {
+  // Normalisasi ke format 08xxx (bukan 628xxx)
+  if (digits.startsWith("62")) {
 
-    digits = "62" + digits.slice(1);
+    // 628xxx → 08xxx
+    digits = "0" + digits.slice(2);
 
-  }
+  } else if (!digits.startsWith("0")) {
 
-  else if (
-    !digits.startsWith("62")
-  ) {
-
-    digits = "62" + digits;
+    // nomor tanpa prefix → tambah 0
+    digits = "0" + digits;
 
   }
 

@@ -326,6 +326,18 @@ else {
 
     );
 
+    // Reset form dan pilihan santri setelah simpan berhasil
+    setForm({
+      santri_id: "",
+      nama_tagihan: "",
+      bulan: "",
+      tahun: 2026,
+      nominal_tagihan: "",
+      nominal_bayar: ""
+    });
+
+    setSelectedSantri([]);
+
     getPembayaran();
 
   }

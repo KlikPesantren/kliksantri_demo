@@ -94,6 +94,12 @@ from "./pages/RFIDMutasiPage";
 import RFIDRefundPage
 from "./pages/RFIDRefundPage";
 
+import PengumumanPage
+from "./pages/PengumumanPage";
+
+import ProfilPesantrenPage
+from "./pages/ProfilPesantrenPage";
+
 function App() {
 
   return (
@@ -445,6 +451,32 @@ function App() {
     </ProtectedRoute>
   }
 />
+
+        {/* ====================== */}
+        {/* PENGUMUMAN */}
+        {/* ====================== */}
+
+        <Route
+          path="/pengumuman"
+          element={
+            <ProtectedRoute>
+              <PengumumanPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ====================== */}
+        {/* PROFIL PESANTREN */}
+        {/* ====================== */}
+
+        <Route
+          path="/profil-pesantren"
+          element={
+            <ProtectedRoute>
+              <ProfilPesantrenPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* ====================== */}
         {/* AUDIT */}

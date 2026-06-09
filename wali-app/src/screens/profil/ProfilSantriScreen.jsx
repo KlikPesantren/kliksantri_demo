@@ -5,10 +5,13 @@ import {
   ScrollView,
   RefreshControl,
   Image,
+  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { useActiveChild } from '../../context/ActiveChildContext';
+import { useAuth } from '../../context/AuthContext';
 import { useProfil } from '../../hooks/useProfil';
 import { ChildSwitcherBar } from '../../components/dashboard/ChildSwitcherBar';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -71,9 +74,26 @@ function SectionCard({ icon, title, children }) {
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
-export function ProfilSantriScreen() {
+export function ProfilSantriScreen({ navigation }) {
   const { activeSantriId } = useActiveChild();
+  const { logout } = useAuth();
   const { data, isLoading, isRefreshing, error, refresh } = useProfil(activeSantriId);
+
+  function handleLogout() {
+    Alert.alert(
+      'Keluar Akun',
+      'Yakin ingin keluar? Anda perlu login ulang untuk mengakses aplikasi.',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Keluar',
+          style: 'destructive',
+          onPress: logout,
+        },
+      ],
+      { cancelable: true }
+    );
+  }
 
   if (isLoading && !data) {
     return (
@@ -176,6 +196,54 @@ export function ProfilSantriScreen() {
             last
           />
         </SectionCard>
+
+        {/* ── Tentang Pesantren ── */}
+        <TouchableOpacity
+          style={styles.pesantrenCard}
+          onPress={() => navigation.navigate('ProfilPesantren')}
+          activeOpacity={0.75}
+        >
+          <View style={styles.pesantrenCardLeft}>
+            <Text style={styles.pesantrenCardIcon}>🏫</Text>
+            <View>
+              <Text style={styles.pesantrenCardTitle}>Tentang Pesantren</Text>
+              <Text style={styles.pesantrenCardSub}>Visi, misi & kontak</Text>
+            </View>
+          </View>
+          <Text style={styles.pesantrenCardChevron}>›</Text>
+        </TouchableOpacity>
+
+        {/* ── Ganti PIN ── */}
+        <TouchableOpacity
+          style={[styles.pesantrenCard, styles.pinCard]}
+          onPress={() => navigation.navigate('GantiPin')}
+          activeOpacity={0.75}
+        >
+          <View style={styles.pesantrenCardLeft}>
+            <Text style={styles.pesantrenCardIcon}>🔐</Text>
+            <View>
+              <Text style={styles.pesantrenCardTitle}>Ganti PIN</Text>
+              <Text style={styles.pesantrenCardSub}>Ubah PIN masuk aplikasi</Text>
+            </View>
+          </View>
+          <Text style={styles.pesantrenCardChevron}>›</Text>
+        </TouchableOpacity>
+
+        {/* ── Keluar Akun ── */}
+        <TouchableOpacity
+          style={styles.logoutCard}
+          onPress={handleLogout}
+          activeOpacity={0.75}
+        >
+          <View style={styles.pesantrenCardLeft}>
+            <Text style={styles.pesantrenCardIcon}>🚪</Text>
+            <View>
+              <Text style={styles.logoutCardTitle}>Keluar Akun</Text>
+              <Text style={styles.pesantrenCardSub}>Logout dari KlikSantri</Text>
+            </View>
+          </View>
+          <Text style={styles.pesantrenCardChevron}>›</Text>
+        </TouchableOpacity>
 
         <View style={styles.disclaimer}>
           <Text style={styles.disclaimerText}>
@@ -327,6 +395,77 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 2,
     textAlign: 'right',
+  },
+
+  // ── Tentang Pesantren card ──
+  pesantrenCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  pesantrenCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pesantrenCardIcon: { fontSize: 28 },
+  pesantrenCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  pesantrenCardSub: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  pesantrenCardChevron: {
+    fontSize: 24,
+    color: colors.gray300,
+    fontWeight: '300',
+  },
+  pinCard: {
+    borderColor: colors.primaryLight,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  logoutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#fde8e8',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.danger,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  logoutCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.danger,
   },
 
   // ── Disclaimer ──

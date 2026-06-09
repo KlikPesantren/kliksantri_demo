@@ -19,23 +19,49 @@ router.get(
 
     try {
 
-      console.log(req.body);
+      const bulan =
+        req.query.bulan
+          ? Number(req.query.bulan)
+          : null;
+
+      const tahun =
+        req.query.tahun
+          ? Number(req.query.tahun)
+          : null;
+
+      let query =
+        "SELECT * FROM absensi";
+
+      const params = [];
+
+      if (bulan && tahun) {
+
+        query +=
+          " WHERE EXTRACT(MONTH FROM tanggal::date) = $1" +
+          " AND EXTRACT(YEAR FROM tanggal::date) = $2";
+
+        params.push(bulan, tahun);
+
+      } else if (bulan) {
+
+        query +=
+          " WHERE EXTRACT(MONTH FROM tanggal::date) = $1";
+
+        params.push(bulan);
+
+      } else if (tahun) {
+
+        query +=
+          " WHERE EXTRACT(YEAR FROM tanggal::date) = $1";
+
+        params.push(tahun);
+
+      }
+
+      query += " ORDER BY tanggal ASC, id ASC";
 
       const result =
-
-        await pool.query(
-
-          `
-
-          SELECT *
-
-          FROM absensi
-
-          ORDER BY id DESC
-
-          `
-
-        );
+        await pool.query(query, params);
 
       res.json({
 
@@ -68,7 +94,7 @@ router.get(
 );
 
 // ======================
-// CREATE ABSENSI
+// UPSERT ABSENSI
 // ======================
 
 router.post(
@@ -82,57 +108,40 @@ router.post(
       const {
 
         santri_id,
-
         tanggal,
-
         sesi,
-
         status
 
       } = req.body;
 
+      if (!status || status === "") {
+
+        return res.status(400).json({
+          success: false,
+          error: "Status absensi wajib diisi"
+        });
+
+      }
+
+      // UPSERT: jika kombinasi santri+tanggal+sesi sudah ada, update statusnya
       const result =
 
         await pool.query(
 
           `
-
           INSERT INTO absensi (
-
             santri_id,
-
             tanggal,
-
             sesi,
-
             status
-
           )
-
-          VALUES (
-
-            $1,
-            $2,
-            $3,
-            $4
-
-          )
-
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (santri_id, tanggal, sesi)
+          DO UPDATE SET status = EXCLUDED.status
           RETURNING *
-
           `,
 
-          [
-
-            santri_id,
-
-            tanggal,
-
-            sesi,
-
-            status
-
-          ]
+          [santri_id, tanggal, sesi, status]
 
         );
 

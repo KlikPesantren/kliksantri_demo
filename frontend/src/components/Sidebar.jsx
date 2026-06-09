@@ -247,6 +247,18 @@ if (
     },
 
     {
+      name: "Pengumuman",
+      icon: <FaClipboardList />,
+      path: "/pengumuman"
+    },
+
+    {
+      name: "Profil Pesantren",
+      icon: <FaSchool />,
+      path: "/profil-pesantren"
+    },
+
+    {
   name: "Daftar Hadir Tamu",
   icon: <FaClipboardList />,
   path: "/tamu"

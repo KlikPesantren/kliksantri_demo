@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { absensiApi } from '../api/absensi.api';
+import { pelanggaranApi } from '../api/pelanggaran.api';
 
-export function useAbsensi(activeSantriId, bulan, tahun) {
+export function usePelanggaran(activeSantriId) {
+  const [data, setData] = useState([]);
   const [ringkasan, setRingkasan] = useState(null);
-  const [riwayat, setRiwayat] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
+  // Guard against race condition: store latest request id
   const reqRef = useRef(0);
 
-  const fetchAbsensi = useCallback(
+  const fetchPelanggaran = useCallback(
     async ({ silent = false } = {}) => {
       if (!activeSantriId) return;
 
@@ -22,17 +23,18 @@ export function useAbsensi(activeSantriId, bulan, tahun) {
       setError(null);
 
       try {
-        const res = await absensiApi.getAbsensi({ bulan, tahun });
+        const res = await pelanggaranApi.getPelanggaran({ limit: 50 });
 
+        // Abandon stale responses from previous santri
         if (reqId !== reqRef.current) return;
 
+        setData(res.data ?? []);
         setRingkasan(res.ringkasan ?? null);
-        setRiwayat(res.riwayat ?? []);
       } catch (err) {
         if (reqId !== reqRef.current) return;
         setError(
           err.response?.data?.error ??
-            'Gagal memuat data absensi. Periksa koneksi Anda.'
+            'Gagal memuat data pelanggaran. Periksa koneksi Anda.'
         );
       } finally {
         if (reqId === reqRef.current) {
@@ -41,23 +43,23 @@ export function useAbsensi(activeSantriId, bulan, tahun) {
         }
       }
     },
-    [activeSantriId, bulan, tahun]
+    [activeSantriId]
   );
 
-  // Reset dan fetch ulang saat santri atau bulan/tahun berubah
+  // Reset state saat santri berubah, lalu fetch ulang
   useEffect(() => {
+    setData([]);
     setRingkasan(null);
-    setRiwayat([]);
     setError(null);
-    fetchAbsensi({ silent: false });
-  }, [fetchAbsensi]);
+    fetchPelanggaran({ silent: false });
+  }, [fetchPelanggaran]);
 
   return {
+    data,
     ringkasan,
-    riwayat,
     isLoading,
     isRefreshing,
     error,
-    refresh: () => fetchAbsensi({ silent: true }),
+    refresh: () => fetchPelanggaran({ silent: true }),
   };
 }

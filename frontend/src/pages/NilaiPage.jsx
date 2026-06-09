@@ -77,14 +77,15 @@ function NilaiPage() {
 // ======================
 
 const getNilai =
-async () => {
+async (b, t) => {
 
   try {
 
     const response =
 
       await api.get(
-        "/nilai"
+        "/nilai",
+        { params: { bulan: b, tahun: t } }
       );
 
     const data = {};
@@ -93,11 +94,11 @@ async () => {
 
       (n) => {
 
-const key =
-`${n.santri_id}-${n.mapel}`;
+        // Key mengandung bulan+tahun agar tidak collision antar bulan
+        const key =
+          `${n.santri_id}-${n.mapel}-${n.bulan}-${n.tahun}`;
 
-        data[key] =
-          n.nilai;
+        data[key] = n.nilai;
 
       }
 
@@ -211,9 +212,14 @@ useEffect(() => {
 
   getKelas();
 
-  getNilai();
-
 }, []);
+
+// Re-fetch nilai setiap kali bulan atau tahun berubah
+useEffect(() => {
+
+  getNilai(bulan, tahun);
+
+}, [bulan, tahun]);
 
   // ======================
   // HANDLE NILAI
@@ -228,9 +234,9 @@ useEffect(() => {
 
   ) => {
 
+    // Key mengandung bulan+tahun agar konsisten dengan getNilai
     const key =
-
-      `${santriId}-${mapel}`;
+      `${santriId}-${mapel}-${bulan}-${tahun}`;
 
     setNilai({
 
@@ -250,21 +256,32 @@ useEffect(() => {
   const simpanNilai =
   async () => {
 
+    // Kumpulkan hanya entries yang terisi (bukan kosong/"")
+    const entries = Object.entries(nilai).filter(
+      ([, val]) => val !== "" && val !== null && val !== undefined
+    );
+
+    if (entries.length === 0) {
+      alert("Tidak ada nilai yang diisi.");
+      return;
+    }
+
     try {
 
-      for (
+      for (const [key, nilaiVal] of entries) {
 
-        const key
-        in nilai
+        // key format: "santriId-mapel-bulan-tahun"
+        // Semua mapel tidak mengandung dash, parse dari kanan
+        const segments = key.split("-");
+        const tahunKey  = parseInt(segments[segments.length - 1], 10);
+        const bulanKey  = parseInt(segments[segments.length - 2], 10);
+        const mapel     = segments[segments.length - 3];
+        const santriId  = segments.slice(0, segments.length - 3).join("-");
 
-      ) {
-
-        const [
-
-          santriId,
-          mapel
-
-        ] = key.split("-");
+        if (isNaN(tahunKey) || isNaN(bulanKey) || !mapel || !santriId) {
+          console.warn("Skip key invalid:", key);
+          continue;
+        }
 
         await api.post(
 
@@ -272,24 +289,18 @@ useEffect(() => {
 
           {
 
-            santri_id:
-              santriId,
+            santri_id: santriId,
 
             tanggal:
-             new Date()
-
-             .toISOString()
-
-             .split("T")[0],
+              new Date().toISOString().split("T")[0],
 
             mapel,
 
-            nilai:
-              nilai[key],
+            nilai: nilaiVal,
 
-            bulan,
+            bulan: bulanKey,
 
-            tahun
+            tahun: tahunKey
 
           }
 
@@ -297,9 +308,10 @@ useEffect(() => {
 
       }
 
-      alert(
-        "Nilai berhasil disimpan"
-      );
+      alert(`Nilai berhasil disimpan (${entries.length} entri).`);
+
+      // Refresh data dari server setelah simpan
+      getNilai(bulan, tahun);
 
     }
 
@@ -308,7 +320,8 @@ useEffect(() => {
       console.log(err);
 
       alert(
-        "Gagal simpan"
+        "Gagal simpan: " +
+        (err.response?.data?.error || err.message)
       );
 
     }
@@ -335,7 +348,7 @@ const handleExport =
         Nilai:
 
           nilai[
-            `${s.id}-${m}`
+            `${s.id}-${m}-${bulan}-${tahun}`
           ] || 0,
 
         Bulan:
@@ -668,7 +681,7 @@ const handleExport =
                           value={
 
                             nilai[
-                              `${s.id}-${m}`
+                              `${s.id}-${m}-${bulan}-${tahun}`
                             ] || ""
 
                           }

@@ -64,6 +64,8 @@ function WaliPage() {
   // GET WALI
   // ======================
 
+  const DEFAULT_PIN_DISPLAY = "456789";
+
   const getWali =
   async () => {
 
@@ -86,6 +88,37 @@ function WaliPage() {
     catch (err) {
 
       console.log(err);
+
+    }
+
+  };
+
+  const resetPin =
+  async (id, nama) => {
+
+    if (
+      !window.confirm(
+        `Reset PIN ${nama} ke ${DEFAULT_PIN_DISPLAY}?`
+      )
+    ) return;
+
+    try {
+
+      await api.put(`/wali/${id}/reset-pin`);
+
+      alert(
+        `PIN ${nama} berhasil direset ke ${DEFAULT_PIN_DISPLAY}.\nWali wajib ganti PIN saat login berikutnya.`
+      );
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      alert(
+        err.response?.data?.error || "Gagal reset PIN"
+      );
 
     }
 
@@ -538,9 +571,9 @@ const handleExport =
 
               <th>Nama</th>
 
-              <th>No HP</th>
+              <th>Nomor HP</th>
 
-              <th>Alamat</th>
+              <th>PIN Awal</th>
 
               <th>Santri</th>
 
@@ -566,19 +599,27 @@ const handleExport =
 
                   <td>
 
-                    {item.nomor_hp}
+                    {item.nomor_hp || "-"}
+
+                  </td>
+
+                  <td
+
+                    style={{
+                      fontFamily: "monospace",
+                      letterSpacing: "2px",
+                      color: "#555"
+                    }}
+
+                  >
+
+                    {DEFAULT_PIN_DISPLAY}
 
                   </td>
 
                   <td>
 
-                    {item.alamat}
-
-                  </td>
-
-                  <td>
-
-                    {item.nama_santri}
+                    {item.nama_santri || "-"}
 
                   </td>
 
@@ -613,6 +654,29 @@ const handleExport =
                     >
 
                       Hapus
+
+                    </button>
+
+                    {" "}
+
+                    <button
+
+                      onClick={() =>
+                        resetPin(item.id, item.nama)
+                      }
+
+                      style={{
+                        backgroundColor: "#e67e22",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        padding: "4px 10px",
+                        cursor: "pointer"
+                      }}
+
+                    >
+
+                      Reset PIN
 
                     </button>
 

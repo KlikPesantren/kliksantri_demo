@@ -11,6 +11,14 @@ express.Router();
 const pool =
 require("../db");
 
+const bcrypt =
+require("bcryptjs");
+
+const waliAppService =
+require("../services/waliAppService");
+
+const DEFAULT_PIN = "456789";
+
 // ======================
 // GET ALL WALI
 // ======================
@@ -89,6 +97,9 @@ router.post(
 
   async (req, res) => {
 
+    const client =
+      await pool.connect();
+
     try {
 
       const {
@@ -100,37 +111,80 @@ router.post(
 
       } = req.body;
 
+      // Normalisasi ke format 08xxx sebelum disimpan
+      const normalizedHp =
+        waliAppService.normalizePhone(nomor_hp);
+
+      if (!normalizedHp) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error: "Nomor HP tidak valid"
+
+        });
+
+      }
+
+      await client.query("BEGIN");
+
+      // 1. Insert ke wali_santri (relasi data santri)
       const result =
 
-        await pool.query(
+        await client.query(
 
           `
-
           INSERT INTO wali_santri (
-
             nama,
             nomor_hp,
             alamat,
             santri_id
-
           )
-
           VALUES ($1,$2,$3,$4)
-
           RETURNING *
-
           `,
 
           [
-
             nama,
-            nomor_hp,
+            normalizedHp,
             alamat,
             santri_id
-
           ]
 
         );
+
+      // 2. Upsert ke wali_akun dengan PIN default
+      // ON CONFLICT DO NOTHING: jika nomor sudah ada, PIN lama tidak ditimpa
+      const pinHash =
+        await bcrypt.hash(
+          DEFAULT_PIN,
+          10
+        );
+
+      await client.query(
+
+        `
+        INSERT INTO wali_akun (
+          nomor_hp,
+          nama,
+          pin_hash,
+          status,
+          must_change_pin
+        )
+        VALUES ($1, $2, $3, 'active', true)
+        ON CONFLICT (nomor_hp) DO NOTHING
+        `,
+
+        [
+          normalizedHp,
+          nama,
+          pinHash
+        ]
+
+      );
+
+      await client.query("COMMIT");
 
       res.json({
 
@@ -145,6 +199,8 @@ router.post(
 
     catch (err) {
 
+      await client.query("ROLLBACK");
+
       console.log(err);
 
       res.status(500).json({
@@ -155,6 +211,12 @@ router.post(
           err.message
 
       });
+
+    }
+
+    finally {
+
+      client.release();
 
     }
 
@@ -189,6 +251,21 @@ router.put(
 
       } = req.body;
 
+      const normalizedHp =
+        waliAppService.normalizePhone(nomor_hp);
+
+      if (!normalizedHp) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error: "Nomor HP tidak valid"
+
+        });
+
+      }
+
       const result =
 
         await pool.query(
@@ -213,7 +290,7 @@ router.put(
           [
 
             nama,
-            nomor_hp,
+            normalizedHp,
             alamat,
             santri_id,
             id
@@ -221,6 +298,19 @@ router.put(
           ]
 
         );
+
+      // Update nama di wali_akun jika nomor_hp cocok
+      await pool.query(
+
+        `
+        UPDATE wali_akun
+        SET nama = $1, updated_at = NOW()
+        WHERE nomor_hp = $2
+        `,
+
+        [nama, normalizedHp]
+
+      );
 
       res.json({
 
@@ -306,6 +396,94 @@ router.delete(
         error:
           err.message
 
+      });
+
+    }
+
+  }
+
+);
+
+// ======================
+// RESET PIN WALI
+// PUT /wali/:id/reset-pin
+// ======================
+
+router.put(
+
+  "/:id/reset-pin",
+
+  async (req, res) => {
+
+    try {
+
+      const { id } = req.params;
+
+      // Ambil nomor_hp dari wali_santri
+      const waliResult =
+        await pool.query(
+          `SELECT nomor_hp FROM wali_santri WHERE id = $1`,
+          [id]
+        );
+
+      if (waliResult.rows.length === 0) {
+
+        return res.status(404).json({
+          success: false,
+          error: "Data wali tidak ditemukan"
+        });
+
+      }
+
+      const nomor_hp =
+        waliResult.rows[0].nomor_hp;
+
+      const newHash =
+        await bcrypt.hash(DEFAULT_PIN, 10);
+
+      const updated =
+        await pool.query(
+
+          `
+          UPDATE wali_akun
+          SET
+            pin_hash = $1,
+            must_change_pin = true,
+            failed_attempts = 0,
+            locked_until = NULL,
+            updated_at = NOW()
+          WHERE nomor_hp = $2
+          RETURNING id, nomor_hp, must_change_pin
+          `,
+
+          [newHash, nomor_hp]
+
+        );
+
+      if (updated.rows.length === 0) {
+
+        return res.status(404).json({
+          success: false,
+          error: "Akun wali tidak ditemukan. Wali belum punya akun login."
+        });
+
+      }
+
+      res.json({
+        success: true,
+        message: `PIN berhasil direset ke ${DEFAULT_PIN}`,
+        data: updated.rows[0]
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        success: false,
+        error: err.message
       });
 
     }

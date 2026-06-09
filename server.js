@@ -118,6 +118,12 @@ require(
 const waliAppRoutes =
 require("./routes/waliAppRoutes");
 
+const pengumumanRoutes =
+require("./routes/pengumumanRoutes");
+
+const profilPesantrenRoutes =
+require("./routes/profilPesantrenRoutes");
+
 // =====================
 // DB
 // =====================
@@ -289,6 +295,16 @@ app.use(
 app.use(
   "/nilai",
   nilaiRoutes
+);
+
+app.use(
+  "/pengumuman",
+  pengumumanRoutes
+);
+
+app.use(
+  "/profil-pesantren",
+  profilPesantrenRoutes
 );
 
 app.use(

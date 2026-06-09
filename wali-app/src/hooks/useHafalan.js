@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { absensiApi } from '../api/absensi.api';
+import { hafalanApi } from '../api/hafalan.api';
 
-export function useAbsensi(activeSantriId, bulan, tahun) {
+export function useHafalan(activeSantriId, bulan, tahun) {
+  const [data, setData] = useState([]);
   const [ringkasan, setRingkasan] = useState(null);
-  const [riwayat, setRiwayat] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
   const reqRef = useRef(0);
 
-  const fetchAbsensi = useCallback(
+  const fetchHafalan = useCallback(
     async ({ silent = false } = {}) => {
       if (!activeSantriId) return;
 
@@ -22,17 +22,17 @@ export function useAbsensi(activeSantriId, bulan, tahun) {
       setError(null);
 
       try {
-        const res = await absensiApi.getAbsensi({ bulan, tahun });
+        const res = await hafalanApi.getHafalan({ bulan, tahun });
 
         if (reqId !== reqRef.current) return;
 
+        setData(res.data ?? []);
         setRingkasan(res.ringkasan ?? null);
-        setRiwayat(res.riwayat ?? []);
       } catch (err) {
         if (reqId !== reqRef.current) return;
         setError(
           err.response?.data?.error ??
-            'Gagal memuat data absensi. Periksa koneksi Anda.'
+            'Gagal memuat data hafalan. Periksa koneksi Anda.'
         );
       } finally {
         if (reqId === reqRef.current) {
@@ -44,20 +44,19 @@ export function useAbsensi(activeSantriId, bulan, tahun) {
     [activeSantriId, bulan, tahun]
   );
 
-  // Reset dan fetch ulang saat santri atau bulan/tahun berubah
   useEffect(() => {
+    setData([]);
     setRingkasan(null);
-    setRiwayat([]);
     setError(null);
-    fetchAbsensi({ silent: false });
-  }, [fetchAbsensi]);
+    fetchHafalan({ silent: false });
+  }, [fetchHafalan]);
 
   return {
+    data,
     ringkasan,
-    riwayat,
     isLoading,
     isRefreshing,
     error,
-    refresh: () => fetchAbsensi({ silent: true }),
+    refresh: () => fetchHafalan({ silent: true }),
   };
 }

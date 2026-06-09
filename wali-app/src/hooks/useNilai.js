@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { absensiApi } from '../api/absensi.api';
+import { nilaiApi } from '../api/nilai.api';
 
-export function useAbsensi(activeSantriId, bulan, tahun) {
+export function useNilai(activeSantriId, bulan, tahun) {
+  const [data, setData] = useState([]);
   const [ringkasan, setRingkasan] = useState(null);
-  const [riwayat, setRiwayat] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
+  // Race condition guard — setiap santri/bulan/tahun change buat id baru
   const reqRef = useRef(0);
 
-  const fetchAbsensi = useCallback(
+  const fetchNilai = useCallback(
     async ({ silent = false } = {}) => {
       if (!activeSantriId) return;
 
@@ -22,17 +23,17 @@ export function useAbsensi(activeSantriId, bulan, tahun) {
       setError(null);
 
       try {
-        const res = await absensiApi.getAbsensi({ bulan, tahun });
+        const res = await nilaiApi.getNilai({ bulan, tahun });
 
         if (reqId !== reqRef.current) return;
 
+        setData(res.data ?? []);
         setRingkasan(res.ringkasan ?? null);
-        setRiwayat(res.riwayat ?? []);
       } catch (err) {
         if (reqId !== reqRef.current) return;
         setError(
           err.response?.data?.error ??
-            'Gagal memuat data absensi. Periksa koneksi Anda.'
+            'Gagal memuat data nilai. Periksa koneksi Anda.'
         );
       } finally {
         if (reqId === reqRef.current) {
@@ -44,20 +45,20 @@ export function useAbsensi(activeSantriId, bulan, tahun) {
     [activeSantriId, bulan, tahun]
   );
 
-  // Reset dan fetch ulang saat santri atau bulan/tahun berubah
+  // Reset state penuh saat santri atau periode berubah
   useEffect(() => {
+    setData([]);
     setRingkasan(null);
-    setRiwayat([]);
     setError(null);
-    fetchAbsensi({ silent: false });
-  }, [fetchAbsensi]);
+    fetchNilai({ silent: false });
+  }, [fetchNilai]);
 
   return {
+    data,
     ringkasan,
-    riwayat,
     isLoading,
     isRefreshing,
     error,
-    refresh: () => fetchAbsensi({ silent: true }),
+    refresh: () => fetchNilai({ silent: true }),
   };
 }

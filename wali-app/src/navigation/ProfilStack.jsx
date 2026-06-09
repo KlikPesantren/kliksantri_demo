@@ -2,6 +2,8 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { ProfilSantriScreen } from '../screens/profil/ProfilSantriScreen';
+import { ProfilPesantrenScreen } from '../screens/profil/ProfilPesantrenScreen';
+import { GantiPinScreen } from '../screens/profil/GantiPinScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,7 +21,16 @@ export function ProfilStack() {
         component={ProfilSantriScreen}
         options={{ title: 'Profil Santri' }}
       />
-      {/* Ganti PIN dan pengaturan akun ditambahkan di sprint berikutnya */}
+      <Stack.Screen
+        name="ProfilPesantren"
+        component={ProfilPesantrenScreen}
+        options={{ title: 'Tentang Pesantren' }}
+      />
+      <Stack.Screen
+        name="GantiPin"
+        component={GantiPinScreen}
+        options={{ title: 'Ganti PIN' }}
+      />
     </Stack.Navigator>
   );
 }

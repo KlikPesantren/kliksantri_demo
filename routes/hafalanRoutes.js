@@ -19,21 +19,46 @@ router.get(
 
     try {
 
+      const bulan =
+        req.query.bulan
+          ? Number(req.query.bulan)
+          : null;
+
+      const tahun =
+        req.query.tahun
+          ? Number(req.query.tahun)
+          : null;
+
+      let query =
+        "SELECT * FROM hafalan";
+
+      const params = [];
+
+      if (bulan && tahun) {
+
+        query +=
+          " WHERE bulan = $1 AND tahun = $2";
+
+        params.push(bulan, tahun);
+
+      } else if (bulan) {
+
+        query += " WHERE bulan = $1";
+
+        params.push(bulan);
+
+      } else if (tahun) {
+
+        query += " WHERE tahun = $1";
+
+        params.push(tahun);
+
+      }
+
+      query += " ORDER BY id DESC";
+
       const result =
-
-        await pool.query(
-
-          `
-
-          SELECT *
-
-          FROM hafalan
-
-          ORDER BY id DESC
-
-          `
-
-        );
+        await pool.query(query, params);
 
       res.json({
 
@@ -49,6 +74,15 @@ router.get(
     catch (err) {
 
       console.log(err);
+
+      res.status(500).json({
+
+        success: false,
+
+        error:
+          err.message
+
+      });
 
     }
 

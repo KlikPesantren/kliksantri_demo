@@ -45,30 +45,23 @@ function PelanggaranPage() {
 
   ] = useState([]);
 
+  const FORM_INIT = {
+    santri_id: "",
+    tanggal: "",
+    jenis: "",
+    tingkat: "",
+    poin: 0,
+    catatan: "",
+    tindakan: "",
+    petugas: "",
+  };
+
   const [
 
     form,
     setForm
 
-  ] = useState({
-
-    santri_id: "",
-
-    tanggal: "",
-
-    jenis: "",
-
-    tingkat:"",
-
-    poin: 0,
-
-    catatan: "",
-
-    tindakan: "",
-
-    petugas:""
-
-  });
+  ] = useState(FORM_INIT);
 
   // ======================
   // GET PELANGGARAN
@@ -270,6 +263,8 @@ async () => {
     );
 
     setEditId(null);
+
+    setForm(FORM_INIT);
 
     getPelanggaran();
 

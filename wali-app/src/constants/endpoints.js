@@ -10,4 +10,10 @@ export const ENDPOINTS = {
   RFID_MUTASI: '/wali-app/rfid/mutasi',
   ABSENSI: '/wali-app/absensi',
   PERIZINAN: '/wali-app/perizinan',
+  PELANGGARAN: '/wali-app/pelanggaran',
+  NILAI: '/wali-app/nilai',
+  HAFALAN: '/wali-app/hafalan',
+  PENGUMUMAN: '/wali-app/pengumuman',
+  PROFIL_PESANTREN: '/wali-app/profil-pesantren',
+  CHANGE_PIN: '/wali-app/pin',
 };

@@ -77,50 +77,49 @@ function HafalanPage() {
 // ======================
 
 const getHafalan =
-async () => {
+async (b, t) => {
 
   try {
 
     const response =
 
       await api.get(
-        "/hafalan"
+        "/hafalan",
+        { params: { bulan: b, tahun: t } }
       );
 
     const data = {};
 
     response.data.data.forEach(
 
-  (h) => {
+      (h) => {
 
-    if (
-      !h.pekan ||
-      !h.santri_id
-    ) return;
+        if (
+          !h.pekan ||
+          !h.santri_id
+        ) return;
 
-    const key =
+        // Key mengandung bulan+tahun agar tidak collision antar bulan
+        const recBulan = parseInt(String(h.bulan), 10);
+        const recTahun = parseInt(String(h.tahun), 10);
 
-      `${h.pekan}-${h.santri_id}`;
+        if (isNaN(recBulan) || isNaN(recTahun)) return;
 
-    data[key] = {
+        const key =
+          `${h.pekan}-${h.santri_id}-${recBulan}-${recTahun}`;
 
-      kitab:
-        h.kitab || "",
+        data[key] = {
 
-      awal:
-        h.awal || "",
+          kitab:   h.kitab   || "",
+          awal:    h.awal    || "",
+          akhir:   h.akhir   || "",
+          catatan: h.catatan || ""
 
-      akhir:
-        h.akhir || "",
+        };
 
-      catatan:
-        h.catatan || ""
+      }
 
-    };
-
-  }
-
-);
+    );
 
     setHafalan(data);
 
@@ -222,9 +221,14 @@ useEffect(() => {
 
   getKelas();
 
-  getHafalan();
-
 }, []);
+
+// Re-fetch hafalan setiap kali bulan atau tahun berubah
+useEffect(() => {
+
+  getHafalan(bulan, tahun);
+
+}, [bulan, tahun]);
 
   // ======================
   // HANDLE INPUT
@@ -240,9 +244,9 @@ useEffect(() => {
 
   ) => {
 
+    // Key mengandung bulan+tahun agar konsisten dengan getHafalan
     const key =
-
-      `${pekan}-${santriId}`;
+      `${pekan}-${santriId}-${bulan}-${tahun}`;
 
     setHafalan({
 
@@ -268,27 +272,39 @@ useEffect(() => {
   const simpanHafalan =
   async () => {
 
+    // Hanya proses entries yang punya minimal satu field terisi
+    const entries = Object.entries(hafalan).filter(
+      ([, val]) =>
+        val &&
+        (val.kitab || val.awal || val.akhir || val.catatan)
+    );
+
+    if (entries.length === 0) {
+      alert("Tidak ada hafalan yang diisi.");
+      return;
+    }
+
     try {
 
-      for (
+      for (const [key, data] of entries) {
 
-        const key
-        in hafalan
+        // key format: "pekan-santriId-bulan-tahun"
+        // Semua bagian numerik, parse dari kanan
+        const segments  = key.split("-");
+        const tahunKey  = parseInt(segments[segments.length - 1], 10);
+        const bulanKey  = parseInt(segments[segments.length - 2], 10);
+        const santriId  = segments[segments.length - 3];
+        const pekan     = segments[segments.length - 4];
 
-      ) {
-
-        const [
-
-          pekan,
-          santriId
-
-        ] = key.split("-");
-
-        const data =
-        hafalan[key];
-
-        console.log(key);
-        console.log(data);
+        if (
+          isNaN(tahunKey) ||
+          isNaN(bulanKey) ||
+          !santriId ||
+          !pekan
+        ) {
+          console.warn("Skip key hafalan invalid:", key);
+          continue;
+        }
 
         await api.post(
 
@@ -296,32 +312,18 @@ useEffect(() => {
 
           {
 
-            santri_id:
-              santriId,
+            santri_id: santriId,
 
             tanggal:
-              new Date()
+              new Date().toISOString().split("T")[0],
 
-              .toISOString()
+            kitab:    data.kitab    || "",
+            awal:     data.awal     || "",
+            akhir:    data.akhir    || "",
+            catatan:  data.catatan  || "",
 
-              .split("T")[0],
-
-            kitab:
-              data.kitab,
-
-            awal:
-              data.awal,
-
-            akhir:
-              data.akhir,
-
-            catatan:
-              data.catatan,
-
-            bulan,
-
-            tahun,
-
+            bulan:  bulanKey,
+            tahun:  tahunKey,
             pekan
 
           }
@@ -330,9 +332,10 @@ useEffect(() => {
 
       }
 
-      alert(
-        "Hafalan berhasil disimpan"
-      );
+      alert(`Hafalan berhasil disimpan (${entries.length} entri).`);
+
+      // Refresh data dari server setelah simpan
+      getHafalan(bulan, tahun);
 
     }
 
@@ -341,7 +344,8 @@ useEffect(() => {
       console.log(err);
 
       alert(
-        "Gagal simpan"
+        "Gagal simpan: " +
+        (err.response?.data?.error || err.message)
       );
 
     }
@@ -360,7 +364,7 @@ const handleExport =
       const data =
 
         hafalan[
-          `${p}-${s.id}`
+          `${p}-${s.id}-${bulan}-${tahun}`
         ] || {};
 
       rows.push({
@@ -652,7 +656,7 @@ const handleExport =
 
                       const key =
 
-                        `${pekan}-${s.id}`;
+                        `${pekan}-${s.id}-${bulan}-${tahun}`;
 
                       return (
 
@@ -673,7 +677,7 @@ const handleExport =
     value={
 
       hafalan[
-        `${pekan}-${s.id}`
+        `${pekan}-${s.id}-${bulan}-${tahun}`
       ]?.kitab || ""
 
     }
@@ -707,7 +711,7 @@ const handleExport =
     value={
 
       hafalan[
-        `${pekan}-${s.id}`
+        `${pekan}-${s.id}-${bulan}-${tahun}`
       ]?.awal || ""
 
     }
@@ -741,7 +745,7 @@ const handleExport =
     value={
 
       hafalan[
-        `${pekan}-${s.id}`
+        `${pekan}-${s.id}-${bulan}-${tahun}`
       ]?.akhir || ""
 
     }
@@ -775,7 +779,7 @@ const handleExport =
     value={
 
       hafalan[
-        `${pekan}-${s.id}`
+        `${pekan}-${s.id}-${bulan}-${tahun}`
       ]?.catatan || ""
 
     }
