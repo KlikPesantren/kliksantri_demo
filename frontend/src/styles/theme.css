@@ -1,32 +1,46 @@
 :root {
+  /* Brand colors */
+  --primary: #16A34A;
+  --primary-hover: #15803D;
+  --dark: #0F172A;
+  --background: #F8FAFC;
+  --surface: #FFFFFF;
+  --border: #E5E7EB;
 
-  --primary: #0F766E;
-  --primary-light: #14B8A6;
-
-  --success: #16A34A;
+  /* Semantic */
+  --success: #22C55E;
   --warning: #F59E0B;
-  --danger: #DC2626;
+  --danger: #EF4444;
 
-  --bg: #F8FAFC;
-  --card: #FFFFFF;
-
-  --text: #0F172A;
+  /* Text */
+  --text-primary: #0F172A;
   --text-secondary: #64748B;
 
-  --radius: 16px;
+  /* Shadow */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.10);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.14);
 
-  --shadow:
-    0 4px 20px rgba(0,0,0,.08);
+  /* Layout */
+  --sidebar-width: 240px;
 
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
 }
+
 body {
-
-  font-family: "Inter";
-
-  background: var(--bg);
-
-  color: var(--text);
-
-  margin:0;
-
+  font-family: "Plus Jakarta Sans", sans-serif;
+  background: var(--background);
+  color: var(--dark);
+  margin: 0;
 }

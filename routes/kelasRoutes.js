@@ -2,6 +2,10 @@ const express = require("express");
 
 const pool = require("../db");
 
+const authMiddleware = require("../middleware/authMiddleware");
+
+const requirePermission = require("../middleware/requirePermission");
+
 const router = express.Router();
 
 // ======================
@@ -11,6 +15,8 @@ const router = express.Router();
 router.get(
 
   "/",
+
+  authMiddleware,
 
   async (req, res) => {
 
@@ -66,6 +72,9 @@ router.get(
 router.post(
 
   "/",
+
+  authMiddleware,
+  requirePermission("kelas.manage"),
 
   async (req, res) => {
 
@@ -145,6 +154,9 @@ router.post(
 router.delete(
 
   "/:id",
+
+  authMiddleware,
+  requirePermission("kelas.manage"),
 
   async (req, res) => {
 

@@ -213,7 +213,7 @@ const grafikKas =
     Assalamu'alaikum 👋
   </h1>
 
-  <p
+  <div
     style={{
       marginTop:"10px"
     }}
@@ -261,7 +261,7 @@ const grafikKas =
   </div>
 
 </div>
-  </p>
+  </div>
 
 </div>
 

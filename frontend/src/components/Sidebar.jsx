@@ -1,5 +1,4 @@
 import {
-
   FaHome,
   FaUsers,
   FaMoneyBill,
@@ -7,767 +6,295 @@ import {
   FaClipboardList,
   FaSchool,
   FaSignOutAlt,
-  FaWifi
-
+  FaWifi,
+  FaUserShield,
 } from "react-icons/fa";
 
-import {
+import { Link, useLocation } from "react-router-dom";
+import { hasPermission } from "../utils/hasPermission";
+import TenantBrand from "./TenantBrand";
+import PlatformMark from "./PlatformMark";
 
-  Link,
-  useLocation
+// =============================================================
+// MENU CONFIG — satu sumber, digate oleh permission
+// =============================================================
 
-} from "react-router-dom";
-
-function Sidebar() {
-
-  const location =
-    useLocation();
-
-  // ======================
-  // USER
-  // ======================
-
-  const user =
-
-    JSON.parse(
-
-      localStorage.getItem(
-        "user"
-      )
-
-    );
-
-  // ======================
-  // LOGOUT
-  // ======================
-
-  const logout = () => {
-
-    localStorage.removeItem(
-      "token"
-    );
-
-    localStorage.removeItem(
-      "user"
-    );
-
-    window.location.href = "/";
-
-  };
-
-  // ======================
-  // MENUS
-  // ======================
-
-let menus = [
-
-  {
-
-    name: "Dashboard",
-
-    icon: <FaHome />,
-
-    path: "/dashboard"
-
-  }
-
+const MENU = [
+  { name: "Dashboard",         path: "/dashboard",        perm: "dashboard.view",    icon: <FaHome /> },
+  { name: "Kelas",             path: "/kelas",            perm: "kelas.view",        icon: <FaSchool /> },
+  { name: "Santri",            path: "/santri",           perm: "santri.view",       icon: <FaUsers /> },
+  { name: "Wali Santri",       path: "/wali",             perm: "wali.view",         icon: <FaUsers /> },
+  { name: "Master Guru",       path: "/guru",             perm: "guru.view",         icon: <FaUsers /> },
+  { name: "Absensi",           path: "/absensi",          perm: "absensi.view",      icon: <FaClipboardList /> },
+  { name: "Absensi Guru",      path: "/absensi-guru",     perm: "absensi_guru.view", icon: <FaClipboardList /> },
+  { name: "Hafalan",           path: "/hafalan",          perm: "hafalan.view",      icon: <FaClipboardList /> },
+  { name: "Nilai",             path: "/nilai",            perm: "nilai.view",        icon: <FaClipboardList /> },
+  { name: "Pembayaran",        path: "/pembayaran",       perm: "pembayaran.view",   icon: <FaMoneyBill /> },
+  { name: "Buku Kas",          path: "/buku-kas",         perm: "bukukas.view",      icon: <FaMoneyBill /> },
+  { name: "Sahriyah",          path: "/sahriyah",         perm: "sahriyah.view",     icon: <FaMoneyBill /> },
+  { name: "Setting Sahriyah",  path: "/sahriyah-setting", perm: "sahriyah.manage",   icon: <FaMoneyBill /> },
+  { name: "Perizinan",         path: "/perizinan",        perm: "perizinan.view",    icon: <FaClipboardList /> },
+  { name: "Pelanggaran",       path: "/pelanggaran",      perm: "pelanggaran.view",  icon: <FaClipboardList /> },
+  { name: "Daftar Hadir Tamu", path: "/tamu",             perm: "tamu.view",         icon: <FaClipboardList /> },
+  { name: "Pengumuman",        path: "/pengumuman",       perm: "pengumuman.view",   icon: <FaClipboardList /> },
+  { name: "Profil Pesantren",  path: "/profil-pesantren", perm: "profil.view",       icon: <FaSchool /> },
+  { name: "RFID Dashboard",    path: "/rfid-dashboard",   perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "RFID Monitor",      path: "/rfid-monitor",     perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "RFID Transactions", path: "/rfid-transactions",perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "RFID Topup",        path: "/rfid-topup",       perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "RFID Merchant",     path: "/rfid-merchant",    perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "RFID Devices",      path: "/rfid-devices",     perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "RFID Refund",       path: "/rfid-refund",      perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "RFID Mutasi",       path: "/rfid-mutasi",      perm: "rfid.view",         icon: <FaWifi /> },
+  { name: "Perangkat",         path: "/devices",          perm: "device.view",       icon: <FaMicrochip /> },
+  { name: "Manajemen User",    path: "/users",            perm: "user.view",         icon: <FaUserShield /> },
+  { name: "Role & Hak Akses",  path: "/roles",            perm: "role.manage",       icon: <FaUserShield /> },
+  { name: "Audit",             path: "/audit",            perm: "audit.view",        icon: <FaClipboardList /> },
 ];
 
-// ======================
-// SUPERADMIN
-// ======================
-
-if (
-
-  user?.role ===
-  "superadmin"
-
-) {
-
-  menus = [
-
-    ...menus,
-
-    {
-
-      name: "Kelas",
-
-      icon: <FaSchool />,
-
-      path: "/kelas"
-
-    },
-
-    {
-
-      name: "Santri",
-
-      icon: <FaUsers />,
-
-      path: "/santri"
-
-    },
-
-    {
-
-  name: "Wali Santri",
-
-  icon: <FaUsers />,
-
-  path: "/wali"
-
-    },
-
-    {
-
-      name: "Pembayaran",
-
-      icon: <FaMoneyBill />,
-
-      path: "/pembayaran"
-
-    },
-
-    {
-  name: "Buku Kas",
-  icon: <FaMoneyBill />,
-  path: "/buku-kas"
-   },
-
-   {
-  name: "Sahriyah",
-  icon: <FaMoneyBill />,
-  path: "/sahriyah"
-   },
-
-   {
-  name: "Setting Sahriyah",
-  icon: <FaMoneyBill />,
-  path: "/sahriyah-setting"
-   },
-
-   {
-  name:"RFID Dashboard",
-  path:"/rfid-dashboard"
-   },
-
-   {
-  name:"RFID Monitor",
-  icon:<FaWifi />,
-  path:"/rfid-monitor"
-   },
-
-   {
-  name:
-    "RFID Transactions",
-
-  path:
-    "/rfid-transactions"
-   },
-
-   {
-  name:"RFID Topup",
-  path:"/rfid-topup"
-   },
-
-   {
-  name:"RFID Merchant",
-  path:"/rfid-merchant"
-   },
-
-   {
-  name:"RFID Devices",
-  path:"/rfid-devices"
-   },
-
-   {
-  name:"RFID Refund",
-  path:"/rfid-refund"
-   },
-
-   {
-  name:"RFID Mutasi",
-  path:"/rfid-mutasi"
-   },
-
-   {
-  name: "Absensi Guru",
-  icon: <FaClipboardList />,
-  path: "/absensi-guru"
-    },
-
-    {
-  name: "Master Guru",
-  icon: <FaUsers />,
-  path: "/guru"
-    },
-
-    {
-
-      name: "Absensi",
-
-      icon: <FaClipboardList />,
-
-      path: "/absensi"
-
-    },
-
-    {
-
-      name: "Hafalan",
-
-      icon: <FaClipboardList />,
-
-      path: "/hafalan"
-
-    },
-
-    {
-
-      name: "Nilai",
-
-      icon: <FaClipboardList />,
-
-      path: "/nilai"
-
-    },
-
-    {
-
-      name: "Perizinan",
-
-      icon: <FaClipboardList />,
-
-      path: "/perizinan"
-
-    },
-
-    {
-
-      name: "Pelanggaran",
-
-      icon: <FaClipboardList />,
-
-      path: "/pelanggaran"
-
-    },
-
-    {
-      name: "Pengumuman",
-      icon: <FaClipboardList />,
-      path: "/pengumuman"
-    },
-
-    {
-      name: "Profil Pesantren",
-      icon: <FaSchool />,
-      path: "/profil-pesantren"
-    },
-
-    {
-  name: "Daftar Hadir Tamu",
-  icon: <FaClipboardList />,
-  path: "/tamu"
-    },
-
-    {
-
-      name: "Perangkat",
-
-      icon: <FaMicrochip />,
-
-      path: "/devices"
-
-    },
-
-    {
-
-      name: "Audit",
-
-      icon: <FaClipboardList />,
-
-      path: "/audit"
-
-    }
-
-  ];
-
-}
-
-// ======================
-// SEKRETARIS
-// ======================
-
-if (
-
-  user?.role ===
-  "sekretaris"
-
-) {
-
-  menus = [
-
-    ...menus,
-
-    {
-
-      name: "Kelas",
-
-      icon: <FaSchool />,
-
-      path: "/kelas"
-
-    },
-
-    {
-
-      name: "Santri",
-
-      icon: <FaUsers />,
-
-      path: "/santri"
-
-    },
-
-    {
-
-  name: "Wali Santri",
-
-  icon: <FaUsers />,
-
-  path: "/wali"
-
-    },
-
-    {
-
-      name: "Pengumuman",
-
-      icon: <FaClipboardList />,
-
-      path: "/pengumuman"
-
-    },
-
-    {
-
-      name: "Profil Pesantren",
-
-      icon: <FaSchool />,
-
-      path: "/profil-pesantren"
-
-    }
-
-  ];
-
-}
-
-// ======================
-// KEUANGAN
-// ======================
-
-if (
-
-  user?.role ===
-  "keuangan"
-
-) {
-
-  menus = [
-
-    ...menus,
-
-    {
-
-      name: "Pembayaran",
-
-      icon: <FaMoneyBill />,
-
-      path: "/pembayaran"
-
-    },
-
-    {
-      name: "Buku Kas",
-
-      icon: <FaMoneyBill />,
-
-      path: "/buku-kas"
-    },
-
-    {
-
-     name: "Sahriyah",
-
-     icon: <FaMoneyBill />,
-
-     path: "/sahriyah"
-
-    },
-
-    {
-
-     name: "Setting Sahriyah",
-
-     icon: <FaMoneyBill />,
-
-     path: "/sahriyah-setting"
-
-    },
-
-    {
-  name:"RFID Dashboard",
-  path:"/rfid-dashboard"
-    },
-
-    {
-  name:"RFID Monitor",
-  icon:<FaWifi />,
-  path:"/rfid-monitor"
-    },
-
-    {
-  name:
-    "RFID Transactions",
-
-  path:
-    "/rfid-transactions"
-    },
-
-    {
-  name:"RFID Topup",
-  path:"/rfid-topup"
-    },
-
-    {
-  name:"RFID Merchant",
-  path:"/rfid-merchant"
-    },
-
-    {
-  name:"RFID Devices",
-  path:"/rfid-devices"
-    },
-
-    {
-  name:"RFID Refund",
-  path:"/rfid-refund"
-    },
- 
-    {
-  name:"RFID Mutasi",
-  path:"/rfid-mutasi"
-    },
-
-    {
-
-      name: "Audit",
-
-      icon: <FaClipboardList />,
-
-      path: "/audit"
-
-    }
-
-  ];
-
-}
-
-// ======================
-// PENDIDIKAN
-// ======================
-
-if (
-
-  user?.role ===
-  "pendidikan"
-
-) {
-
-  menus = [
-
-    ...menus,
-
-    {
-
-      name: "Absensi",
-
-      icon: <FaClipboardList />,
-
-      path: "/absensi"
-
-    },
-
-    {
-
-     name: "Absensi Guru",
-
-     icon: <FaClipboardList />,
-
-      path: "/absensi-guru"
-
-    },
-
-    {
-
-      name: "Master Guru",
-
-      icon: <FaUsers />,
-
-      path: "/guru"
-
-    },
-
-    {
-
-      name: "Hafalan",
-
-      icon: <FaClipboardList />,
-
-      path: "/hafalan"
-
-    },
-
-    {
-
-      name: "Nilai",
-
-      icon: <FaClipboardList />,
-
-      path: "/nilai"
-
-    }
-
-  ];
-
-}
-
-// ======================
-// KEAMANAN
-// ======================
-
-if (
-
-  user?.role ===
-  "keamanan"
-
-) {
-
-  menus = [
-
-    ...menus,
-
-    {
-
-      name: "Perizinan",
-
-      icon: <FaClipboardList />,
-
-      path: "/perizinan"
-
-    },
-
-    {
-
-      name: "Pelanggaran",
-
-      icon: <FaClipboardList />,
-
-      path: "/pelanggaran"
-
-    },
-
-    {
-  name: "Daftar Hadir Tamu",
-  icon: <FaClipboardList />,
-  path: "/tamu"
-    }
-
-  ];
-
-}
+const MENU_GROUPS = [
+  {
+    title: "Dashboard",
+    items: ["Dashboard"],
+  },
+  {
+    title: "Master Data",
+    items: ["Santri", "Wali Santri", "Master Guru", "Kelas"],
+  },
+  {
+    title: "Akademik",
+    items: ["Absensi", "Absensi Guru", "Hafalan", "Nilai"],
+  },
+  {
+    title: "Keuangan",
+    items: ["Pembayaran", "Buku Kas", "Sahriyah", "Setting Sahriyah"],
+  },
+  {
+    title: "Keamanan",
+    items: [
+      "Perizinan",
+      "Pelanggaran",
+      "Daftar Hadir Tamu",
+      "RFID Dashboard",
+      "RFID Monitor",
+      "RFID Transactions",
+      "RFID Topup",
+      "RFID Merchant",
+      "RFID Devices",
+      "RFID Refund",
+      "RFID Mutasi",
+    ],
+  },
+  {
+    title: "Sistem",
+    items: [
+      "Perangkat",
+      "Manajemen User",
+      "Role & Hak Akses",
+      "Audit",
+      "Profil Pesantren",
+      "Pengumuman",
+    ],
+  },
+];
+
+function Sidebar() {
+  const location = useLocation();
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/";
+  };
+
+  const menus = MENU.filter((m) => hasPermission(m.perm));
+  const menuByName = new Map(menus.map((menu) => [menu.name, menu]));
+
+  const renderMenuLink = (menu) => {
+    const active = location.pathname === menu.path;
+
+    return (
+      <Link
+        key={menu.path}
+        to={menu.path}
+        style={{
+          ...menuLinkStyle,
+          background: active ? "#DCFCE7" : "transparent",
+          color: active ? "var(--primary)" : "var(--text-primary)",
+          fontWeight: active ? 600 : 500,
+        }}
+        onMouseEnter={(e) => {
+          if (!active) e.currentTarget.style.background = "#F0FDF4";
+        }}
+        onMouseLeave={(e) => {
+          if (!active) e.currentTarget.style.background = "transparent";
+        }}
+      >
+        <span style={iconStyle}>{menu.icon}</span>
+        <span style={menuTextStyle}>{menu.name}</span>
+      </Link>
+    );
+  };
+
+  const renderGroup = (group) => {
+    const groupMenus = group.items
+      .map((name) => menuByName.get(name))
+      .filter(Boolean);
+
+    if (groupMenus.length === 0) return null;
+
+    return (
+      <div key={group.title} style={sectionStyle}>
+        <div style={sectionTitleStyle}>{group.title}</div>
+        <div style={sectionMenuStyle}>
+          {groupMenus.map(renderMenuLink)}
+        </div>
+      </div>
+    );
+  };
 
   return (
-
     <div
-
       style={{
-
-        width: "240px",
-
+        width: "var(--sidebar-width)",
         height: "100vh",
-
-        overflowY: "auto",
-
-        background: "#0F766E",
-
-        boxShadow:
-"4px 0 20px rgba(0,0,0,.08)",
-
+        background: "#FFFFFF",
+        borderRight: "1px solid #E5E7EB",
         fontSize: "14px",
-
         position: "fixed",
-
-        padding: "20px",
-
+        padding: "var(--space-5)",
         display: "flex",
-
-        flexDirection:
-          "column",
-
-        justifyContent:
-          "space-between"
-
+        flexDirection: "column",
+        justifyContent: "space-between",
+        boxSizing: "border-box",
       }}
-
     >
-
       {/* TOP */}
-
-      <div>
-
-       <div className="mb-10">
-
-<div className="flex items-center gap-3">
-
-<div
-className="
-w-12
-h-12
-rounded-xl
-bg-emerald-600
-"
-/>
-
-<div>
-
-<h2
-className="
-font-bold
-text-slate-900
-"
->
-
-KlikSantri
-
-</h2>
-
-<p
-className="
-text-xs
-text-slate-500
-"
->
-
-Pesantren Digital
-
-</p>
-
-</div>
-
-</div>
-
-</div>
-
-        <br />
+      <div style={topStyle}>
+        <div style={brandWrapperStyle}>
+          <TenantBrand
+            logo={null}
+            name="Pesantren Demo"
+            location="Kabupaten Kuningan"
+          />
+        </div>
 
         {/* MENUS */}
-
-        {
-
-          menus.map((menu) => (
-
-            <Link
-
-              key={menu.path}
-
-              to={menu.path}
-
-              style={{
-
-                display: "flex",
-
-                alignItems:
-                  "center",
-
-                gap: "10px",
-
-                padding: "12px",
-
-                marginBottom: "10px",
-
-                borderRadius: "10px",
-
-                background:
-
-location.pathname
-=== menu.path
-
-? "rgba(255,255,255,.15)"
-
-: "transparent",
-
-                color:"white",
-
-                transition:
-                "0.2s",
-
-                textDecoration:
-                  "none"
-
-              }}
-
-            >
-
-              {menu.icon}
-
-              {menu.name}
-
-            </Link>
-
-          ))
-
-        }
-
+        <nav style={navStyle}>
+          {MENU_GROUPS.map(renderGroup)}
+        </nav>
       </div>
 
       {/* LOGOUT */}
+      <div style={footerStyle}>
+        <button
+          onClick={logout}
+          style={logoutStyle}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#FEF2F2";
+            e.currentTarget.style.color = "var(--danger)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--text-primary)";
+          }}
+        >
+          <FaSignOutAlt /> Logout
+        </button>
 
-      <button
-
-        onClick={logout}
-
-        style={{
-
-          background:
-          "rgba(255,255,255,.15)",
-
-          color: "white",
-
-          border:
-          "1px solid rgba(255,255,255,.2)",
-
-          padding: "12px",
-
-          borderRadius: "10px",
-
-          cursor: "pointer"
-
-        }}
-
-      >
-
-        <FaSignOutAlt />
-
-        {" "}Logout
-
-      </button>
-
+        <PlatformMark />
+      </div>
     </div>
-
   );
-
 }
+
+const topStyle = {
+  minHeight: 0,
+  display: "flex",
+  flexDirection: "column",
+  flex: 1,
+};
+
+const brandWrapperStyle = {
+  paddingBottom: "var(--space-5)",
+  marginBottom: "var(--space-4)",
+  borderBottom: "1px solid var(--border)",
+};
+
+const navStyle = {
+  overflowY: "auto",
+  paddingRight: "2px",
+  flex: 1,
+};
+
+const sectionStyle = {
+  marginBottom: "var(--space-5)",
+};
+
+const sectionTitleStyle = {
+  color: "var(--text-secondary)",
+  fontSize: "11px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  marginBottom: "var(--space-2)",
+};
+
+const sectionMenuStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "2px",
+};
+
+const menuLinkStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--space-3)",
+  padding: "10px var(--space-3)",
+  borderRadius: "var(--radius-md)",
+  transition: "background 150ms ease, color 150ms ease",
+  textDecoration: "none",
+  minHeight: "40px",
+};
+
+const iconStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "18px",
+  flexShrink: 0,
+};
+
+const menuTextStyle = {
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const footerStyle = {
+  paddingTop: "var(--space-4)",
+  marginTop: "var(--space-4)",
+  borderTop: "1px solid var(--border)",
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--space-4)",
+  flexShrink: 0,
+};
+
+const logoutStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--space-2)",
+  width: "100%",
+  background: "transparent",
+  color: "var(--text-primary)",
+  border: "none",
+  padding: "10px var(--space-3)",
+  borderRadius: "var(--radius-md)",
+  cursor: "pointer",
+  fontWeight: 600,
+  fontSize: "14px",
+  transition: "background 150ms ease, color 150ms ease",
+};
 
 export default Sidebar;

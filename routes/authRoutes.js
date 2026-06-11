@@ -9,6 +9,12 @@ const jwt =
 const pool =
   require("../db");
 
+const requirePermission =
+  require("../middleware/requirePermission");
+
+const bcrypt =
+  require("bcryptjs");
+
 const router =
   express.Router();
 
@@ -84,13 +90,21 @@ router.post(
 
       // ======================
       // PASSWORD SALAH
+      // Dukungan: bcrypt hash ($2...) ATAU plaintext legacy
       // ======================
 
-      if (
+      const stored = user.password || "";
 
-        user.password !== password
+      const isBcrypt =
+        stored.startsWith("$2a$") ||
+        stored.startsWith("$2b$") ||
+        stored.startsWith("$2y$");
 
-      ) {
+      const passwordValid = isBcrypt
+        ? await bcrypt.compare(password, stored)
+        : stored === password;
+
+      if (!passwordValid) {
 
         return res.status(401).json({
 
@@ -139,6 +153,15 @@ router.post(
         );
 
       // ======================
+      // PERMISSIONS
+      // ======================
+
+      const permissions =
+        await requirePermission.getPermissionList(
+          user.role
+        );
+
+      // ======================
       // RESPONSE
       // ======================
 
@@ -160,7 +183,9 @@ router.post(
             user.username,
 
           role:
-            user.role
+            user.role,
+
+          permissions
 
         }
 
@@ -277,12 +302,21 @@ router.get(
 
       }
 
+      const me = result.rows[0];
+
+      const permissions =
+        await requirePermission.getPermissionList(
+          me.role
+        );
+
       res.json({
 
         success: true,
 
-        user:
-          result.rows[0]
+        user: {
+          ...me,
+          permissions
+        }
 
       });
 

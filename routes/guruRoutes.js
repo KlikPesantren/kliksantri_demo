@@ -1,14 +1,15 @@
-const express        = require("express");
-const router         = express.Router();
-const pool           = require("../db");
-const authMiddleware = require("../middleware/authMiddleware");
+const express         = require("express");
+const router          = express.Router();
+const pool            = require("../db");
+const authMiddleware  = require("../middleware/authMiddleware");
+const requirePermission = require("../middleware/requirePermission");
 
 // ======================
 // GET /guru?q=xxx
 // ======================
 console.log("GURU ROUTES LOADED");
 
-router.get("/", async (req, res) => {
+router.get("/", authMiddleware, requirePermission("guru.view"), async (req, res) => {
   try {
     const { q } = req.query;
     let query    = "SELECT * FROM guru";
@@ -34,13 +35,8 @@ router.get("/", async (req, res) => {
 // Boleh: superadmin, pendidikan
 // ======================
 
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, requirePermission("guru.create"), async (req, res) => {
   try {
-    const role = req.user?.role;
-    if (!["superadmin", "pendidikan"].includes(role)) {
-      return res.status(403).json({ success: false, error: "Akses ditolak" });
-    }
-
     const {
       nama,
       jabatan,
@@ -84,13 +80,8 @@ router.post("/", authMiddleware, async (req, res) => {
 // Boleh: superadmin, pendidikan
 // ======================
 
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", authMiddleware, requirePermission("guru.update"), async (req, res) => {
   try {
-    const role = req.user?.role;
-    if (!["superadmin", "pendidikan"].includes(role)) {
-      return res.status(403).json({ success: false, error: "Akses ditolak" });
-    }
-
     const { id } = req.params;
     const {
       nama,
@@ -150,13 +141,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
 // Lebih disarankan gunakan PUT untuk set status = 'Nonaktif'.
 // ======================
 
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", authMiddleware, requirePermission("guru.delete"), async (req, res) => {
   try {
-    const role = req.user?.role;
-    if (role !== "superadmin") {
-      return res.status(403).json({ success: false, error: "Hanya superadmin yang dapat menghapus data guru" });
-    }
-
     const { id } = req.params;
 
     const check = await pool.query("SELECT id, nama FROM guru WHERE id = $1", [id]);

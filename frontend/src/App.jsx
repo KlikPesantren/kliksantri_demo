@@ -103,6 +103,12 @@ from "./pages/PengumumanPage";
 import ProfilPesantrenPage
 from "./pages/ProfilPesantrenPage";
 
+import UsersPage
+from "./pages/UsersPage";
+
+import RolesPage
+from "./pages/RolesPage";
+
 function App() {
 
   return (
@@ -493,6 +499,28 @@ function App() {
           element={
             <ProtectedRoute>
               <ProfilPesantrenPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ====================== */}
+        {/* MANAJEMEN USER & ROLE */}
+        {/* ====================== */}
+
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <UsersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/roles"
+          element={
+            <ProtectedRoute>
+              <RolesPage />
             </ProtectedRoute>
           }
         />

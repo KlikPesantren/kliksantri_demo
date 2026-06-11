@@ -64,7 +64,7 @@ function LoginPage() {
 
           );
 
-        console.log(response.data);
+        console.log("LOGIN RESPONSE", response.data);
 
         localStorage.setItem(
 
@@ -85,6 +85,8 @@ function LoginPage() {
   )
 
 );
+
+        console.log("LOCAL USER", localStorage.getItem("user"));
 
     window.location.href =
 "/dashboard";

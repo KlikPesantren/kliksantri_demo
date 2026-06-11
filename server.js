@@ -124,8 +124,24 @@ require("./routes/pengumumanRoutes");
 const profilPesantrenRoutes =
 require("./routes/profilPesantrenRoutes");
 
+const userRoutes =
+require("./routes/userRoutes");
+
+const roleRoutes =
+require("./routes/roleRoutes");
+
 const guruRoutes =
 require("./routes/guruRoutes");
+// =====================
+// RBAC MIDDLEWARE
+// =====================
+
+const authMiddleware =
+  require("./middleware/authMiddleware");
+
+const requirePermission =
+  require("./middleware/requirePermission");
+
 // =====================
 // DB
 // =====================
@@ -242,6 +258,9 @@ app.use(
 
   "/audit",
 
+  authMiddleware,
+  requirePermission("audit.view"),
+
   auditApi
 
 );
@@ -256,57 +275,89 @@ app.use(
 
 app.use(
   "/dashboard",
+  authMiddleware,
+  requirePermission("dashboard.view"),
   dashboardRoutes
 );
 
 app.use(
   "/wali",
+  authMiddleware,
+  requirePermission("wali.view"),
   waliRoutes
 );
 
 app.use(
   "/pembayaran",
+  authMiddleware,
+  requirePermission("pembayaran.view"),
   pembayaranRoutes
 );
 
 app.use(
   "/jenis-tagihan",
+  authMiddleware,
+  requirePermission("tagihan.view"),
   jenisTagihanRoutes
 );
 
 app.use(
   "/absensi",
+  authMiddleware,
+  requirePermission("absensi.view"),
   absensiRoutes
 );
 
 app.use(
   "/perizinan",
+  authMiddleware,
+  requirePermission("perizinan.view"),
   perizinanRoutes
 );
 
 app.use(
   "/pelanggaran",
+  authMiddleware,
+  requirePermission("pelanggaran.view"),
   pelanggaranRoutes
 );
 
 app.use(
   "/hafalan",
+  authMiddleware,
+  requirePermission("hafalan.view"),
   hafalanRoutes
 );
 
 app.use(
   "/nilai",
+  authMiddleware,
+  requirePermission("nilai.view"),
   nilaiRoutes
 );
 
 app.use(
   "/pengumuman",
+  authMiddleware,
+  requirePermission("pengumuman.view"),
   pengumumanRoutes
 );
 
 app.use(
   "/profil-pesantren",
+  authMiddleware,
+  requirePermission("profil.view"),
   profilPesantrenRoutes
+);
+
+app.use(
+  "/users",
+  userRoutes
+);
+
+app.use(
+  "/roles",
+  roleRoutes
 );
 
 app.use(
@@ -315,6 +366,9 @@ app.use(
 app.use(
 
   "/absensi-guru",
+
+  authMiddleware,
+  requirePermission("absensi_guru.view"),
 
   require(
 
@@ -328,22 +382,31 @@ app.use(
 
   "/buku-kas",
 
+  authMiddleware,
+  requirePermission("bukukas.view"),
+
   bukuKasRoutes
 
 );
 
 app.use(
 "/sahriyah",
+authMiddleware,
+requirePermission("sahriyah.view"),
 sahriyahRoutes
 );
 
 app.use(
 "/sahriyah-setting",
+authMiddleware,
+requirePermission("sahriyah.manage"),
 sahriyahSettingRoutes
 );
 
 app.use(
   "/tamu",
+  authMiddleware,
+  requirePermission("tamu.view"),
   tamuRoutes
 );
 

@@ -4,6 +4,12 @@ require("express");
 const pool =
 require("../db");
 
+const authMiddleware =
+require("../middleware/authMiddleware");
+
+const requirePermission =
+require("../middleware/requirePermission");
+
 const router =
 express.Router();
 
@@ -14,6 +20,8 @@ express.Router();
 router.get(
 
   "/",
+
+  authMiddleware,
 
   async (req, res) => {
 
@@ -91,6 +99,9 @@ router.get(
 router.post(
 
   "/",
+
+  authMiddleware,
+  requirePermission("santri.create"),
 
   async (req, res) => {
 
@@ -190,6 +201,9 @@ router.post(
 router.put(
 
   "/:id",
+
+  authMiddleware,
+  requirePermission("santri.update"),
 
   async (req, res) => {
 
@@ -292,6 +306,9 @@ router.put(
 router.delete(
 
   "/:id",
+
+  authMiddleware,
+  requirePermission("santri.delete"),
 
   async (req, res) => {
 
