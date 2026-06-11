@@ -56,6 +56,7 @@ export function LoginScreen() {
 
     setIsLoading(true);
     try {
+      console.log('LOGIN REQUEST', { nomor_hp: nomorHp, pin });
       const { anak } = await login(nomorHp, pin);
 
       if (anak.length === 0) {

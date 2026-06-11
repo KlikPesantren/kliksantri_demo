@@ -3,6 +3,7 @@ import { ENDPOINTS } from '../constants/endpoints';
 
 export const authApi = {
   async login(nomor_hp, pin) {
+    console.log('LOGIN REQUEST', { nomor_hp, pin });
     const res = await api.post(ENDPOINTS.LOGIN, { nomor_hp, pin });
     return res.data;
   },

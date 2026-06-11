@@ -80,11 +80,10 @@ function AbsensiGuruPage() {
 
   };
 
-  useEffect(() => {
-
-    getGuru();
-
-  }, []);
+useEffect(() => {
+  getGuru();
+  getAbsensiGuru();
+}, [bulan, tahun]);
 
   // ======================
   // HANDLE
@@ -183,6 +182,32 @@ function AbsensiGuruPage() {
     }
 
   };
+
+const getAbsensiGuru = async () => {
+  try {
+    const response = await api.get("/absensi-guru");
+
+    const obj = {};
+
+    response.data.data.forEach((row) => {
+      if (
+        Number(row.bulan) === Number(bulan) &&
+        Number(row.tahun) === Number(tahun)
+      ) {
+        obj[row.guru_id] = {
+          total_hadir: row.total_hadir,
+          total_izin: row.total_izin,
+          total_sakit: row.total_sakit,
+          total_alfa: row.total_alfa,
+        };
+      }
+    });
+
+    setData(obj);
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   return (
 
@@ -382,25 +407,17 @@ function AbsensiGuruPage() {
 
                   <td style={tdStyle}>
 
-                    <input
-
-                      type="number"
-
-                      onChange={(e) =>
-
-                        handleInput(
-
-                          g.id,
-
-                          "total_hadir",
-
-                          e.target.value
-
-                        )
-
-                      }
-
-                    />
+                   <input
+  type="number"
+  value={data[g.id]?.total_hadir || ""}
+  onChange={(e) =>
+    handleInput(
+      g.id,
+      "total_hadir",
+      e.target.value
+    )
+  }
+/>
 
                   </td>
 
@@ -409,7 +426,7 @@ function AbsensiGuruPage() {
                     <input
 
                       type="number"
-
+                      value={data[g.id]?.total_izin || ""}
                       onChange={(e) =>
 
                         handleInput(
@@ -433,7 +450,7 @@ function AbsensiGuruPage() {
                     <input
 
                       type="number"
-
+                      value={data[g.id]?.total_sakit || ""}
                       onChange={(e) =>
 
                         handleInput(
@@ -457,7 +474,7 @@ function AbsensiGuruPage() {
                     <input
 
                       type="number"
-
+                      value={data[g.id]?.total_alfa || ""}s
                       onChange={(e) =>
 
                         handleInput(

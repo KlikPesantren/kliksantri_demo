@@ -124,6 +124,8 @@ require("./routes/pengumumanRoutes");
 const profilPesantrenRoutes =
 require("./routes/profilPesantrenRoutes");
 
+const guruRoutes =
+require("./routes/guruRoutes");
 // =====================
 // DB
 // =====================
@@ -308,14 +310,7 @@ app.use(
 );
 
 app.use(
-
-  "/guru",
-
-  require(
-    "./routes/guruRoutes"
-  )
-
-);
+  "/guru", guruRoutes);
 
 app.use(
 

@@ -3,9 +3,11 @@ import { storage } from '../utils/storage';
 import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 
 // Prioritas: nilai dari wali-app/.env (API_BASE_URL)
-// Android emulator default: http://10.0.2.2:3000
+// Android emulator default: http://10.161.70.56:3000
 // Device fisik: ganti di wali-app/.env → API_BASE_URL=http://<IP_KOMPUTER>:3000
-const API_BASE_URL = ENV_API_BASE_URL || 'http://10.0.2.2:3000';
+const API_BASE_URL = ENV_API_BASE_URL || 'http://10.161.70.56:3000';
+
+console.log('API BASE URL =', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -18,6 +20,8 @@ const api = axios.create({
 // Request interceptor: tambahkan token + X-Santri-Id ke setiap request
 api.interceptors.request.use(
   async (config) => {
+    console.log('REQUEST', config.method?.toUpperCase(), API_BASE_URL + config.url);
+
     const token = await storage.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

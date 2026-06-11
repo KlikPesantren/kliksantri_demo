@@ -62,7 +62,7 @@ router.post("/", async (req, res) => {
 
     const {
 
-      nama_guru,
+      guru_id,
 
       bulan,
 
@@ -84,7 +84,7 @@ router.post("/", async (req, res) => {
 
       INSERT INTO absensi_guru (
 
-        nama_guru,
+        guru_id,
 
         bulan,
 
@@ -106,25 +106,37 @@ router.post("/", async (req, res) => {
 
       )
 
+      ON CONFLICT (guru_id, bulan, tahun)
+
+      DO UPDATE SET
+
+        total_hadir = EXCLUDED.total_hadir,
+
+        total_izin  = EXCLUDED.total_izin,
+
+        total_sakit = EXCLUDED.total_sakit,
+
+        total_alfa  = EXCLUDED.total_alfa
+
       RETURNING *
 
       `,
 
       [
 
-        nama_guru,
+        guru_id,
 
         bulan,
 
         tahun,
 
-        total_hadir,
+        total_hadir  || 0,
 
-        total_izin,
+        total_izin   || 0,
 
-        total_sakit,
+        total_sakit  || 0,
 
-        total_alfa
+        total_alfa   || 0
 
       ]
 

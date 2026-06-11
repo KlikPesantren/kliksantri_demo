@@ -55,6 +55,9 @@ from "./pages/WaliPage";
 import AbsensiGuruPage
 from "./pages/AbsensiGuruPage";
 
+import GuruPage
+from "./pages/GuruPage";
+
 import BukuKasPage
 from "./pages/BukuKasPage";
 
@@ -358,6 +361,22 @@ function App() {
   }
 
 />
+
+        <Route
+
+          path="/guru"
+
+          element={
+
+            <ProtectedRoute>
+
+              <GuruPage />
+
+            </ProtectedRoute>
+
+          }
+
+        />
 
         {/* ====================== */}
         {/* HAFALAN */}

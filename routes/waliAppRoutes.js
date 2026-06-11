@@ -30,6 +30,9 @@ router.post(
 
   async (req, res) => {
 
+    console.log("=== LOGIN HIT ===");
+    console.log(req.body);
+
     try {
 
       const {
