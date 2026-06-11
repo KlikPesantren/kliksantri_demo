@@ -32,29 +32,37 @@ function DashboardPage() {
   // STATE
   // ======================
 
- const [
-
-  summary,
-  setSummary
-
-] = useState({
-
+ const [summary, setSummary] = useState({
   total_santri: 0,
-
+  santri_aktif: 0,
+  santri_non_aktif: 0,
   total_kelas: 0,
-
   total_wali: 0,
-
   total_saldo: 0,
-
   persentase_kehadiran_santri: 0,
-
   persentase_kehadiran_guru: 0,
-
   total_hafalan: 0,
-
-  rata_nilai: 0
-
+  rata_nilai: 0,
+  absensi_hari_ini: 0,
+  nilai_terisi: 0,
+  total_wali_akun: 0,
+  wali_belum_ganti_pin: 0,
+  santri_poin_tertinggi: [],
+  kas_masuk: 0,
+  kas_keluar: 0,
+  saldo_kas: 0,
+  total_pembayaran: 0,
+  total_tunggakan: 0,
+  total_pelanggaran: 0,
+  total_perizinan: 0,
+  belum_kembali: 0,
+  tamu_hari_ini: 0,
+  tamu_bulan_ini: 0,
+  tamu_masih_didalam: 0,
+  grafik_kas: [],
+  transaksi_terbaru: [],
+  pembayaran_terbaru: [],
+  top_tunggakan: [],
 });
 
 const transaksiTerbaru =
@@ -113,6 +121,8 @@ const grafikKas =
           "/dashboard/summary"
 
         );
+
+        console.log("SUMMARY:", response.data);
 
       setSummary(
 
@@ -259,300 +269,240 @@ const grafikKas =
         {/* SUPERADMIN */}
         {/* ====================== */}
 
-        {
+        {user?.role === "superadmin" && (() => {
 
-          user?.role ===
-          "superadmin"
+          const fmtRp = (n) => Number(n || 0).toLocaleString("id-ID");
 
-          && (
+          const sectionLabel = {
+            fontSize: "13px",
+            fontWeight: "700",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "#64748B",
+            marginTop: "28px",
+            marginBottom: "12px",
+          };
 
-            <div
-  style={{
-    display:"grid",
-    gridTemplateColumns:
-      "repeat(auto-fit,minmax(250px,1fr))",
-    gap:"20px"
-  }}
->
+          const kpiGrid = {
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+            gap: "16px",
+            marginBottom: "8px",
+          };
 
- <div
-  style={{
-    background:"#fff",
-    borderRadius:"20px",
-    padding:"24px",
-    boxShadow:"0 4px 20px rgba(0,0,0,.05)",
-    borderTop:"5px solid #14B8A6"
-  }}
->
+          const kpiCard = (icon, label, value, accent) => (
+            <div style={{
+              background: "#fff",
+              borderRadius: "16px",
+              padding: "20px 24px",
+              boxShadow: "0 2px 12px rgba(0,0,0,.06)",
+              borderLeft: `5px solid ${accent}`,
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}>
+              <span style={{ fontSize: "22px" }}>{icon}</span>
+              <span style={{ fontSize: "28px", fontWeight: "800", color: "#0F172A", lineHeight: 1 }}>{value}</span>
+              <span style={{ fontSize: "13px", color: "#64748B" }}>{label}</span>
+            </div>
+          );
 
- <div style={{fontSize:"32px"}}>
+          const cardBox = {
+            background: "#fff",
+            borderRadius: "16px",
+            padding: "20px 24px",
+            boxShadow: "0 2px 12px rgba(0,0,0,.06)",
+          };
 
-  👥
+          const maxBar = Math.max(...(grafikKas.map(i => Math.max(i.masuk, i.keluar))), 1);
 
-</div>
+          const shortcuts = [
+            { icon: "👥", label: "Tambah Santri",      href: "/santri" },
+            { icon: "💰", label: "Pembayaran",         href: "/pembayaran" },
+            { icon: "📋", label: "Absensi",            href: "/absensi" },
+            { icon: "🕌", label: "Hafalan",            href: "/hafalan" },
+            { icon: "⚠️", label: "Pelanggaran",        href: "/pelanggaran" },
+            { icon: "📢", label: "Pengumuman",         href: "/pengumuman" },
+            { icon: "🔑", label: "Perizinan",          href: "/perizinan" },
+            { icon: "🏫", label: "Profil Pesantren",   href: "/profil-pesantren" },
+          ];
 
-<h1
-  style={{
-    margin:"10px 0",
-    fontSize:"42px",
-    fontWeight:"700",
-    color:"#0F172A"
-  }}
->
+          return (
+            <div>
 
-  {summary.total_santri}
+              {/* SECTION 1 — SANTRI */}
+              <p style={sectionLabel}>📚 Statistik Santri</p>
+              <div style={kpiGrid}>
+                {kpiCard("👥", "Total Santri",  summary.total_santri,  "#14B8A6")}
+                {kpiCard("✅", "Santri Aktif",   summary.santri_aktif || summary.total_santri, "#22C55E")}
+                {kpiCard("❌", "Non Aktif",       summary.santri_non_aktif || 0,               "#EF4444")}
+                {kpiCard("🏫", "Total Kelas",    summary.total_kelas,   "#8B5CF6")}
+              </div>
 
-</h1>
+              {/* SECTION 1B — KEUANGAN */}
+              <p style={sectionLabel}>💰 Statistik Keuangan</p>
+              <div style={kpiGrid}>
+                {kpiCard("🏦", "Saldo Buku Kas",          `Rp ${fmtRp(summary.saldo_kas)}`,        "#F59E0B")}
+                {kpiCard("📥", "Kas Masuk Bulan Ini",     `Rp ${fmtRp(summary.kas_masuk)}`,        "#22C55E")}
+                {kpiCard("📤", "Kas Keluar Bulan Ini",    `Rp ${fmtRp(summary.kas_keluar)}`,       "#EF4444")}
+                {kpiCard("⚠️", "Tunggakan Sahriyah",       `Rp ${fmtRp(summary.total_tunggakan)}`, "#DC2626")}
+              </div>
 
-<p
-  style={{
-    margin:0,
-    color:"#64748B"
-  }}
->
+              {/* SECTION 1C — AKADEMIK */}
+              <p style={sectionLabel}>📖 Statistik Akademik</p>
+              <div style={kpiGrid}>
+                {kpiCard("📝", "Nilai Terisi Bulan Ini",   summary.nilai_terisi || 0,                    "#3B82F6")}
+                {kpiCard("🕌", "Hafalan Terisi Bulan Ini", summary.total_hafalan,                         "#8B5CF6")}
+                {kpiCard("📋", "Absensi Hari Ini",         summary.absensi_hari_ini || 0,                 "#14B8A6")}
+                {kpiCard("👨‍🏫", "Kehadiran Guru",           `${summary.persentase_kehadiran_guru}%`,      "#0EA5E9")}
+              </div>
 
-  Total Santri
+              {/* SECTION 1D — KEAMANAN */}
+              <p style={sectionLabel}>🛡️ Keamanan &amp; Ketertiban</p>
+              <div style={kpiGrid}>
+                {kpiCard("⚠️", "Pelanggaran Bulan Ini", summary.total_pelanggaran || 0, "#F97316")}
+                {kpiCard("🚪", "Perizinan Bulan Ini",   summary.total_perizinan   || 0, "#EAB308")}
+                {kpiCard("🔙", "Belum Kembali",          summary.belum_kembali     || 0, "#EF4444")}
+                {kpiCard("👤", "Tamu Hari Ini",          summary.tamu_hari_ini     || 0, "#6366F1")}
+              </div>
 
-</p>
+              {/* SECTION 1E — WALI */}
+              <p style={sectionLabel}>👪 Statistik Wali</p>
+              <div style={kpiGrid}>
+                {kpiCard("👪", "Total Akun Wali",     summary.total_wali_akun      || 0, "#14B8A6")}
+                {kpiCard("🔐", "Belum Ganti PIN",      summary.wali_belum_ganti_pin || 0, "#F59E0B")}
+                {kpiCard("👥", "Wali Terdaftar",       summary.total_wali           || 0, "#8B5CF6")}
+              </div>
 
-</div>
+              {/* SECTION 2 — GRAFIK KEUANGAN */}
+              {grafikKas.length > 0 && (
+                <div>
+                  <p style={sectionLabel}>📊 Grafik Keuangan {new Date().getFullYear()}</p>
+                  <div style={{ ...cardBox, marginBottom: "8px" }}>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "flex-end", height: "180px" }}>
+                      {grafikKas.map((item) => (
+                        <div key={item.bulan} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "150px" }}>
+                            <div
+                              title={`Masuk: Rp ${fmtRp(item.masuk)}`}
+                              style={{ width: "12px", background: "#22C55E", height: `${Math.max((item.masuk / maxBar) * 150, 2)}px`, borderRadius: "3px 3px 0 0" }}
+                            />
+                            <div
+                              title={`Keluar: Rp ${fmtRp(item.keluar)}`}
+                              style={{ width: "12px", background: "#EF4444", height: `${Math.max((item.keluar / maxBar) * 150, 2)}px`, borderRadius: "3px 3px 0 0" }}
+                            />
+                          </div>
+                          <span style={{ fontSize: "10px", color: "#94A3B8", marginTop: "4px" }}>{item.bulan}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
+                      <span style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "12px", height: "12px", background: "#22C55E", display: "inline-block", borderRadius: "2px" }} /> Masuk
+                      </span>
+                      <span style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "12px", height: "12px", background: "#EF4444", display: "inline-block", borderRadius: "2px" }} /> Keluar
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-              <div style={cardStyle}>
+              {/* SECTION 3 — SANTRI POIN TERTINGGI */}
+              {(summary.santri_poin_tertinggi || []).length > 0 && (
+                <div>
+                  <p style={sectionLabel}>⚠️ Santri Pelanggaran Tertinggi Bulan Ini</p>
+                  <div style={cardBox}>
+                    {(summary.santri_poin_tertinggi || []).map((s, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < (summary.santri_poin_tertinggi.length - 1) ? "1px solid #F1F5F9" : "none" }}>
+                        <span style={{ fontWeight: "500" }}>{i + 1}. {s.nama}</span>
+                        <span style={{ background: "#FEE2E2", color: "#DC2626", padding: "2px 10px", borderRadius: "20px", fontSize: "13px", fontWeight: "700" }}>
+                          {s.jumlah_pelanggaran}x
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                <h3>
+              {/* SECTION 4 — AKTIVITAS TERBARU */}
+              <p style={sectionLabel}>🕐 Aktivitas Terbaru</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
 
-                  Total Kelas
-
-                </h3>
-
-                <h1>
-
-                  {
-
-                    summary.total_kelas
-
+                <div style={cardBox}>
+                  <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "700" }}>💳 Pembayaran Terbaru</h3>
+                  {pembayaranTerbaru.slice(0, 6).length === 0
+                    ? <p style={{ color: "#94A3B8", fontSize: "14px" }}>Belum ada pembayaran.</p>
+                    : pembayaranTerbaru.slice(0, 6).map((item) => (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F8FAFC" }}>
+                        <div>
+                          <div style={{ fontWeight: "600", fontSize: "13px" }}>{item.nama}</div>
+                          <div style={{ fontSize: "12px", color: "#64748B" }}>{item.nama_tagihan}</div>
+                        </div>
+                        <span style={{ color: "#22C55E", fontWeight: "700", fontSize: "13px" }}>
+                          Rp {Number(item.nominal_bayar || 0).toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                    ))
                   }
+                </div>
 
-                </h1>
+                <div style={cardBox}>
+                  <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "700" }}>💰 Transaksi Kas Terbaru</h3>
+                  {transaksiTerbaru.slice(0, 6).length === 0
+                    ? <p style={{ color: "#94A3B8", fontSize: "14px" }}>Belum ada transaksi.</p>
+                    : transaksiTerbaru.slice(0, 6).map((item) => (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F8FAFC" }}>
+                        <div>
+                          <div style={{ fontWeight: "600", fontSize: "13px" }}>{item.keterangan || item.kategori || "-"}</div>
+                          <div style={{ fontSize: "12px", color: "#64748B" }}>{item.jenis} · {new Date(item.tanggal).toLocaleDateString("id-ID")}</div>
+                        </div>
+                        <span style={{ color: item.jenis === "Masuk" ? "#22C55E" : "#EF4444", fontWeight: "700", fontSize: "13px" }}>
+                          {item.jenis === "Masuk" ? "+" : "−"}Rp {Number(item.nominal || 0).toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                    ))
+                  }
+                </div>
 
               </div>
 
-              <div style={cardStyle}>
-
-                <h3>
-
-                  Total Saldo
-
-                </h3>
-
-                <h1>
-
-                  Rp {
-
-                    Number(
-
-                      summary.total_saldo
-
-                    ).toLocaleString()
-
-                  }
-
-                </h1>
-
-              </div>
-
-              {/* KEHADIRAN SANTRI */}
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Kehadiran Santri
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .persentase_kehadiran_santri
-
-    }%
-
-  </h1>
-
-</div>
-
-{/* KEHADIRAN GURU */}
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Kehadiran Guru
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .persentase_kehadiran_guru
-
-    }%
-
-  </h1>
-
-</div>
-
-{/* TOTAL HAFALAN */}
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Total Hafalan
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .total_hafalan
-
-    }
-
-  </h1>
-
-</div>
-
-{/* RATA NILAI */}
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Rata-rata Nilai
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .rata_nilai
-
-    }
-
-  </h1>
-
-</div>
-
-              <div style={cardStyle}>
-
-                <h3>
-
-                  Total Pelanggaran
-
-                </h3>
-
-                <h1>
-
-                  {
-
-                    summary.total_pelanggaran || 0
-
-                  }
-
-                </h1>
-
+              {/* SECTION 5 — SHORTCUT MODUL */}
+              <p style={sectionLabel}>⚡ Shortcut Modul</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "32px" }}>
+                {shortcuts.map((s) => (
+                  <a
+                    key={s.href}
+                    href={s.href}
+                    style={{
+                      background: "#fff",
+                      borderRadius: "14px",
+                      padding: "18px 14px",
+                      boxShadow: "0 2px 12px rgba(0,0,0,.06)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "8px",
+                      textDecoration: "none",
+                      color: "#0F172A",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      transition: "box-shadow .2s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = "0 6px 24px rgba(20,184,166,.25)"}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,.06)"}
+                  >
+                    <span style={{ fontSize: "28px" }}>{s.icon}</span>
+                    {s.label}
+                  </a>
+                ))}
               </div>
 
             </div>
+          );
 
-          )
-
-        }
-
-      <div
-  style={{
-    display:"grid",
-    gridTemplateColumns:"1fr 1fr",
-    gap:"20px",
-    marginTop:"24px"
-  }}
->
-
-  <div
-    style={{
-      background:"#fff",
-      borderRadius:"20px",
-      padding:"24px",
-      boxShadow:
-        "0 4px 20px rgba(0,0,0,.05)"
-    }}
-  >
-
-    <h3>
-
-      Aktivitas Hari Ini
-
-    </h3>
-
-    <hr />
-
-    <p>
-
-      💰 Pembayaran Sahriyah
-
-    </p>
-
-    <p>
-
-      Ahmad - Rp25.000
-
-    </p>
-
-    <p>
-
-      2 menit lalu
-
-    </p>
-
-  </div>
-
-  <div
-    style={{
-      background:"#fff",
-      borderRadius:"20px",
-      padding:"24px",
-      boxShadow:
-        "0 4px 20px rgba(0,0,0,.05)"
-    }}
-  >
-
-    <h3>
-
-      Quick Menu
-
-    </h3>
-
-    <hr />
-
-    <p>➕ Tambah Santri</p>
-
-    <p>💰 Pembayaran</p>
-
-    <p>📋 Perizinan</p>
-
-  </div>
-
-</div>
+        })()}
 
         {/* ====================== */}
         {/* SEKRETARIS */}

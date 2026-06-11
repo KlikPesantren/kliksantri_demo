@@ -34,23 +34,25 @@ function AbsensiPage() {
   const [santri,  setSantri]  = useState([]);
   const [absensi, setAbsensi] = useState({});
 
-  // ref agar getAbsensi & simpanAbsensi selalu punya nilai bulan/tahun terbaru
-  // tanpa perlu masuk ke closure yang bisa stale
-  const bulanRef = useRef(bulan);
-  const tahunRef = useRef(tahun);
-
-  useEffect(() => { bulanRef.current = bulan; }, [bulan]);
-  useEffect(() => { tahunRef.current = tahun; }, [tahun]);
+  // Sequence counter — jika ada 2 fetch bersamaan, hanya yang terbaru yang dipakai
+  const fetchSeqRef = useRef(0);
 
   // ============================================================
   // GET ABSENSI
   // ============================================================
 
   const getAbsensi = async (b, t) => {
+    const seq = ++fetchSeqRef.current;
     try {
       const response = await api.get("/absensi", {
         params: { bulan: b, tahun: t },
       });
+
+      // Fetch lama selesai setelah fetch baru → buang hasilnya
+      if (seq !== fetchSeqRef.current) {
+        console.log("STALE FETCH IGNORED seq=" + seq + " current=" + fetchSeqRef.current);
+        return;
+      }
 
       const data = {};
       response.data.data.forEach((a) => {
@@ -64,11 +66,21 @@ function AbsensiPage() {
         const recBulan = parseInt(parts[1], 10);
         const hari     = parseInt(parts[2], 10);
         if (isNaN(recTahun) || isNaN(recBulan) || isNaN(hari)) return;
-
-        const key = buildKey(a.sesi, a.santri_id, recBulan, recTahun, hari);
-        data[key]  = a.status;
+console.log(
+  "BUILD",
+  a.tanggal,
+  buildKey(
+    a.sesi,
+    a.santri_id,
+    recBulan,
+    recTahun,
+    hari
+  )
+);
+        data[buildKey(a.sesi, a.santri_id, recBulan, recTahun, hari)] = a.status;
       });
 
+      console.log("AFTER SET ABSENSI", data);
       setAbsensi(data);
     } catch (err) {
       console.error(err);
@@ -106,16 +118,14 @@ function AbsensiPage() {
   };
 
   // ============================================================
-  // LOAD ON MOUNT
+  // LOAD
   // ============================================================
 
   useEffect(() => {
     getKelas();
   }, []);
 
-  // Re-fetch setiap bulan/tahun berubah; bersihkan data bulan lain
   useEffect(() => {
-    setAbsensi({});
     getAbsensi(bulan, tahun);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulan, tahun]);
@@ -125,7 +135,7 @@ function AbsensiPage() {
   // ============================================================
 
   const handleAbsensi = (sesi, santriId, hari, value) => {
-    const key = buildKey(sesi, santriId, bulanRef.current, tahunRef.current, hari);
+    const key = buildKey(sesi, santriId, bulan, tahun, hari);
     setAbsensi((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -134,10 +144,6 @@ function AbsensiPage() {
   // ============================================================
 
   const simpanAbsensi = async () => {
-    const b = bulanRef.current;
-    const t = tahunRef.current;
-
-    // Ambil semua entry yang sudah diisi user (dari state saat ini)
     const entries = Object.entries(absensi).filter(
       ([, val]) => val && val !== ""
     );
@@ -163,10 +169,11 @@ function AbsensiPage() {
         });
       }
 
+      console.log("BEFORE ALERT", absensi);
       alert(`Absensi berhasil disimpan (${entries.length} entri).`);
-
-      // Refresh dari DB — pakai bulan/tahun terbaru dari ref (bukan closure)
-      await getAbsensi(b, t);
+      console.log("AFTER ALERT", absensi);
+      console.log("BEFORE FETCH", { bulan, tahun });
+      await getAbsensi(bulan, tahun);
     } catch (err) {
       alert("Gagal simpan: " + (err.response?.data?.error || err.message));
     }
@@ -220,7 +227,6 @@ function AbsensiPage() {
 
         {/* FILTER */}
         <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-          {/* KELAS */}
           <select
             value={kelasId}
             onChange={(e) => {
@@ -236,7 +242,6 @@ function AbsensiPage() {
             ))}
           </select>
 
-          {/* BULAN */}
           <select
             value={bulan}
             onChange={(e) => setBulan(Number(e.target.value))}
@@ -248,7 +253,6 @@ function AbsensiPage() {
             ))}
           </select>
 
-          {/* TAHUN */}
           <input
             type="number"
             value={tahun}
@@ -256,7 +260,7 @@ function AbsensiPage() {
           />
         </div>
 
-        {/* MULTI TABEL */}
+        {/* TABEL PER SESI */}
         {SESI_LIST.map((sesi) => (
           <div key={sesi} style={{ marginBottom: "50px" }}>
             <h2>{sesi}</h2>
@@ -310,6 +314,7 @@ function AbsensiPage() {
                     {Array.from({ length: totalHari }).map((_, i) => {
                       const hari = i + 1;
                       const key  = buildKey(sesi, s.id, bulan, tahun, hari);
+                      console.log("RENDER CELL", key, absensi[key]);
                       return (
                         <td
                           key={hari}

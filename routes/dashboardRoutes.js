@@ -386,28 +386,78 @@ const persentaseMelanggar =
       );
 
       // ======================
-      // RESPONSE
+      // SANTRI AKTIF / NON AKTIF
       // ======================
 
-      console.log(
-  "hadirSantri =",
-  hadirSantri.rows[0].total
-);
+      let santriAktif    = Number(santri.rows[0].total);
+      let santriNonAktif = 0;
 
-console.log(
-  "totalAbsensi =",
-  totalAbsensi.rows[0].total
-);
+      try {
+        const santriStatus = await pool.query(
+          `SELECT
+             COUNT(*) FILTER (WHERE status = 'aktif')    AS aktif,
+             COUNT(*) FILTER (WHERE status != 'aktif')   AS non_aktif
+           FROM santri`
+        );
+        santriAktif    = Number(santriStatus.rows[0].aktif);
+        santriNonAktif = Number(santriStatus.rows[0].non_aktif);
+      } catch { /* kolom status tidak ada, gunakan fallback */ }
 
-console.log(
-  "persentaseSantri =",
-  persentaseSantri
-);
+      // ======================
+      // ABSENSI HARI INI
+      // ======================
 
+      const absensiHariIni = await pool.query(
+        `SELECT COUNT(*) AS total FROM absensi WHERE tanggal = CURRENT_DATE`
+      );
 
-// ======================
-// DASHBOARD KEUANGAN
-// ======================
+      // ======================
+      // NILAI MINGGUAN TERISI BULAN INI
+      // ======================
+
+      const nilaiTerisi = await pool.query(
+        `SELECT COUNT(*) AS total FROM nilai_mingguan
+         WHERE bulan = $1 AND tahun = $2`,
+        [new Date().getMonth() + 1, new Date().getFullYear()]
+      );
+
+      // ======================
+      // SANTRI POIN TERTINGGI BULAN INI
+      // ======================
+
+      const santriPoinTertinggi = await pool.query(
+        `SELECT s.nama, COUNT(p.id) AS jumlah_pelanggaran
+         FROM pelanggaran p
+         JOIN santri s ON p.santri_id = s.id
+         WHERE EXTRACT(MONTH FROM p.tanggal) = $1
+           AND EXTRACT(YEAR  FROM p.tanggal) = $2
+         GROUP BY s.id, s.nama
+         ORDER BY jumlah_pelanggaran DESC
+         LIMIT 5`,
+        [new Date().getMonth() + 1, new Date().getFullYear()]
+      );
+
+      // ======================
+      // WALI AKUN
+      // ======================
+
+      let totalWaliAkun     = 0;
+      let waliBelumGantiPin = 0;
+
+      try {
+        const waliAkunResult = await pool.query(
+          `SELECT
+             COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE must_change_pin = true) AS belum_ganti
+           FROM wali_akun`
+        );
+        totalWaliAkun     = Number(waliAkunResult.rows[0].total);
+        waliBelumGantiPin = Number(waliAkunResult.rows[0].belum_ganti);
+      } catch { /* wali_akun belum dibuat */ }
+
+      // ======================
+      // DASHBOARD KEUANGAN
+      // ======================
 
 const kasMasuk =
 await pool.query(
@@ -659,16 +709,13 @@ await pool.query(
 `
 
 SELECT
-
-nama,
-sisa_tagihan
-
-FROM tagihan_sahriyah
-
-WHERE sisa_tagihan > 0
-
-ORDER BY sisa_tagihan DESC
-
+s.nama,
+t.sisa_tagihan
+FROM tagihan_sahriyah t
+LEFT JOIN santri s
+ON s.id = t.santri_id
+WHERE t.sisa_tagihan > 0
+ORDER BY t.sisa_tagihan DESC
 LIMIT 10
 
 `
@@ -709,24 +756,22 @@ WHERE status='Masuk'
         data: {
 
           total_santri:
-            Number(
-              santri.rows[0].total
-            ),
+            Number(santri.rows[0].total),
+
+          santri_aktif:
+            santriAktif,
+
+          santri_non_aktif:
+            santriNonAktif,
 
           total_kelas:
-            Number(
-              kelas.rows[0].total
-            ),
+            Number(kelas.rows[0].total),
 
           total_wali:
-            Number(
-              wali.rows[0].total
-            ),
+            Number(wali.rows[0].total),
 
           total_saldo:
-            Number(
-              saldo.rows[0].total_saldo
-            ),
+            Number(saldo.rows[0].total_saldo),
 
           persentase_kehadiran_santri:
             persentaseSantri,
@@ -735,14 +780,28 @@ WHERE status='Masuk'
             persentaseGuru,
 
           total_hafalan:
-            Number(
-              totalHafalan.rows[0].total
-            ),
+            Number(totalHafalan.rows[0].total),
 
           rata_nilai:
-  Math.round(
-    rataNilai.rows[0].rata
-  ),
+            Math.round(rataNilai.rows[0].rata),
+
+          absensi_hari_ini:
+            Number(absensiHariIni.rows[0].total),
+
+          nilai_terisi:
+            Number(nilaiTerisi.rows[0].total),
+
+          santri_poin_tertinggi:
+            santriPoinTertinggi.rows.map(r => ({
+              nama: r.nama,
+              jumlah_pelanggaran: Number(r.jumlah_pelanggaran)
+            })),
+
+          total_wali_akun:
+            totalWaliAkun,
+
+          wali_belum_ganti_pin:
+            waliBelumGantiPin,
 
 belum_kembali:
   Number(

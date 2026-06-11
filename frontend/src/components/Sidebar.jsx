@@ -197,6 +197,12 @@ if (
     },
 
     {
+  name: "Master Guru",
+  icon: <FaUsers />,
+  path: "/guru"
+    },
+
+    {
 
       name: "Absensi",
 
@@ -330,6 +336,26 @@ if (
   icon: <FaUsers />,
 
   path: "/wali"
+
+    },
+
+    {
+
+      name: "Pengumuman",
+
+      icon: <FaClipboardList />,
+
+      path: "/pengumuman"
+
+    },
+
+    {
+
+      name: "Profil Pesantren",
+
+      icon: <FaSchool />,
+
+      path: "/profil-pesantren"
 
     }
 
@@ -480,6 +506,16 @@ if (
      icon: <FaClipboardList />,
 
       path: "/absensi-guru"
+
+    },
+
+    {
+
+      name: "Master Guru",
+
+      icon: <FaUsers />,
+
+      path: "/guru"
 
     },
 
