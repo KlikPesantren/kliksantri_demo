@@ -1,3 +1,8 @@
+// ORPHAN PAGE
+// Tidak memiliki route aktif
+// Tidak ada menu Sidebar
+// Preserve until deletion decision
+
 import {
 
   useEffect,

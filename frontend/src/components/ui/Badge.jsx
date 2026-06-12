@@ -1,6 +1,6 @@
 const VARIANTS = {
   success: {
-    background: "#DCFCE7",
+    background: "var(--primary-subtle)",
     color: "var(--success)",
   },
   warning: {
@@ -9,17 +9,44 @@ const VARIANTS = {
   },
   danger: {
     background: "#FEE2E2",
-    color: "var(--danger)",
+    color: "#DC2626",
+  },
+  info: {
+    background: "var(--info-subtle)",
+    color: "var(--info)",
+  },
+  neutral: {
+    background: "var(--neutral-subtle)",
+    color: "var(--text-secondary)",
   },
 };
 
-function Badge({ children, variant = "success" }) {
+const SIZE = {
+  sm: {
+    padding: "2px 8px",
+    fontSize: "11px",
+  },
+  md: {
+    padding: "4px 10px",
+    fontSize: "12px",
+  },
+};
+
+function Badge({ children, variant = "success", size = "md", pill = true }) {
   const variantStyle = VARIANTS[variant] || VARIANTS.success;
+  const sizeStyle = SIZE[size] || SIZE.md;
 
   return (
     <span
       style={{
-        ...badgeStyle,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: pill ? "999px" : "var(--radius-sm)",
+        fontWeight: 700,
+        lineHeight: 1,
+        whiteSpace: "nowrap",
+        ...sizeStyle,
         ...variantStyle,
       }}
     >
@@ -27,17 +54,5 @@ function Badge({ children, variant = "success" }) {
     </span>
   );
 }
-
-const badgeStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "999px",
-  padding: "4px 10px",
-  fontSize: "12px",
-  fontWeight: 700,
-  lineHeight: 1,
-  whiteSpace: "nowrap",
-};
 
 export default Badge;

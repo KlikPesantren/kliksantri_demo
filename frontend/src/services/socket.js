@@ -1,3 +1,7 @@
+// LEGACY MODULE
+// Hanya dipakai TransaksiPage (orphan)
+// Preserve until deletion decision
+
 import { io }
 
 from "socket.io-client";

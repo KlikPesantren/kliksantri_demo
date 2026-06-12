@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../services/api";
-import Sidebar from "../components/Sidebar";
+import AppShell from "../layouts/AppShell";
+import Card from "../components/ui/Card";
+import SectionHeading from "../components/ui/SectionHeading";
+import Badge from "../components/ui/Badge";
+import Button, { actionBarStyle } from "../components/ui/Button";
 import { exportExcel } from "../utils/exportExcel";
 
 const SESI_LIST = [
@@ -10,6 +14,61 @@ const SESI_LIST = [
   "Ngaji Sore",
   "Ngaji Malam",
 ];
+
+const filterPanelStyle = {
+  display: "flex",
+  gap: "var(--space-3)",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
+function AkademikResponsiveStyles() {
+  return (
+    <style>{`
+      .akademik-page {
+        min-width: 0;
+        max-width: 100%;
+      }
+
+      .table-scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .table-scroll-x > table {
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .akademik-filter-panel select,
+      .akademik-filter-panel input[type="number"] {
+        min-width: 0;
+        flex: 1 1 140px;
+        max-width: 100%;
+      }
+
+      .table-scroll-x .akademik-name-col {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
+      }
+
+      .table-scroll-x thead .akademik-name-col {
+        z-index: 2;
+      }
+
+      @media (max-width: 767px) {
+        .akademik-filter-panel select,
+        .akademik-filter-panel input[type="number"] {
+          flex: 1 1 100%;
+        }
+      }
+    `}</style>
+  );
+}
 
 function buildKey(sesi, santriId, bulan, tahun, hari) {
   return `${sesi}|${santriId}|${bulan}|${tahun}|${hari}`;
@@ -26,20 +85,31 @@ function parseKey(key) {
   return { sesi, santriId, bulan: b, tahun: t, hari: h };
 }
 
+function absensiBadgeVariant(status) {
+  if (status === "H") return "success";
+  if (status === "I") return "info";
+  if (status === "S") return "warning";
+  if (status === "A") return "danger";
+  return "neutral";
+}
+
+function absensiStatusLabel(status) {
+  if (status === "H") return "Hadir";
+  if (status === "I") return "Izin";
+  if (status === "S") return "Sakit";
+  if (status === "A") return "Alfa";
+  return "";
+}
+
 function AbsensiPage() {
-  const [kelas,   setKelas]   = useState([]);
+  const [kelas, setKelas] = useState([]);
   const [kelasId, setKelasId] = useState("");
-  const [bulan,   setBulan]   = useState(new Date().getMonth() + 1);
-  const [tahun,   setTahun]   = useState(new Date().getFullYear());
-  const [santri,  setSantri]  = useState([]);
+  const [bulan, setBulan] = useState(new Date().getMonth() + 1);
+  const [tahun, setTahun] = useState(new Date().getFullYear());
+  const [santri, setSantri] = useState([]);
   const [absensi, setAbsensi] = useState({});
 
-  // Sequence counter — jika ada 2 fetch bersamaan, hanya yang terbaru yang dipakai
   const fetchSeqRef = useRef(0);
-
-  // ============================================================
-  // GET ABSENSI
-  // ============================================================
 
   const getAbsensi = async (b, t) => {
     const seq = ++fetchSeqRef.current;
@@ -48,7 +118,6 @@ function AbsensiPage() {
         params: { bulan: b, tahun: t },
       });
 
-      // Fetch lama selesai setelah fetch baru → buang hasilnya
       if (seq !== fetchSeqRef.current) {
         console.log("STALE FETCH IGNORED seq=" + seq + " current=" + fetchSeqRef.current);
         return;
@@ -59,24 +128,18 @@ function AbsensiPage() {
         if (!a.tanggal || !a.sesi) return;
 
         const dateStr = String(a.tanggal).slice(0, 10);
-        const parts   = dateStr.split("-");
+        const parts = dateStr.split("-");
         if (parts.length !== 3) return;
 
         const recTahun = parseInt(parts[0], 10);
         const recBulan = parseInt(parts[1], 10);
-        const hari     = parseInt(parts[2], 10);
+        const hari = parseInt(parts[2], 10);
         if (isNaN(recTahun) || isNaN(recBulan) || isNaN(hari)) return;
-console.log(
-  "BUILD",
-  a.tanggal,
-  buildKey(
-    a.sesi,
-    a.santri_id,
-    recBulan,
-    recTahun,
-    hari
-  )
-);
+        console.log(
+          "BUILD",
+          a.tanggal,
+          buildKey(a.sesi, a.santri_id, recBulan, recTahun, hari)
+        );
         data[buildKey(a.sesi, a.santri_id, recBulan, recTahun, hari)] = a.status;
       });
 
@@ -87,10 +150,6 @@ console.log(
     }
   };
 
-  // ============================================================
-  // GET KELAS
-  // ============================================================
-
   const getKelas = async () => {
     try {
       const response = await api.get("/kelas");
@@ -99,10 +158,6 @@ console.log(
       console.error(err);
     }
   };
-
-  // ============================================================
-  // GET SANTRI
-  // ============================================================
 
   const getSantri = async (id) => {
     try {
@@ -117,10 +172,6 @@ console.log(
     }
   };
 
-  // ============================================================
-  // LOAD
-  // ============================================================
-
   useEffect(() => {
     getKelas();
   }, []);
@@ -130,18 +181,10 @@ console.log(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulan, tahun]);
 
-  // ============================================================
-  // HANDLE ABSENSI
-  // ============================================================
-
   const handleAbsensi = (sesi, santriId, hari, value) => {
     const key = buildKey(sesi, santriId, bulan, tahun, hari);
     setAbsensi((prev) => ({ ...prev, [key]: value }));
   };
-
-  // ============================================================
-  // SIMPAN
-  // ============================================================
 
   const simpanAbsensi = async () => {
     const entries = Object.entries(absensi).filter(
@@ -179,15 +222,7 @@ console.log(
     }
   };
 
-  // ============================================================
-  // TOTAL HARI
-  // ============================================================
-
   const totalHari = new Date(tahun, bulan, 0).getDate();
-
-  // ============================================================
-  // EXPORT
-  // ============================================================
 
   const handleExport = () => {
     const rows = [];
@@ -195,10 +230,10 @@ console.log(
       SESI_LIST.forEach((sesi) => {
         for (let hari = 1; hari <= totalHari; hari++) {
           rows.push({
-            Nama:    s.nama,
-            Sesi:    sesi,
+            Nama: s.nama,
+            Sesi: sesi,
             Tanggal: `${hari}/${bulan}/${tahun}`,
-            Status:  absensi[buildKey(sesi, s.id, bulan, tahun, hari)] || "-",
+            Status: absensi[buildKey(sesi, s.id, bulan, tahun, hari)] || "-",
           });
         }
       });
@@ -206,27 +241,12 @@ console.log(
     exportExcel(rows, "Absensi");
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
-
   return (
-    <div style={{ display: "flex", background: "#f5f7fb", minHeight: "100vh" }}>
-      <Sidebar />
-
-      <div
-        style={{
-          marginLeft: "240px",
-          width: "calc(100% - 240px)",
-          padding: "20px",
-          overflowX: "auto",
-        }}
-      >
-        <h1>Absensi Bulanan</h1>
-        <br />
-
-        {/* FILTER */}
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+    <AppShell title="Absensi Bulanan" breadcrumb="Akademik / Absensi Bulanan">
+      <AkademikResponsiveStyles />
+      <div className="akademik-page">
+      <Card padding="md" shadow="card" border={false} radius="xl">
+        <div className="akademik-filter-panel" style={filterPanelStyle}>
           <select
             value={kelasId}
             onChange={(e) => {
@@ -259,22 +279,26 @@ console.log(
             onChange={(e) => setTahun(Number(e.target.value))}
           />
         </div>
+      </Card>
 
-        {/* TABEL PER SESI */}
-        {SESI_LIST.map((sesi) => (
-          <div key={sesi} style={{ marginBottom: "50px" }}>
-            <h2>{sesi}</h2>
-            <br />
+      {SESI_LIST.map((sesi) => (
+        <div key={sesi} style={{ marginTop: "var(--space-6)" }}>
+          <Card padding="md" shadow="card" border={false} radius="xl">
+            <SectionHeading variant="eyebrow" spacing="first">
+              {sesi}
+            </SectionHeading>
+
+            <div className="table-scroll-x" style={{ marginTop: "var(--space-4)" }}>
             <table
               style={{
                 borderCollapse: "collapse",
                 background: "white",
-                width: "100%",
               }}
             >
               <thead>
                 <tr>
                   <th
+                    className="akademik-name-col"
                     style={{
                       border: "1px solid #dcdcdc",
                       padding: "10px",
@@ -302,6 +326,7 @@ console.log(
                 {santri.map((s) => (
                   <tr key={s.id}>
                     <td
+                      className="akademik-name-col"
                       style={{
                         border: "1px solid #dcdcdc",
                         padding: "8px",
@@ -313,8 +338,10 @@ console.log(
                     </td>
                     {Array.from({ length: totalHari }).map((_, i) => {
                       const hari = i + 1;
-                      const key  = buildKey(sesi, s.id, bulan, tahun, hari);
+                      const key = buildKey(sesi, s.id, bulan, tahun, hari);
+                      const status = absensi[key] || "";
                       console.log("RENDER CELL", key, absensi[key]);
+
                       return (
                         <td
                           key={hari}
@@ -325,7 +352,7 @@ console.log(
                           }}
                         >
                           <select
-                            value={absensi[key] || ""}
+                            value={status}
                             onChange={(e) =>
                               handleAbsensi(sesi, s.id, hari, e.target.value)
                             }
@@ -337,6 +364,13 @@ console.log(
                             <option value="S">Sakit</option>
                             <option value="A">Alfa</option>
                           </select>
+                          {status && (
+                            <div style={{ marginTop: "4px" }}>
+                              <Badge variant={absensiBadgeVariant(status)} size="sm">
+                                {absensiStatusLabel(status)}
+                              </Badge>
+                            </div>
+                          )}
                         </td>
                       );
                     })}
@@ -344,29 +378,21 @@ console.log(
                 ))}
               </tbody>
             </table>
-          </div>
-        ))}
+            </div>
+          </Card>
+        </div>
+      ))}
 
-        <button
-          onClick={handleExport}
-          style={{ padding: "10px 20px", marginRight: "10px" }}
-        >
+      <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+        <Button variant="success" onClick={handleExport}>
           Export Excel
-        </button>
-
-        <button
-          onClick={simpanAbsensi}
-          style={{
-            padding: "10px 20px",
-            border: "none",
-            borderRadius: "10px",
-            cursor: "pointer",
-          }}
-        >
+        </Button>
+        <Button variant="primary" onClick={simpanAbsensi}>
           Simpan Semua Absensi
-        </button>
+        </Button>
       </div>
-    </div>
+      </div>
+    </AppShell>
   );
 }
 

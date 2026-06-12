@@ -30,6 +30,40 @@ async function getPermissions(role) {
   return cache[role] || new Set();
 }
 
+function requireAnyPermission(permKeys) {
+  return async (req, res, next) => {
+    try {
+      const role = req.user?.role;
+
+      if (!role) {
+        return res.status(401).json({
+          success: false,
+          error: "Tidak terautentikasi",
+        });
+      }
+
+      const perms = await getPermissions(role);
+
+      const allowed = permKeys.some((key) =>
+        perms.has(key)
+      );
+
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          error: "Akses ditolak",
+          required: permKeys,
+        });
+      }
+
+      next();
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  };
+}
+
 function requirePermission(permKey) {
   return async (req, res, next) => {
     try {
@@ -70,5 +104,8 @@ requirePermission.getPermissionList = async (role) => {
   const perms = await getPermissions(role);
   return [...perms];
 };
+
+requirePermission.requireAnyPermission =
+  requireAnyPermission;
 
 module.exports = requirePermission;

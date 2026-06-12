@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import api from "../services/api";
+import Button from "../components/ui/Button";
 
 function LoginPage() {
 
@@ -153,13 +154,14 @@ function LoginPage() {
       <br />
       <br />
 
-      <button
+      <Button
+        variant="primary"
         onClick={login}
       >
 
         Login
 
-      </button>
+      </Button>
 
     </div>
 

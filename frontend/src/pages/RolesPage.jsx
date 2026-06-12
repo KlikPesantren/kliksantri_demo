@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
-import Sidebar from "../components/Sidebar";
+import AppShell from "../layouts/AppShell";
 import Modal from "../components/Modal";
-
+import Badge from "../components/ui/Badge";
+import Button, { actionBarStyle } from "../components/ui/Button";
+import DataTableCard from "../components/ui/DataTableCard";
+import TableToolbar from "../components/ui/TableToolbar";
+import EmptyState from "../components/ui/EmptyState";
 function RolesPage() {
   const [roles, setRoles]             = useState([]);
   const [allPerms, setAllPerms]       = useState([]);
@@ -142,37 +146,45 @@ function RolesPage() {
   };
 
   return (
-    <div style={{ display: "flex", background: "#f5f7fb", minHeight: "100vh" }}>
-      <Sidebar />
+    <AppShell
+      title="Role & Hak Akses"
+      description="Kelola role dan matrix permission sistem RBAC"
+      breadcrumb="Sistem / Role & Hak Akses"
+    >
+      <LegacyPageStyles />
+      {error && <div style={bannerError}>{error}</div>}
+      {success && <div style={bannerSuccess}>{success}</div>}
 
-      <div style={{ marginLeft: "240px", width: "calc(100% - 240px)", padding: "28px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
-          Role & Hak Akses
-        </h1>
-        <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 24px" }}>
-          Kelola role dan matrix permission sistem RBAC
-        </p>
-
-        {error && <div style={bannerError}>{error}</div>}
-        {success && <div style={bannerSuccess}>{success}</div>}
-
-        <div style={cardStyle}>
-          <div style={toolbarStyle}>
-            <span style={{ color: "#64748b", fontSize: "14px" }}>
-              {roles.length} role terdaftar
+      <div className="legacy-page">
+        <DataTableCard
+          title="Daftar Role"
+          subtitle="Kelola role dan permission sistem"
+          actions={
+            <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+              {roles.length} role
             </span>
-            <button type="button" style={btnPrimary} onClick={() => setAddModal(true)}>
-              + Tambah Role Custom
-            </button>
-          </div>
+          }
+        >
+          <TableToolbar
+            actions={
+              <Button type="button" variant="primary" onClick={() => setAddModal(true)}>
+                + Tambah Role Custom
+              </Button>
+            }
+          />
 
           {loading ? (
-            <p style={emptyStyle}>Memuat data...</p>
+            <EmptyState title="Memuat data..." description="Mohon tunggu sebentar." />
+          ) : roles.length === 0 ? (
+            <EmptyState
+              title="Belum ada role"
+              description="Tambahkan role custom untuk memulai."
+            />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="table-scroll-x">
+              <table style={{ borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#f8fafc" }}>
+                  <tr>
                     <th style={thStyle}>Role</th>
                     <th style={thStyle}>Nama Sistem</th>
                     <th style={thStyle}>Tipe</th>
@@ -182,7 +194,7 @@ function RolesPage() {
                 </thead>
                 <tbody>
                   {roles.map((r) => (
-                    <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <tr key={r.id}>
                       <td style={{ ...tdStyle, fontWeight: 600 }}>
                         {r.label || r.name}
                       </td>
@@ -191,21 +203,23 @@ function RolesPage() {
                       </td>
                       <td style={tdStyle}>
                         {r.is_system ? (
-                          <span style={badgeSystem}>Sistem</span>
+                          <Badge variant="info">Sistem</Badge>
                         ) : (
-                          <span style={badgeCustom}>Custom</span>
+                          <Badge variant="success">Custom</Badge>
                         )}
                       </td>
                       <td style={tdStyle}>{r.total_permission || 0}</td>
                       <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                        <button type="button" style={btnEdit} onClick={() => openMatrix(r)}>
-                          Edit Permission
-                        </button>
-                        {!r.is_system && (
-                          <button type="button" style={btnDanger} onClick={() => openDelete(r)}>
-                            Hapus
-                          </button>
-                        )}
+                        <div style={actionBarStyle}>
+                          <Button type="button" variant="outline" size="sm" onClick={() => openMatrix(r)}>
+                            Edit Permission
+                          </Button>
+                          {!r.is_system && (
+                            <Button type="button" variant="danger" size="sm" onClick={() => openDelete(r)}>
+                              Hapus
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -213,10 +227,8 @@ function RolesPage() {
               </table>
             </div>
           )}
-        </div>
+        </DataTableCard>
       </div>
-
-      {/* MODAL PERMISSION MATRIX */}
       <Modal
         open={matrixModal}
         title={`Permission Matrix — ${selectedRole?.label || selectedRole?.name || ""}`}
@@ -237,17 +249,18 @@ function RolesPage() {
                   <span style={{ fontWeight: 600, textTransform: "capitalize", color: "#0f172a" }}>
                     {grup.replace(/_/g, " ")}
                   </span>
-                  <button
+                  <Button
                     type="button"
-                    style={btnLink}
+                    variant="outline"
+                    size="sm"
                     onClick={() => toggleGroup(grup, !allSelected)}
+                    style={{ border: "none", background: "transparent", padding: "2px 0" }}
                   >
                     {allSelected ? "Hapus semua" : someSelected ? "Pilih semua" : "Pilih semua"}
-                  </button>
+                  </Button>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                  {perms.map((p) => (
-                    <label key={p.key} style={checkLabel}>
+                <div className="roles-perm-grid">
+                  {perms.map((p) => (                    <label key={p.key} style={checkLabel}>
                       <input
                         type="checkbox"
                         checked={checked.has(p.key)}
@@ -267,22 +280,22 @@ function RolesPage() {
           })}
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "20px", borderTop: "1px solid #e2e8f0", paddingTop: "16px" }}>
-          <button
+        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)", borderTop: "1px solid #e2e8f0", paddingTop: "var(--space-4)" }}>
+          <Button
             type="button"
-            style={btnPrimary}
+            variant="primary"
             onClick={saveMatrix}
+            loading={savingMatrix}
             disabled={savingMatrix}
           >
-            {savingMatrix ? "Menyimpan..." : "Simpan Permission"}
-          </button>
-          <button type="button" style={btnSecondary} onClick={() => setMatrixModal(false)}>
+            Simpan Permission
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setMatrixModal(false)}>
             Batal
-          </button>
+          </Button>
         </div>
       </Modal>
 
-      {/* MODAL TAMBAH ROLE */}
       <Modal open={addModal} title="Tambah Role Custom" onClose={() => setAddModal(false)} width={440}>
         <div style={{ display: "grid", gap: "14px" }}>
           <Field label="Nama Role (slug)" required>
@@ -301,33 +314,32 @@ function RolesPage() {
               onChange={(e) => setNewRole({ ...newRole, label: e.target.value })}
             />
           </Field>
-          <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-            <button type="button" style={btnPrimary} onClick={handleAddRole}>
+          <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+            <Button type="button" variant="primary" onClick={handleAddRole}>
               Simpan Role
-            </button>
-            <button type="button" style={btnSecondary} onClick={() => setAddModal(false)}>
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setAddModal(false)}>
               Batal
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
 
-      {/* MODAL HAPUS ROLE */}
       <Modal open={deleteModal} title="Hapus Role Custom" onClose={() => setDeleteModal(false)} width={420}>
         <p style={{ margin: "0 0 16px", color: "#475569", lineHeight: 1.5 }}>
           Hapus role <strong>{deleteTarget?.label || deleteTarget?.name}</strong>?
           User dengan role ini tidak akan bisa di-assign ulang.
         </p>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button type="button" style={btnDangerSolid} onClick={handleDelete}>
+        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+          <Button type="button" variant="danger" onClick={handleDelete}>
             Ya, Hapus
-          </button>
-          <button type="button" style={btnSecondary} onClick={() => setDeleteModal(false)}>
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setDeleteModal(false)}>
             Batal
-          </button>
+          </Button>
         </div>
       </Modal>
-    </div>
+    </AppShell>
   );
 }
 
@@ -343,46 +355,52 @@ function Field({ label, required, children }) {
   );
 }
 
-const cardStyle = {
-  background: "white",
-  borderRadius: "12px",
-  padding: "20px",
-  boxShadow: "0 1px 4px rgba(0,0,0,.06)",
-};
-
-const toolbarStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "16px",
-  flexWrap: "wrap",
-  gap: "10px",
-};
+function LegacyPageStyles() {
+  return (
+    <style>{`
+      .legacy-page {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .table-scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+        min-width: 0;
+      }
+      .table-scroll-x > table {
+        width: max-content;
+        min-width: 100%;
+      }
+      .roles-perm-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 8px;
+      }
+    `}</style>
+  );
+}
 
 const thStyle = {
   padding: "11px 14px",
   textAlign: "left",
-  fontSize: "12px",
-  fontWeight: 600,
-  color: "#64748b",
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "var(--text-secondary)",
   textTransform: "uppercase",
-  letterSpacing: "0.04em",
-  borderBottom: "1px solid #e2e8f0",
+  letterSpacing: "0.06em",
+  borderBottom: "1px solid var(--border)",
+  background: "var(--background)",
+  whiteSpace: "nowrap",
 };
 
 const tdStyle = {
-  padding: "11px 14px",
+  padding: "12px 14px",
   fontSize: "14px",
-  color: "#1e293b",
+  color: "var(--text-primary)",
   verticalAlign: "middle",
+  borderBottom: "1px solid #F1F5F9",
 };
-
-const emptyStyle = {
-  textAlign: "center",
-  padding: "48px",
-  color: "#94a3b8",
-};
-
 const labelStyle = {
   display: "block",
   fontSize: "13px",
@@ -393,6 +411,7 @@ const labelStyle = {
 
 const inputStyle = {
   width: "100%",
+  maxWidth: "100%",
   padding: "9px 10px",
   borderRadius: "8px",
   border: "1px solid #d1d5db",
@@ -401,96 +420,13 @@ const inputStyle = {
   outline: "none",
 };
 
-const btnPrimary = {
-  padding: "9px 20px",
-  background: "#0F766E",
-  color: "white",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: 600,
-  fontSize: "14px",
-};
-
-const btnSecondary = {
-  padding: "9px 20px",
-  background: "#f1f5f9",
-  color: "#475569",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontSize: "14px",
-};
-
-const btnEdit = {
-  padding: "4px 12px",
-  background: "#eff6ff",
-  color: "#2563eb",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: 500,
-  fontSize: "12px",
-  marginRight: "5px",
-};
-
-const btnDanger = {
-  padding: "4px 12px",
-  background: "#fef2f2",
-  color: "#dc2626",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: 500,
-  fontSize: "12px",
-};
-
-const btnDangerSolid = {
-  padding: "9px 20px",
-  background: "#dc2626",
-  color: "white",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: 600,
-  fontSize: "14px",
-};
-
-const btnLink = {
-  background: "none",
-  border: "none",
-  color: "#0F766E",
-  cursor: "pointer",
-  fontSize: "12px",
-  fontWeight: 600,
-};
-
-const badgeSystem = {
-  padding: "3px 10px",
-  borderRadius: "20px",
-  fontSize: "12px",
-  fontWeight: 600,
-  background: "#eff6ff",
-  color: "#2563eb",
-};
-
-const badgeCustom = {
-  padding: "3px 10px",
-  borderRadius: "20px",
-  fontSize: "12px",
-  fontWeight: 600,
-  background: "#f0fdf4",
-  color: "#15803d",
-};
-
 const groupCard = {
-  border: "1px solid #e2e8f0",
-  borderRadius: "10px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)",
   padding: "14px",
   marginBottom: "12px",
-  background: "#fafafa",
+  background: "var(--neutral-subtle)",
 };
-
 const groupHeader = {
   display: "flex",
   justifyContent: "space-between",

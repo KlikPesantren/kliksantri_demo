@@ -88,9 +88,6 @@ from "./pages/RFIDMerchantPage";
 import RFIDDevicePage
 from "./pages/RFIDDevicePage";
 
-import RFIDAuditPage
-from "./pages/RFIDAuditPage";
-
 import RFIDMutasiPage
 from "./pages/RFIDMutasiPage";
 
@@ -240,7 +237,13 @@ function App() {
         path="/buku-kas"
 
         element={
-        <BukuKasPage />
+
+            <ProtectedRoute>
+
+              <BukuKasPage />
+
+            </ProtectedRoute>
+
      }
 
 />
@@ -254,14 +257,28 @@ function App() {
   path="/sahriyah"
 
   element={
-    <SahriyahPage />
+
+    <ProtectedRoute>
+
+      <SahriyahPage />
+
+    </ProtectedRoute>
+
   }
 
 />
 
 <Route
   path="/sahriyah-setting"
-  element={<SahriyahSettingPage />}
+  element={
+
+    <ProtectedRoute>
+
+      <SahriyahSettingPage />
+
+    </ProtectedRoute>
+
+  }
 />
 
         {/* ====================== */}
@@ -271,7 +288,15 @@ function App() {
 
 <Route
   path="/rfid-monitor"
-  element={<RFIDMonitorPage />}
+  element={
+
+    <ProtectedRoute>
+
+      <RFIDMonitorPage />
+
+    </ProtectedRoute>
+
+  }
 />
 
         {/* ====================== */}
@@ -280,7 +305,15 @@ function App() {
 
 <Route
   path="/rfid-dashboard"
-  element={<RFIDDashboardPage />}
+  element={
+
+    <ProtectedRoute>
+
+      <RFIDDashboardPage />
+
+    </ProtectedRoute>
+
+  }
 />
 
         {/* ====================== */}
@@ -290,7 +323,13 @@ function App() {
 <Route
   path="/rfid-transactions"
   element={
-    <RFIDTransactionPage />
+
+    <ProtectedRoute>
+
+      <RFIDTransactionPage />
+
+    </ProtectedRoute>
+
   }
 />
 
@@ -300,7 +339,15 @@ function App() {
 
 <Route
   path="/rfid-topup"
-  element={<RFIDTopupPage />}
+  element={
+
+    <ProtectedRoute>
+
+      <RFIDTopupPage />
+
+    </ProtectedRoute>
+
+  }
 />
 
 
@@ -311,25 +358,53 @@ function App() {
 <Route
   path="/rfid-merchant"
   element={
-    <RFIDMerchantPage />
+
+    <ProtectedRoute>
+
+      <RFIDMerchantPage />
+
+    </ProtectedRoute>
+
   }
 />
 
 <Route
   path="/rfid-devices"
   element={
-    <RFIDDevicePage />
+
+    <ProtectedRoute>
+
+      <RFIDDevicePage />
+
+    </ProtectedRoute>
+
   }
 />
 
 <Route
   path="/rfid-mutasi"
-  element={<RFIDMutasiPage />}
+  element={
+
+    <ProtectedRoute>
+
+      <RFIDMutasiPage />
+
+    </ProtectedRoute>
+
+  }
 />
 
 <Route
   path="/rfid-refund"
-  element={<RFIDRefundPage />}
+  element={
+
+    <ProtectedRoute>
+
+      <RFIDRefundPage />
+
+    </ProtectedRoute>
+
+  }
 />
 
         {/* ====================== */}

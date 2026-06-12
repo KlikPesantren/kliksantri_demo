@@ -1,1297 +1,659 @@
-import {
+import { useEffect, useState } from "react";
+import api from "../services/api";
+import AppShell from "../layouts/AppShell";
+import KpiCard from "../components/ui/KpiCard";
+import KpiGrid from "../components/ui/KpiGrid";
+import SectionHeading from "../components/ui/SectionHeading";
+import Card from "../components/ui/Card";
 
-  useEffect,
-  useState
+const DASHBOARD_CARD = { padding: "md", shadow: "card", border: false, radius: "xl" };
+const SECTION_GAP = { marginTop: "var(--space-6)" };
+const GRID_GAP = { gap: "var(--space-4)" };
 
-} from "react";
-
-import api
-from "../services/api";
-
-import Sidebar
-from "../components/Sidebar";
-
-import Topbar
-from "../components/Topbar";
-
-function DashboardPage() {
-
-  // ======================
-  // USER
-  // ======================
-
-  const user = JSON.parse(
-
-    localStorage.getItem(
-      "user"
-    )
-
-  );
-
-  // ======================
-  // STATE
-  // ======================
-
- const [summary, setSummary] = useState({
-  total_santri: 0,
-  santri_aktif: 0,
-  santri_non_aktif: 0,
-  total_kelas: 0,
-  total_wali: 0,
-  total_saldo: 0,
-  persentase_kehadiran_santri: 0,
-  persentase_kehadiran_guru: 0,
-  total_hafalan: 0,
-  rata_nilai: 0,
-  absensi_hari_ini: 0,
-  nilai_terisi: 0,
-  total_wali_akun: 0,
-  wali_belum_ganti_pin: 0,
-  santri_poin_tertinggi: [],
-  kas_masuk: 0,
-  kas_keluar: 0,
-  saldo_kas: 0,
-  total_pembayaran: 0,
-  total_tunggakan: 0,
-  total_pelanggaran: 0,
-  total_perizinan: 0,
-  belum_kembali: 0,
-  tamu_hari_ini: 0,
-  tamu_bulan_ini: 0,
-  tamu_masih_didalam: 0,
-  grafik_kas: [],
-  transaksi_terbaru: [],
-  pembayaran_terbaru: [],
-  top_tunggakan: [],
-});
-
-const transaksiTerbaru =
-summary?.transaksi_terbaru || [];
-
-const pembayaranTerbaru =
-summary?.pembayaran_terbaru || [];
-
-const topTunggakan =
-summary?.top_tunggakan || [];
-
-const grafikKas =
-
-(summary?.grafik_kas || [])
-
-.map((item) => ({
-
-  bulan: [
-
-    "",
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "Mei",
-    "Jun",
-    "Jul",
-    "Agu",
-    "Sep",
-    "Okt",
-    "Nov",
-    "Des"
-
-  ][Number(item.bulan)],
-
-  masuk:
-    Number(item.masuk),
-
-  keluar:
-    Number(item.keluar)
-
-}));
-  // ======================
-  // GET SUMMARY
-  // ======================
-
-  const getSummary =
-  async () => {
-
-    try {
-
-      const response =
-
-        await api.get(
-
-          "/dashboard/summary"
-
-        );
-
-        console.log("SUMMARY:", response.data);
-
-      setSummary(
-
-        response.data.data
-
-      );
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-    }
-
-  };
-
-  // ======================
-  // LOAD
-  // ======================
-
-  useEffect(() => {
-
-    getSummary();
-
-  }, []);
-
-  // ======================
-  // CARD STYLE
-  // ======================
-
- const cardStyle = {
-
-  background:"#fff",
-
-  borderRadius:"20px",
-
-  padding:"24px",
-
-  boxShadow:
-    "0 4px 20px rgba(0,0,0,.05)",
-
-  minWidth:"220px",
-
-  borderTop:
-    "5px solid #14B8A6"
-
+const METRIC_STRIP_ITEM = {
+  height: "90px",
+  background: "var(--surface)",
+  borderRadius: "var(--radius-xl)",
+  boxShadow: "var(--shadow-card)",
+  padding: "14px 18px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  boxSizing: "border-box",
 };
 
+const METRIC_LABEL = {
+  fontSize: "11px",
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  lineHeight: 1.2,
+};
+
+const METRIC_VALUE = {
+  fontSize: "22px",
+  fontWeight: 800,
+  color: "var(--text-primary)",
+  marginTop: "4px",
+  lineHeight: 1.1,
+  letterSpacing: "-0.02em",
+};
+
+function ExecSectionTitle({ title, subtitle }) {
   return (
+    <div style={{ marginBottom: "var(--space-3)" }}>
+      <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>
+        {title}
+      </h2>
+      {subtitle && (
+        <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.4 }}>
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
 
-<div>
+function buildSahriyahDonut(pembayaranList, totalPembayaran, totalTunggakan) {
+  const counts = { sudah: 0, cicilan: 0, belum: 0 };
 
-      <Sidebar />
+  pembayaranList.forEach((p) => {
+    const s = String(p.status || "").toLowerCase();
+    if (s === "lunas") counts.sudah += 1;
+    else if (s.includes("cicil")) counts.cicilan += 1;
+    else counts.belum += 1;
+  });
 
-      <div
+  const countTotal = counts.sudah + counts.cicilan + counts.belum;
 
-        style={{
+  const slices = countTotal > 0
+    ? [
+        { label: "Sudah Bayar", value: counts.sudah, color: "#16A34A" },
+        { label: "Cicilan", value: counts.cicilan, color: "#64748B" },
+        { label: "Belum Bayar", value: counts.belum, color: "#CBD5E1" },
+      ]
+    : [
+        { label: "Sudah Bayar", value: Number(totalPembayaran) || 0, color: "#16A34A" },
+        { label: "Cicilan", value: 0, color: "#64748B" },
+        { label: "Belum Bayar", value: Number(totalTunggakan) || 0, color: "#CBD5E1" },
+      ];
 
-          marginLeft:"280px",
+  const sliceTotal = slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
 
-          width:"calc(100% - 280px)",
+  return {
+    slices: slices.map((slice) => ({
+      ...slice,
+      pct: Math.round((slice.value / sliceTotal) * 100),
+    })),
+    totalPembayaran: Number(totalPembayaran) || 0,
+  };
+}
 
-          padding: "20px",
+function DonutChart({ slices, size = 148 }) {
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
+  let cursor = 0;
+  const gradientStops = slices
+    .map((slice) => {
+      const start = cursor;
+      cursor += (slice.value / total) * 100;
+      return `${slice.color} ${start}% ${cursor}%`;
+    })
+    .join(", ");
 
-          boxSizing: "border-box"
-
-        }}
-
-      >
-
-       <div
-  style={{
-    background:
-      "linear-gradient(135deg,#0F766E,#14B8A6)",
-    borderRadius:"20px",
-    padding:"30px",
-    marginBottom:"24px",
-    color:"white"
-  }}
->
-
-  <h1
-    style={{
-      margin:0
-    }}
-  >
-    Assalamu'alaikum 👋
-  </h1>
-
-  <div
-    style={{
-      marginTop:"10px"
-    }}
-  >
-    Selamat datang di KlikSantri
-
+  return (
     <div
-  style={{
-    marginTop:"20px",
-    display:"flex",
-    gap:"30px"
-  }}
->
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: gradientStops ? `conic-gradient(${gradientStops})` : "#E5E7EB",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          width: size * 0.58,
+          height: size * 0.58,
+          borderRadius: "50%",
+          background: "var(--surface)",
+        }}
+      />
+    </div>
+  );
+}
 
-  <div>
+function DashboardResponsiveStyles() {
+  return (
+    <style>{`
+      .dashboard-page {
+        min-width: 0;
+        max-width: 100%;
+      }
 
-    <h2>
+      .dashboard-metric-strip {
+        display: grid;
+        gap: var(--space-4);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
 
-      {summary.total_santri}
+      .dashboard-metric-item {
+        min-width: 0;
+      }
 
-    </h2>
+      .dashboard-metric-value {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-    <small>
+      .dashboard-row-2 {
+        display: grid;
+        gap: var(--space-4);
+        grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+      }
 
-      Santri Aktif
+      .dashboard-donut-layout {
+        display: flex;
+        align-items: center;
+        gap: var(--space-5);
+        flex-wrap: wrap;
+        min-width: 0;
+      }
 
-    </small>
+      .dashboard-donut-legend {
+        flex: 1;
+        min-width: 0;
+      }
 
-  </div>
+      .dashboard-cashflow-wrap {
+        min-width: 0;
+      }
 
-  <div>
+      .dashboard-cashflow-bars {
+        display: flex;
+        gap: 4px;
+        align-items: flex-end;
+        flex: 1;
+        min-width: 0;
+      }
 
-    <h2>
+      .dashboard-pelanggar-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-      {summary.total_kelas}
+      .dashboard-cashflow-month {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+      }
 
-    </h2>
+      @media (max-width: 1024px) {
+        .dashboard-metric-strip {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
 
-    <small>
+        .dashboard-row-2 {
+          grid-template-columns: 1fr;
+        }
+      }
 
-      Kelas Aktif
+      @media (max-width: 767px) {
+        .dashboard-metric-strip {
+          grid-template-columns: minmax(0, 1fr);
+        }
 
-    </small>
+        .dashboard-metric-item {
+          height: auto !important;
+          min-height: 72px;
+        }
 
-  </div>
+        .dashboard-metric-value {
+          font-size: 18px !important;
+          white-space: normal;
+          overflow: visible;
+          text-overflow: unset;
+          word-break: break-word;
+        }
 
-</div>
-  </div>
+        .dashboard-donut-layout {
+          flex-direction: column;
+          align-items: stretch;
+        }
 
-</div>
+        .dashboard-donut-chart {
+          align-self: center;
+        }
 
-        {/* ====================== */}
-        {/* SUPERADMIN */}
-        {/* ====================== */}
+        .dashboard-cashflow-wrap {
+          height: auto !important;
+        }
 
-        {user?.role === "superadmin" && (() => {
+        .dashboard-cashflow-bars {
+          gap: 2px;
+        }
 
-          const fmtRp = (n) => Number(n || 0).toLocaleString("id-ID");
+        .dashboard-cashflow-month span {
+          font-size: 9px !important;
+        }
 
-          const sectionLabel = {
-            fontSize: "13px",
-            fontWeight: "700",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            color: "#64748B",
-            marginTop: "28px",
-            marginBottom: "12px",
-          };
+        .dashboard-pelanggar-name {
+          white-space: normal;
+          overflow: visible;
+          text-overflow: unset;
+          word-break: break-word;
+        }
+      }
+    `}</style>
+  );
+}
 
-          const kpiGrid = {
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-            gap: "16px",
-            marginBottom: "8px",
-          };
+function MetricStrip({ metrics }) {
+  return (
+    <div className="dashboard-metric-strip">
+      {metrics.map((metric) => (
+        <div key={metric.label} style={METRIC_STRIP_ITEM} className="dashboard-metric-item">
+          <span style={METRIC_LABEL}>{metric.label}</span>
+          <span style={METRIC_VALUE} className="dashboard-metric-value">
+            {metric.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-          const kpiCard = (icon, label, value, accent) => (
-            <div style={{
-              background: "#fff",
-              borderRadius: "16px",
-              padding: "20px 24px",
-              boxShadow: "0 2px 12px rgba(0,0,0,.06)",
-              borderLeft: `5px solid ${accent}`,
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px",
-            }}>
-              <span style={{ fontSize: "22px" }}>{icon}</span>
-              <span style={{ fontSize: "28px", fontWeight: "800", color: "#0F172A", lineHeight: 1 }}>{value}</span>
-              <span style={{ fontSize: "13px", color: "#64748B" }}>{label}</span>
+function DashboardPage() {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const [summary, setSummary] = useState({
+    total_santri: 0,
+    santri_aktif: 0,
+    santri_non_aktif: 0,
+    total_kelas: 0,
+    total_wali: 0,
+    total_saldo: 0,
+    persentase_kehadiran_santri: 0,
+    persentase_kehadiran_guru: 0,
+    total_hafalan: 0,
+    rata_nilai: 0,
+    absensi_hari_ini: 0,
+    nilai_terisi: 0,
+    total_wali_akun: 0,
+    wali_belum_ganti_pin: 0,
+    santri_poin_tertinggi: [],
+    kas_masuk: 0,
+    kas_keluar: 0,
+    saldo_kas: 0,
+    total_pembayaran: 0,
+    total_tunggakan: 0,
+    total_pelanggaran: 0,
+    total_perizinan: 0,
+    belum_kembali: 0,
+    tamu_hari_ini: 0,
+    tamu_bulan_ini: 0,
+    tamu_masih_didalam: 0,
+    grafik_kas: [],
+    transaksi_terbaru: [],
+    pembayaran_terbaru: [],
+    top_tunggakan: [],
+  });
+
+  const transaksiTerbaru = summary?.transaksi_terbaru || [];
+  const pembayaranTerbaru = summary?.pembayaran_terbaru || [];
+  const topTunggakan = summary?.top_tunggakan || [];
+
+  const grafikKas = (summary?.grafik_kas || []).map((item) => ({
+    bulan: ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][
+      Number(item.bulan)
+    ],
+    masuk: Number(item.masuk),
+    keluar: Number(item.keluar),
+  }));
+
+  const getSummary = async () => {
+    try {
+      const response = await api.get("/dashboard/summary");
+      console.log("SUMMARY:", response.data);
+      setSummary(response.data.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  useEffect(() => {
+    getSummary();
+  }, []);
+
+  const fmtRp = (n) => Number(n || 0).toLocaleString("id-ID");
+
+  return (
+    <AppShell title="Dashboard" breadcrumb="Dashboard">
+      <DashboardResponsiveStyles />
+      {user?.role === "superadmin" && (() => {
+        const maxBar = Math.max(...grafikKas.map((i) => Math.max(i.masuk, i.keluar)), 1);
+        const chartBarHeight = 200;
+        const sahriyahDonut = buildSahriyahDonut(
+          pembayaranTerbaru,
+          summary.total_pembayaran,
+          summary.total_tunggakan,
+        );
+        const topPelanggar = (summary.santri_poin_tertinggi || []).slice(0, 5);
+
+        return (
+          <div className="dashboard-page" style={{ display: "flex", flexDirection: "column", ...GRID_GAP }}>
+            {/* Row 1 — KPI strip */}
+            <MetricStrip
+              metrics={[
+                { label: "Total Santri", value: summary.total_santri },
+                { label: "Santri Belum Kembali", value: summary.belum_kembali || 0 },
+                { label: "Saldo Buku Kas", value: `Rp ${fmtRp(summary.saldo_kas)}` },
+                { label: "Total Tunggakan", value: `Rp ${fmtRp(summary.total_tunggakan)}` },
+              ]}
+            />
+
+            {/* Row 2 — Sahriyah donut + Top pelanggar */}
+            <div className="dashboard-row-2" style={{ ...GRID_GAP, ...SECTION_GAP, marginTop: 0 }}>
+              <Card {...DASHBOARD_CARD}>
+                <ExecSectionTitle title="Status Pembayaran Sahriyah" />
+                <div className="dashboard-donut-layout">
+                  <div className="dashboard-donut-chart">
+                    <DonutChart slices={sahriyahDonut.slices} />
+                  </div>
+                  <div className="dashboard-donut-legend">
+                    {sahriyahDonut.slices.map((slice) => (
+                      <div
+                        key={slice.label}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "6px 0",
+                          fontSize: "13px",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span
+                            style={{
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
+                              background: slice.color,
+                              flexShrink: 0,
+                            }}
+                          />
+                          {slice.label}
+                        </span>
+                        <span style={{ fontWeight: 700, color: "var(--text-secondary)" }}>{slice.pct}%</span>
+                      </div>
+                    ))}
+                    <div
+                      style={{
+                        marginTop: "var(--space-3)",
+                        paddingTop: "var(--space-3)",
+                        borderTop: "1px solid var(--border)",
+                        fontSize: "12px",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      Total pembayaran{" "}
+                      <strong style={{ color: "var(--text-primary)" }}>
+                        Rp {fmtRp(sahriyahDonut.totalPembayaran)}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card {...DASHBOARD_CARD}>
+                <ExecSectionTitle title="Top 5 Pelanggar" />
+                {topPelanggar.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+                    Belum ada data pelanggaran.
+                  </p>
+                ) : (
+                  topPelanggar.map((item, index, arr) => (
+                    <div
+                      key={`${item.nama}-${index}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "8px 0",
+                        borderBottom: index < arr.length - 1 ? "1px solid var(--border)" : "none",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <span className="dashboard-pelanggar-name" style={{ fontWeight: 500, color: "var(--text-primary)" }}>
+                        {item.nama}
+                      </span>
+                      <span style={{ fontWeight: 700, color: "var(--text-secondary)" }}>
+                        {item.jumlah_pelanggaran} poin
+                      </span>
+                    </div>
+                  ))
+                )}
+              </Card>
             </div>
-          );
 
-          const cardBox = {
-            background: "#fff",
-            borderRadius: "16px",
-            padding: "20px 24px",
-            boxShadow: "0 2px 12px rgba(0,0,0,.06)",
-          };
-
-          const maxBar = Math.max(...(grafikKas.map(i => Math.max(i.masuk, i.keluar))), 1);
-
-          const shortcuts = [
-            { icon: "👥", label: "Tambah Santri",      href: "/santri" },
-            { icon: "💰", label: "Pembayaran",         href: "/pembayaran" },
-            { icon: "📋", label: "Absensi",            href: "/absensi" },
-            { icon: "🕌", label: "Hafalan",            href: "/hafalan" },
-            { icon: "⚠️", label: "Pelanggaran",        href: "/pelanggaran" },
-            { icon: "📢", label: "Pengumuman",         href: "/pengumuman" },
-            { icon: "🔑", label: "Perizinan",          href: "/perizinan" },
-            { icon: "🏫", label: "Profil Pesantren",   href: "/profil-pesantren" },
-          ];
-
-          return (
-            <div>
-
-              {/* SECTION 1 — SANTRI */}
-              <p style={sectionLabel}>📚 Statistik Santri</p>
-              <div style={kpiGrid}>
-                {kpiCard("👥", "Total Santri",  summary.total_santri,  "#14B8A6")}
-                {kpiCard("✅", "Santri Aktif",   summary.santri_aktif || summary.total_santri, "#22C55E")}
-                {kpiCard("❌", "Non Aktif",       summary.santri_non_aktif || 0,               "#EF4444")}
-                {kpiCard("🏫", "Total Kelas",    summary.total_kelas,   "#8B5CF6")}
-              </div>
-
-              {/* SECTION 1B — KEUANGAN */}
-              <p style={sectionLabel}>💰 Statistik Keuangan</p>
-              <div style={kpiGrid}>
-                {kpiCard("🏦", "Saldo Buku Kas",          `Rp ${fmtRp(summary.saldo_kas)}`,        "#F59E0B")}
-                {kpiCard("📥", "Kas Masuk Bulan Ini",     `Rp ${fmtRp(summary.kas_masuk)}`,        "#22C55E")}
-                {kpiCard("📤", "Kas Keluar Bulan Ini",    `Rp ${fmtRp(summary.kas_keluar)}`,       "#EF4444")}
-                {kpiCard("⚠️", "Tunggakan Sahriyah",       `Rp ${fmtRp(summary.total_tunggakan)}`, "#DC2626")}
-              </div>
-
-              {/* SECTION 1C — AKADEMIK */}
-              <p style={sectionLabel}>📖 Statistik Akademik</p>
-              <div style={kpiGrid}>
-                {kpiCard("📝", "Nilai Terisi Bulan Ini",   summary.nilai_terisi || 0,                    "#3B82F6")}
-                {kpiCard("🕌", "Hafalan Terisi Bulan Ini", summary.total_hafalan,                         "#8B5CF6")}
-                {kpiCard("📋", "Absensi Hari Ini",         summary.absensi_hari_ini || 0,                 "#14B8A6")}
-                {kpiCard("👨‍🏫", "Kehadiran Guru",           `${summary.persentase_kehadiran_guru}%`,      "#0EA5E9")}
-              </div>
-
-              {/* SECTION 1D — KEAMANAN */}
-              <p style={sectionLabel}>🛡️ Keamanan &amp; Ketertiban</p>
-              <div style={kpiGrid}>
-                {kpiCard("⚠️", "Pelanggaran Bulan Ini", summary.total_pelanggaran || 0, "#F97316")}
-                {kpiCard("🚪", "Perizinan Bulan Ini",   summary.total_perizinan   || 0, "#EAB308")}
-                {kpiCard("🔙", "Belum Kembali",          summary.belum_kembali     || 0, "#EF4444")}
-                {kpiCard("👤", "Tamu Hari Ini",          summary.tamu_hari_ini     || 0, "#6366F1")}
-              </div>
-
-              {/* SECTION 1E — WALI */}
-              <p style={sectionLabel}>👪 Statistik Wali</p>
-              <div style={kpiGrid}>
-                {kpiCard("👪", "Total Akun Wali",     summary.total_wali_akun      || 0, "#14B8A6")}
-                {kpiCard("🔐", "Belum Ganti PIN",      summary.wali_belum_ganti_pin || 0, "#F59E0B")}
-                {kpiCard("👥", "Wali Terdaftar",       summary.total_wali           || 0, "#8B5CF6")}
-              </div>
-
-              {/* SECTION 2 — GRAFIK KEUANGAN */}
-              {grafikKas.length > 0 && (
-                <div>
-                  <p style={sectionLabel}>📊 Grafik Keuangan {new Date().getFullYear()}</p>
-                  <div style={{ ...cardBox, marginBottom: "8px" }}>
-                    <div style={{ display: "flex", gap: "6px", alignItems: "flex-end", height: "180px" }}>
+            {/* Row 3 — Arus Keuangan */}
+            {grafikKas.length > 0 && (
+              <div style={SECTION_GAP}>
+                <ExecSectionTitle title="Arus Keuangan" />
+                <Card {...DASHBOARD_CARD}>
+                  <div
+                    className="dashboard-cashflow-wrap"
+                    style={{ height: "260px", display: "flex", flexDirection: "column" }}
+                  >
+                    <div
+                      className="dashboard-cashflow-bars"
+                      style={{ minHeight: chartBarHeight }}
+                    >
                       {grafikKas.map((item) => (
-                        <div key={item.bulan} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "150px" }}>
+                        <div key={item.bulan} className="dashboard-cashflow-month">
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "2px",
+                              alignItems: "flex-end",
+                              flex: 1,
+                              width: "100%",
+                              justifyContent: "center",
+                            }}
+                          >
                             <div
                               title={`Masuk: Rp ${fmtRp(item.masuk)}`}
-                              style={{ width: "12px", background: "#22C55E", height: `${Math.max((item.masuk / maxBar) * 150, 2)}px`, borderRadius: "3px 3px 0 0" }}
+                              style={{
+                                width: "10px",
+                                maxWidth: "40%",
+                                background: "#22C55E",
+                                height: `${Math.max((item.masuk / maxBar) * chartBarHeight, 3)}px`,
+                                borderRadius: "3px 3px 0 0",
+                              }}
                             />
                             <div
                               title={`Keluar: Rp ${fmtRp(item.keluar)}`}
-                              style={{ width: "12px", background: "#EF4444", height: `${Math.max((item.keluar / maxBar) * 150, 2)}px`, borderRadius: "3px 3px 0 0" }}
+                              style={{
+                                width: "10px",
+                                maxWidth: "40%",
+                                background: "#94A3B8",
+                                height: `${Math.max((item.keluar / maxBar) * chartBarHeight, 3)}px`,
+                                borderRadius: "3px 3px 0 0",
+                              }}
                             />
                           </div>
-                          <span style={{ fontSize: "10px", color: "#94A3B8", marginTop: "4px" }}>{item.bulan}</span>
+                          <span style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "6px" }}>
+                            {item.bulan}
+                          </span>
                         </div>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
-                      <span style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ width: "12px", height: "12px", background: "#22C55E", display: "inline-block", borderRadius: "2px" }} /> Masuk
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "var(--space-4)",
+                        marginTop: "var(--space-3)",
+                        paddingTop: "var(--space-2)",
+                        borderTop: "1px solid var(--border)",
+                      }}
+                    >
+                      <span style={{ fontSize: "11px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ width: "8px", height: "8px", background: "#22C55E", borderRadius: "2px" }} />
+                        Pemasukan
                       </span>
-                      <span style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ width: "12px", height: "12px", background: "#EF4444", display: "inline-block", borderRadius: "2px" }} /> Keluar
+                      <span style={{ fontSize: "11px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ width: "8px", height: "8px", background: "#94A3B8", borderRadius: "2px" }} />
+                        Pengeluaran
                       </span>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* SECTION 3 — SANTRI POIN TERTINGGI */}
-              {(summary.santri_poin_tertinggi || []).length > 0 && (
-                <div>
-                  <p style={sectionLabel}>⚠️ Santri Pelanggaran Tertinggi Bulan Ini</p>
-                  <div style={cardBox}>
-                    {(summary.santri_poin_tertinggi || []).map((s, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < (summary.santri_poin_tertinggi.length - 1) ? "1px solid #F1F5F9" : "none" }}>
-                        <span style={{ fontWeight: "500" }}>{i + 1}. {s.nama}</span>
-                        <span style={{ background: "#FEE2E2", color: "#DC2626", padding: "2px 10px", borderRadius: "20px", fontSize: "13px", fontWeight: "700" }}>
-                          {s.jumlah_pelanggaran}x
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* SECTION 4 — AKTIVITAS TERBARU */}
-              <p style={sectionLabel}>🕐 Aktivitas Terbaru</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-
-                <div style={cardBox}>
-                  <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "700" }}>💳 Pembayaran Terbaru</h3>
-                  {pembayaranTerbaru.slice(0, 6).length === 0
-                    ? <p style={{ color: "#94A3B8", fontSize: "14px" }}>Belum ada pembayaran.</p>
-                    : pembayaranTerbaru.slice(0, 6).map((item) => (
-                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F8FAFC" }}>
-                        <div>
-                          <div style={{ fontWeight: "600", fontSize: "13px" }}>{item.nama}</div>
-                          <div style={{ fontSize: "12px", color: "#64748B" }}>{item.nama_tagihan}</div>
-                        </div>
-                        <span style={{ color: "#22C55E", fontWeight: "700", fontSize: "13px" }}>
-                          Rp {Number(item.nominal_bayar || 0).toLocaleString("id-ID")}
-                        </span>
-                      </div>
-                    ))
-                  }
-                </div>
-
-                <div style={cardBox}>
-                  <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "700" }}>💰 Transaksi Kas Terbaru</h3>
-                  {transaksiTerbaru.slice(0, 6).length === 0
-                    ? <p style={{ color: "#94A3B8", fontSize: "14px" }}>Belum ada transaksi.</p>
-                    : transaksiTerbaru.slice(0, 6).map((item) => (
-                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F8FAFC" }}>
-                        <div>
-                          <div style={{ fontWeight: "600", fontSize: "13px" }}>{item.keterangan || item.kategori || "-"}</div>
-                          <div style={{ fontSize: "12px", color: "#64748B" }}>{item.jenis} · {new Date(item.tanggal).toLocaleDateString("id-ID")}</div>
-                        </div>
-                        <span style={{ color: item.jenis === "Masuk" ? "#22C55E" : "#EF4444", fontWeight: "700", fontSize: "13px" }}>
-                          {item.jenis === "Masuk" ? "+" : "−"}Rp {Number(item.nominal || 0).toLocaleString("id-ID")}
-                        </span>
-                      </div>
-                    ))
-                  }
-                </div>
-
+                </Card>
               </div>
+            )}
+          </div>
+        );
+      })()}
 
-              {/* SECTION 5 — SHORTCUT MODUL */}
-              <p style={sectionLabel}>⚡ Shortcut Modul</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "32px" }}>
-                {shortcuts.map((s) => (
-                  <a
-                    key={s.href}
-                    href={s.href}
-                    style={{
-                      background: "#fff",
-                      borderRadius: "14px",
-                      padding: "18px 14px",
-                      boxShadow: "0 2px 12px rgba(0,0,0,.06)",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "8px",
-                      textDecoration: "none",
-                      color: "#0F172A",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      transition: "box-shadow .2s",
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.boxShadow = "0 6px 24px rgba(20,184,166,.25)"}
-                    onMouseLeave={e => e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,.06)"}
-                  >
-                    <span style={{ fontSize: "28px" }}>{s.icon}</span>
-                    {s.label}
-                  </a>
-                ))}
-              </div>
+      {user?.role === "sekretaris" && (
+        <KpiGrid minColumnWidth={250} gap={20}>
+          <KpiCard layout="classic" label="Total Santri" value={summary.total_santri} />
+          <KpiCard layout="classic" label="Total Kelas" value={summary.total_kelas} />
+          <KpiCard layout="classic" label="Total Wali" value={summary.total_wali || 0} />
+        </KpiGrid>
+      )}
 
+      {user?.role === "keuangan" && (
+        <KpiGrid minColumnWidth={250} gap={20}>
+          <KpiCard layout="classic" label="Kas Masuk Bulan Ini" value={`Rp ${Number(summary.kas_masuk || 0).toLocaleString()}`} />
+          <KpiCard layout="classic" label="Kas Keluar Bulan Ini" value={`Rp ${Number(summary.kas_keluar || 0).toLocaleString()}`} />
+          <KpiCard layout="classic" label="Saldo Kas" value={`Rp ${Number(summary.saldo_kas || 0).toLocaleString()}`} />
+          <KpiCard layout="classic" label="Pembayaran Sahriyah" value={`Rp ${Number(summary.total_pembayaran || 0).toLocaleString()}`} />
+          <KpiCard layout="classic" label="Tunggakan Sahriyah" value={`Rp ${Number(summary.total_tunggakan || 0).toLocaleString()}`} />
+        </KpiGrid>
+      )}
+
+      {user?.role === "keuangan" && (
+        <div style={{ marginTop: "var(--space-5)" }}>
+          <Card {...DASHBOARD_CARD}>
+            <SectionHeading variant="eyebrow" spacing="first">Transaksi Terbaru</SectionHeading>
+            <div style={{ overflowX: "auto", marginTop: "var(--space-4)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Jenis</th>
+                    <th>Kategori</th>
+                    <th>Keterangan</th>
+                    <th>Nominal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transaksiTerbaru.map((item) => (
+                    <tr key={item.id}>
+                      <td>{new Date(item.tanggal).toLocaleDateString("id-ID")}</td>
+                      <td>{item.jenis}</td>
+                      <td>{item.kategori}</td>
+                      <td>{item.keterangan}</td>
+                      <td>Rp {Number(item.nominal).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          );
+          </Card>
+        </div>
+      )}
 
-        })()}
-
-        {/* ====================== */}
-        {/* SEKRETARIS */}
-        {/* ====================== */}
-
-        {
-
-          user?.role ===
-          "sekretaris"
-
-          && (
-
-            <div
-  style={{
-    display:"grid",
-    gridTemplateColumns:
-      "repeat(auto-fit,minmax(250px,1fr))",
-    gap:"20px"
-  }}
->
-
-              <div style={cardStyle}>
-
-                <h3>
-
-                  Total Santri
-
-                </h3>
-
-                <h1>
-
-                  {
-
-                    summary.total_santri
-
-                  }
-
-                </h1>
-
-              </div>
-
-              <div style={cardStyle}>
-
-                <h3>
-
-                  Total Kelas
-
-                </h3>
-
-                <h1>
-
-                  {
-
-                    summary.total_kelas
-
-                  }
-
-                </h1>
-
-              </div>
-
-              <div style={cardStyle}>
-
-                <h3>
-
-                  Total Wali
-
-                </h3>
-
-                <h1>
-
-                  {
-
-                    summary.total_wali || 0
-
-                  }
-
-                </h1>
-
-              </div>
-
+      {user?.role === "keuangan" && (
+        <div style={{ marginTop: "var(--space-5)" }}>
+          <Card {...DASHBOARD_CARD}>
+            <SectionHeading variant="eyebrow" spacing="first">Pembayaran Terbaru</SectionHeading>
+            <div style={{ overflowX: "auto", marginTop: "var(--space-4)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th>Santri</th>
+                    <th>Tagihan</th>
+                    <th>Dibayar</th>
+                    <th>Sisa</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pembayaranTerbaru.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.nama}</td>
+                      <td>{item.nama_tagihan}</td>
+                      <td>Rp {Number(item.nominal_bayar).toLocaleString()}</td>
+                      <td>Rp {Number(item.sisa_tunggakan).toLocaleString()}</td>
+                      <td>{item.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-
-          )
-
-        }
-
-{/* ====================== */}
-{/* KEUANGAN */}
-{/* ====================== */}
-
-{
-  user?.role === "keuangan" && (
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns:
-          "repeat(auto-fit,minmax(250px,1fr))",
-        gap: "20px"
-      }}
-    >
-
-      {/* KAS MASUK */}
-
-      <div style={cardStyle}>
-
-        <h3>
-          Kas Masuk Bulan Ini
-        </h3>
-
-        <h1>
-          Rp {
-            Number(
-              summary.kas_masuk || 0
-            ).toLocaleString()
-          }
-        </h1>
-
-      </div>
-
-      {/* KAS KELUAR */}
-
-      <div style={cardStyle}>
-
-        <h3>
-          Kas Keluar Bulan Ini
-        </h3>
-
-        <h1>
-          Rp {
-            Number(
-              summary.kas_keluar || 0
-            ).toLocaleString()
-          }
-        </h1>
-
-      </div>
-
-      {/* SALDO KAS */}
-
-      <div style={cardStyle}>
-
-        <h3>
-          Saldo Kas
-        </h3>
-
-        <h1>
-          Rp {
-            Number(
-              summary.saldo_kas || 0
-            ).toLocaleString()
-          }
-        </h1>
-
-      </div>
-
-      {/* PEMBAYARAN SAHRIYAH */}
-
-      <div style={cardStyle}>
-
-        <h3>
-          Pembayaran Sahriyah
-        </h3>
-
-        <h1>
-          Rp {
-            Number(
-              summary.total_pembayaran || 0
-            ).toLocaleString()
-          }
-        </h1>
-
-      </div>
-
-      {/* TUNGGAKAN SAHRIYAH */}
-
-      <div style={cardStyle}>
-
-        <h3>
-          Tunggakan Sahriyah
-        </h3>
-
-        <h1>
-          Rp {
-            Number(
-              summary.total_tunggakan || 0
-            ).toLocaleString()
-          }
-        </h1>
-
-      </div>
-
-    </div>
-
-  )
-}
-
-
-
-{/* ====================== */}
-{/* TRANSAKSI TERBARU */}
-{/* ====================== */}
-
-{
-  user?.role === "keuangan" && (
-
-    <div
-      style={{
-        background:"#fff",
-        borderRadius:"20px",
-        padding:"24px",
-        marginTop:"24px",
-        boxShadow:
-          "0 4px 20px rgba(0,0,0,.05)"
-      }}
-    >
-
-      <h2>
-
-        Transaksi Terbaru
-
-      </h2>
-
-      <div
-        style={{
-          overflowX:"auto"
-        }}
-      >
-
-        <table
-          style={{
-            width:"100%",
-            borderCollapse:
-              "collapse"
-          }}
-        >
-
-          <thead>
-
-            <tr>
-
-              <th>Tanggal</th>
-
-              <th>Jenis</th>
-
-              <th>Kategori</th>
-
-              <th>Keterangan</th>
-
-              <th>Nominal</th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {
-
-              transaksiTerbaru.map(
-                (item) => (
-
-                <tr
-                  key={item.id}
-                >
-
-                  <td>
-
-                    {
-                      new Date(
-                        item.tanggal
-                      )
-                      .toLocaleDateString(
-                        "id-ID"
-                      )
-                    }
-
-                  </td>
-
-                  <td>
-
-                    {item.jenis}
-
-                  </td>
-
-                  <td>
-
-                    {item.kategori}
-
-                  </td>
-
-                  <td>
-
-                    {item.keterangan}
-
-                  </td>
-
-                  <td>
-
-                    Rp {
-
-                      Number(
-                        item.nominal
-                      )
-                      .toLocaleString()
-
-                    }
-
-                  </td>
-
-                </tr>
-
-              ))
-
-            }
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  )
-}
-
-{
-  user?.role === "keuangan" && (
-
-    <div
-      style={{
-        background:"#fff",
-        borderRadius:"20px",
-        padding:"24px",
-        marginTop:"24px",
-        boxShadow:
-          "0 4px 20px rgba(0,0,0,.05)"
-      }}
-    >
-
-      <h2>
-
-        Pembayaran Terbaru
-
-      </h2>
-
-      <div
-        style={{
-          overflowX:"auto"
-        }}
-      >
-
-        <table
-          style={{
-            width:"100%",
-            borderCollapse:
-              "collapse"
-          }}
-        >
-
-          <thead>
-
-            <tr>
-
-              <th>Santri</th>
-
-              <th>Tagihan</th>
-
-              <th>Dibayar</th>
-
-              <th>Sisa</th>
-
-              <th>Status</th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {
-
-              pembayaranTerbaru.map(
-                (item) => (
-
-                <tr
-                  key={item.id}
-                >
-
-                  <td>
-
-                    {item.nama}
-
-                  </td>
-
-                  <td>
-
-                    {item.nama_tagihan}
-
-                  </td>
-
-                  <td>
-
-                    Rp {
-
-                      Number(
-                        item.nominal_bayar
-                      )
-                      .toLocaleString()
-
-                    }
-
-                  </td>
-
-                  <td>
-
-                    Rp {
-
-                      Number(
-                        item.sisa_tunggakan
-                      )
-                      .toLocaleString()
-
-                    }
-
-                  </td>
-
-                  <td>
-
-                    {item.status}
-
-                  </td>
-
-                </tr>
-
-              ))
-
-            }
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  )
-}
-
-{
-  user?.role === "keuangan" && (
-
-    <div
-      style={{
-        background:"#fff",
-        borderRadius:"20px",
-        padding:"24px",
-        marginTop:"24px",
-        boxShadow:
-          "0 4px 20px rgba(0,0,0,.05)"
-      }}
-    >
-
-      <h2>
-
-        Top 10 Tunggakan Terbesar
-
-      </h2>
-
-      <table
-        style={{
-          width:"100%",
-          borderCollapse:"collapse"
-        }}
-      >
-
-        <thead>
-
-          <tr>
-
-            <th>Nama</th>
-
-            <th>Tunggakan</th>
-
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-          {
-
-            topTunggakan.map(
-              (item,index) => (
-
-              <tr
-                key={index}
-              >
-
-                <td>
-
-                  {item.nama}
-
-                </td>
-
-                <td>
-
-                  Rp {
-
-                    Number(
-                      item.sisa_tagihan
-                    )
-                    .toLocaleString()
-
-                  }
-
-                </td>
-
-              </tr>
-
-            ))
-
-          }
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-  )
-}
-        {/* ====================== */}
-        {/* PENDIDIKAN */}
-        {/* ====================== */}
-
-        {
-
-          user?.role ===
-          "pendidikan"
-
-          && (
-
-            <div
-  style={{
-    display:"grid",
-    gridTemplateColumns:
-      "repeat(auto-fit,minmax(250px,1fr))",
-    gap:"20px"
-  }}
->
-
-              <div style={cardStyle}>
-
-  <h3>
-
-    Kehadiran Santri
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .persentase_kehadiran_santri
-
-    }%
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Kehadiran Guru
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .persentase_kehadiran_guru
-
-    }%
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Total Hafalan
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .total_hafalan
-
-    }
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Rata-rata Nilai
-
-  </h3>
-
-  <h1>
-
-    {
-
-      summary
-      .rata_nilai
-
-    }
-
-  </h1>
-
-</div>
-
+          </Card>
+        </div>
+      )}
+
+      {user?.role === "keuangan" && (
+        <div style={{ marginTop: "var(--space-5)" }}>
+          <Card {...DASHBOARD_CARD}>
+            <SectionHeading variant="eyebrow" spacing="first">Top 10 Tunggakan Terbesar</SectionHeading>
+            <div style={{ overflowX: "auto", marginTop: "var(--space-4)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>Tunggakan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topTunggakan.map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.nama}</td>
+                      <td>Rp {Number(item.sisa_tagihan).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-
-          )
-
-        }
-
-        {/* ====================== */}
-        {/* KEAMANAN */}
-        {/* ====================== */}
-
-        {
-
-          user?.role ===
-          "keamanan"
-
-          && (
-
-            <div
-  style={{
-    display:"grid",
-    gridTemplateColumns:
-      "repeat(auto-fit,minmax(250px,1fr))",
-    gap:"20px"
-  }}
->
-
-          <div style={cardStyle}>
-
-  <h3>
-
-    Belum Kembali
-
-  </h3>
-
-  <h1>
-
-    {summary.belum_kembali}
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Perizinan Bulan Ini
-
-  </h3>
-
-  <h1>
-
-    {summary.total_perizinan}
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Pelanggaran Bulan Ini
-
-  </h3>
-
-  <h1>
-
-    {summary.total_pelanggaran}
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Santri Melanggar
-
-  </h3>
-
-  <h1>
-
-    {summary.persentase_melanggar}%
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Tamu Hari Ini
-
-  </h3>
-
-  <h1>
-
-    {summary.tamu_hari_ini || 0}
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Tamu Bulan Ini
-
-  </h3>
-
-  <h1>
-
-    {summary.tamu_bulan_ini || 0}
-
-  </h1>
-
-</div>
-
-<div style={cardStyle}>
-
-  <h3>
-
-    Tamu Masih Di Dalam
-
-  </h3>
-
-  <h1>
-
-    {summary.tamu_masih_didalam || 0}
-
-  </h1>
-
-</div>
-
-            </div>
-
-          )
-
-        }
-
-      </div>
-
-    </div>
-
+          </Card>
+        </div>
+      )}
+
+      {user?.role === "pendidikan" && (
+        <KpiGrid minColumnWidth={250} gap={20}>
+          <KpiCard layout="classic" label="Kehadiran Santri" value={`${summary.persentase_kehadiran_santri}%`} />
+          <KpiCard layout="classic" label="Kehadiran Guru" value={`${summary.persentase_kehadiran_guru}%`} />
+          <KpiCard layout="classic" label="Total Hafalan" value={summary.total_hafalan} />
+          <KpiCard layout="classic" label="Rata-rata Nilai" value={summary.rata_nilai} />
+        </KpiGrid>
+      )}
+
+      {user?.role === "keamanan" && (
+        <KpiGrid minColumnWidth={250} gap={20}>
+          <KpiCard layout="classic" label="Belum Kembali" value={summary.belum_kembali} />
+          <KpiCard layout="classic" label="Perizinan Bulan Ini" value={summary.total_perizinan} />
+          <KpiCard layout="classic" label="Pelanggaran Bulan Ini" value={summary.total_pelanggaran} />
+          <KpiCard layout="classic" label="Santri Melanggar" value={`${summary.persentase_melanggar}%`} />
+          <KpiCard layout="classic" label="Tamu Hari Ini" value={summary.tamu_hari_ini || 0} />
+          <KpiCard layout="classic" label="Tamu Bulan Ini" value={summary.tamu_bulan_ini || 0} />
+          <KpiCard layout="classic" label="Tamu Masih Di Dalam" value={summary.tamu_masih_didalam || 0} />
+        </KpiGrid>
+      )}
+    </AppShell>
   );
-
 }
 
 export default DashboardPage;

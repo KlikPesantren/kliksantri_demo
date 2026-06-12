@@ -1,39 +1,57 @@
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 
 function AppShell({ children, title, description, breadcrumb }) {
-  return (
-    <div style={shellStyle}>
-      <Sidebar />
+  const location = useLocation();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-      <main style={mainStyle}>
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!drawerOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setDrawerOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [drawerOpen]);
+
+  const closeDrawer = () => setDrawerOpen(false);
+  const openDrawer = () => setDrawerOpen(true);
+
+  return (
+    <div className="app-shell">
+      {drawerOpen && (
+        <button
+          type="button"
+          className="sidebar-overlay"
+          aria-label="Tutup menu navigasi"
+          onClick={closeDrawer}
+        />
+      )}
+
+      <Sidebar drawerOpen={drawerOpen} onDrawerClose={closeDrawer} />
+
+      <main className="app-shell-main">
         <PageHeader
           title={title}
           description={description}
           breadcrumb={breadcrumb}
+          onMenuClick={openDrawer}
         />
 
-        <div style={contentStyle}>{children}</div>
+        <div className="app-shell-content">{children}</div>
       </main>
     </div>
   );
 }
-
-const shellStyle = {
-  minHeight: "100vh",
-  background: "var(--background)",
-};
-
-const mainStyle = {
-  marginLeft: "var(--sidebar-width)",
-  width: "calc(100% - var(--sidebar-width))",
-  minHeight: "100vh",
-  padding: "24px",
-  boxSizing: "border-box",
-};
-
-const contentStyle = {
-  minWidth: 0,
-};
 
 export default AppShell;

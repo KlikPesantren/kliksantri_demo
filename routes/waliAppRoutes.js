@@ -2179,6 +2179,7 @@ router.get(
             id,
             judul,
             isi,
+            cover_url,
             prioritas,
             published_at,
             expires_at,

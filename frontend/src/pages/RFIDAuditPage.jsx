@@ -1,5 +1,10 @@
+// ORPHAN PAGE
+// Tidak memiliki route aktif
+// Tidak ada menu Sidebar
+// Preserve until deletion decision
+
 import { useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
+import AppShell from "../layouts/AppShell";
 import api from "../services/api";
 
 function RFIDAuditPage() {
@@ -49,16 +54,11 @@ function RFIDAuditPage() {
 
   return(
 
-    <div>
-
-      <Sidebar />
-
-      <div
-        style={{
-          marginLeft:"280px",
-          padding:"20px"
-        }}
-      >
+    <AppShell
+      title="RFID Audit Logs"
+      description="Seluruh aktivitas RFID"
+      breadcrumb="Keamanan / RFID Audit Logs"
+    >
 
         <div
           style={{
@@ -70,14 +70,6 @@ function RFIDAuditPage() {
             marginBottom:"24px"
           }}
         >
-
-          <h1>
-            RFID Audit Logs
-          </h1>
-
-          <p>
-            Seluruh aktivitas RFID
-          </p>
 
         </div>
 
@@ -156,9 +148,7 @@ function RFIDAuditPage() {
 
         </div>
 
-      </div>
-
-    </div>
+    </AppShell>
 
   );
 

@@ -1,835 +1,364 @@
-import {
+import { useEffect, useMemo, useState } from "react";
+import api from "../services/api";
+import AppShell from "../layouts/AppShell";
+import Card from "../components/ui/Card";
+import SectionHeading from "../components/ui/SectionHeading";
+import Badge from "../components/ui/Badge";
+import Button, { actionBarStyle } from "../components/ui/Button";
+import DataTableCard from "../components/ui/DataTableCard";
+import TableToolbar from "../components/ui/TableToolbar";
+import SearchInput from "../components/ui/SearchInput";
+import EmptyState from "../components/ui/EmptyState";
 
-  useEffect,
-  useState
+const formGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "var(--space-4)",
+};
 
-} from "react";
+const spanFull = { gridColumn: "1 / -1" };
 
-import api
-from "../services/api";
+const thStyle = {
+  padding: "11px 14px",
+  textAlign: "left",
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  borderBottom: "1px solid var(--border)",
+  background: "var(--background)",
+  whiteSpace: "nowrap",
+};
 
-import Sidebar
-from "../components/Sidebar";
+const tdStyle = {
+  padding: "12px 14px",
+  fontSize: "14px",
+  color: "var(--text-primary)",
+  verticalAlign: "middle",
+  borderBottom: "1px solid #F1F5F9",
+};
+
+const fieldStyle = {
+  width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+};
+
+function LegacyPageStyles() {
+  return (
+    <style>{`
+      .legacy-page {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .table-scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+        min-width: 0;
+      }
+      .table-scroll-x > table {
+        width: max-content;
+        min-width: 100%;
+      }
+      .legacy-form-grid input,
+      .legacy-form-grid select,
+      .legacy-form-grid textarea {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+    `}</style>
+  );
+}
+
+function perizinanBadgeVariant(status) {
+  if (status === "kembali") return "success";
+  if (status === "keluar") return "warning";
+  return "neutral";
+}
 
 function PerizinanPage() {
+  const [perizinan, setPerizinan] = useState([]);
+  const [search, setSearch] = useState("");
+  const [editId, setEditId] = useState(null);
+  const [santri, setSantri] = useState([]);
+  const [form, setForm] = useState({
+    santri_id: "",
+    tanggal: "",
+    tujuan: "",
+    alasan: "",
+    tanggal_kembali: "",
+    target_jam_kembali: "",
+    jam_keluar: "",
+    status: "keluar",
+    catatan: "",
+  });
 
-  // ======================
-  // STATES
-  // ======================
-
-  const [
-
-    perizinan,
-    setPerizinan
-
-  ] = useState([]);
-
-  const [
-
-  search,
-  setSearch
-
-  ] = useState("");
-
-  const [
-
-  editId,
-  setEditId
-
-  ] = useState(null);
-
-  const [
-
-    santri,
-    setSantri
-
-  ] = useState([]);
-
-  const [
-
-  form,
-  setForm
-
-] = useState({
-
-  santri_id: "",
-
-  tanggal: "",
-
-  tujuan: "",
-
-  alasan: "",
-
-  tanggal_kembali: "",
-
-  target_jam_kembali:"",
-
-  jam_keluar: "",
-
-  status: "keluar",
-
-  catatan: ""
-
-});
-
-  // ======================
-  // GET PERIZINAN
-  // ======================
-
-  const getPerizinan =
-  async () => {
-
+  const getPerizinan = async () => {
     try {
-
-      const response =
-
-        await api.get(
-          "/perizinan"
-        );
-
-      setPerizinan(
-
-        response.data.data || []
-
-      );
-
-    }
-
-    catch (err) {
-
+      const response = await api.get("/perizinan");
+      setPerizinan(response.data.data || []);
+    } catch (err) {
       console.log(err);
-
     }
-
   };
 
-  // ======================
-  // GET SANTRI
-  // ======================
-
-  const getSantri =
-  async () => {
-
+  const getSantri = async () => {
     try {
-
-      const response =
-
-        await api.get(
-          "/santri"
-        );
-
-      setSantri(
-
-        response.data.data || []
-
-      );
-
-    }
-
-    catch (err) {
-
+      const response = await api.get("/santri");
+      setSantri(response.data.data || []);
+    } catch (err) {
       console.log(err);
-
     }
-
   };
 
-  // ======================
-  // CREATE
-  // ======================
-
-const createPerizinan =
-async () => {
-
-  try {
-
-    if (editId) {
-
-      await api.put(
-
-        `/perizinan/${editId}`,
-
-        form
-
-      );
-
-    }
-
-    else {
-
-      await api.post(
-
-        "/perizinan",
-
-        form
-
-      );
-
-    }
-
-    alert(
-
-      "Data berhasil disimpan"
-
-    );
-
-    setEditId(null);
-
-    setForm({
-
-  santri_id:"",
-  tanggal:"",
-  tujuan:"",
-  alasan:"",
-  tanggal_kembali:"",
-  target_jam_kembali:"",
-  jam_keluar:"",
-  status:"keluar",
-  catatan:""
-
-   });
-
-    getPerizinan();
-
-  }
-
-  catch (err) {
-
-    console.log(err);
-
-    alert(
-
-      "Gagal simpan"
-
-    );
-
-  }
-
-};
-
-  // ======================
-  // KEMBALI
-  // ======================
-
-  const kembali =
-  async (id) => {
-
+  const createPerizinan = async () => {
     try {
+      if (editId) {
+        await api.put(`/perizinan/${editId}`, form);
+      } else {
+        await api.post("/perizinan", form);
+      }
 
-      await api.put(
+      alert("Data berhasil disimpan");
 
-        `/perizinan/kembali/${id}`
-
-      );
+      setEditId(null);
+      setForm({
+        santri_id: "",
+        tanggal: "",
+        tujuan: "",
+        alasan: "",
+        tanggal_kembali: "",
+        target_jam_kembali: "",
+        jam_keluar: "",
+        status: "keluar",
+        catatan: "",
+      });
 
       getPerizinan();
-
-    }
-
-    catch (err) {
-
+    } catch (err) {
       console.log(err);
-
+      alert("Gagal simpan");
     }
-
   };
 
-  const editPerizinan =
+  const kembali = async (id) => {
+    try {
+      await api.put(`/perizinan/kembali/${id}`);
+      getPerizinan();
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
-  (p) => {
-
+  const editPerizinan = (p) => {
     setForm({
-
-      santri_id:
-        p.santri_id,
-
-      tanggal:
-        p.tanggal
-        ?.split("T")[0],
-
-      tujuan:
-        p.tujuan || "",
-
-      alasan:
-        p.alasan || "",
-
-      tanggal_kembali:
-        p.tanggal_kembali
-        ?.split("T")[0] || "",
-
-      target_jam_kembali:
-      p.target_jam_kembali || "",
-
-      jam_keluar:
-        p.jam_keluar || "",
-
-      status:
-        p.status || "keluar",
-
-      catatan:
-        p.catatan || ""
-
+      santri_id: p.santri_id,
+      tanggal: p.tanggal?.split("T")[0],
+      tujuan: p.tujuan || "",
+      alasan: p.alasan || "",
+      tanggal_kembali: p.tanggal_kembali?.split("T")[0] || "",
+      target_jam_kembali: p.target_jam_kembali || "",
+      jam_keluar: p.jam_keluar || "",
+      status: p.status || "keluar",
+      catatan: p.catatan || "",
     });
-
-    setEditId(
-
-      p.id
-
-    );
-
+    setEditId(p.id);
   };
 
-  const deletePerizinan =
-async (id) => {
+  const deletePerizinan = async (id) => {
+    if (!window.confirm("Hapus data ini?")) return;
 
-  if (
-
-    !window.confirm(
-
-      "Hapus data ini?"
-
-    )
-
-  )
-
-    return;
-
-  try {
-
-    await api.delete(
-
-      `/perizinan/${id}`
-
-    );
-
-    getPerizinan();
-
-  }
-
-  catch (err) {
-
-    console.log(err);
-
-  }
-
-};
-
-  // ======================
-  // LOAD
-  // ======================
+    try {
+      await api.delete(`/perizinan/${id}`);
+      getPerizinan();
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   useEffect(() => {
-
     getPerizinan();
-
     getSantri();
-
   }, []);
 
-  const filtered =
-
-  perizinan.filter(
-
-    (p) =>
-
-      p.nama
-
-      ?.toLowerCase()
-
-      .includes(
-
-        search.toLowerCase()
-
-      )
-
+  const filtered = useMemo(
+    () =>
+      perizinan.filter((p) =>
+        p.nama?.toLowerCase().includes(search.toLowerCase()),
+      ),
+    [perizinan, search],
   );
 
   return (
-
-    <div
-
-      style={{
-
-        display: "flex",
-
-        minHeight: "100vh",
-
-        background: "#f5f7fb"
-
-      }}
-
-    >
-
-      <Sidebar />
-
-      <div
-
-        style={{
-
-          marginLeft: "240px",
-
-          width: "calc(100% - 240px)",
-
-          padding: "20px",
-
-          boxSizing: "border-box"
-
-        }}
-
-      >
-
-        <h1>
-
-          Perizinan Santri
-
-        </h1>
-
-        <br />
-
-        {/* FORM */}
-
-        <div
-
-          style={{
-
-            background: "white",
-
-            padding: "20px",
-
-            borderRadius: "16px",
-
-            marginBottom: "20px"
-
-          }}
-
-        >
-
-          <h3>
-
+    <AppShell title="Perizinan Santri" breadcrumb="Keamanan / Perizinan">
+      <LegacyPageStyles />
+      <div className="legacy-page">
+        <Card padding="md" shadow="card" border={false} radius="xl">
+          <SectionHeading variant="eyebrow" spacing="first">
             Input Perizinan
+          </SectionHeading>
 
-          </h3>
-
-          <br />
-
-          {/* SANTRI */}
-
-          <select
-
-            value={
-              form.santri_id
-            }
-
-            onChange={(e) =>
-
-              setForm({
-
-                ...form,
-
-                santri_id:
-                e.target.value
-
-              })
-
-            }
-
-          >
-
-            <option value="">
-
-              Pilih Santri
-
-            </option>
-
-            {
-
-              santri.map((s) => (
-
-                <option
-
-                  key={s.id}
-
-                  value={s.id}
-
-                >
-
+          <div className="legacy-form-grid" style={{ ...formGridStyle, marginTop: "var(--space-4)" }}>
+            <select
+              style={fieldStyle}
+              value={form.santri_id}
+              onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
+            >
+              <option value="">Pilih Santri</option>
+              {santri.map((s) => (
+                <option key={s.id} value={s.id}>
                   {s.nama}
-
                 </option>
+              ))}
+            </select>
 
-              ))
+            <input
+              style={fieldStyle}
+              type="date"
+              value={form.tanggal}
+              onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+            />
 
+            <input
+              style={fieldStyle}
+              type="time"
+              value={form.jam_keluar}
+              onChange={(e) => setForm({ ...form, jam_keluar: e.target.value })}
+            />
+
+            <input
+              style={fieldStyle}
+              type="text"
+              placeholder="Tujuan"
+              value={form.tujuan}
+              onChange={(e) => setForm({ ...form, tujuan: e.target.value })}
+            />
+
+            <input
+              style={fieldStyle}
+              type="date"
+              value={form.tanggal_kembali}
+              onChange={(e) => setForm({ ...form, tanggal_kembali: e.target.value })}
+            />
+
+            <input
+              style={fieldStyle}
+              type="time"
+              value={form.target_jam_kembali}
+              onChange={(e) => setForm({ ...form, target_jam_kembali: e.target.value })}
+            />
+
+            <textarea
+              style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
+              placeholder="Alasan"
+              value={form.alasan}
+              onChange={(e) => setForm({ ...form, alasan: e.target.value })}
+            />
+
+            <textarea
+              style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
+              placeholder="Catatan"
+              value={form.catatan}
+              onChange={(e) => setForm({ ...form, catatan: e.target.value })}
+            />
+          </div>
+
+          <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+            <Button variant="primary" onClick={createPerizinan}>
+              Simpan
+            </Button>
+          </div>
+        </Card>
+
+        <div style={{ marginTop: "var(--space-6)" }}>
+          <DataTableCard
+            title="Daftar Perizinan"
+            subtitle="Kelola izin keluar santri"
+            actions={
+              <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+                {filtered.length} perizinan
+              </span>
             }
-
-          </select>
-
-          <br />
-          <br />
-
-          {/* TANGGAL */}
-
-          <input
-
-            type="date"
-
-            value={form.tanggal}
-
-            onChange={(e) =>
-
-              setForm({
-
-                ...form,
-
-                tanggal:
-                e.target.value
-
-              })
-
-            }
-
-          />
-
-          <br />
-          <br />
-
-          {/* JAM */}
-
-          <input
-
-            type="time"
-
-            value={form.jam_keluar}
-
-            onChange={(e) =>
-
-              setForm({
-
-                ...form,
-
-                jam_keluar:
-                e.target.value
-
-              })
-
-            }
-
-          />
-
-        <br />
-<br />
-
-<input
-
-  type="text"
-
-  placeholder="Tujuan"
-
-  value={form.tujuan}
-
-  onChange={(e) =>
-
-    setForm({
-
-      ...form,
-
-      tujuan:
-      e.target.value
-
-    })
-
-  }
-
-/>
-
-          <br />
-          <br />
-
-          {/* ALASAN */}
-
-          <textarea
-
-            placeholder="Alasan"
-
-            value={form.alasan}
-
-            onChange={(e) =>
-
-              setForm({
-
-                ...form,
-
-                alasan:
-                e.target.value
-
-              })
-
-            }
-
-          />
-         
-         <br />
-<br />
-
-<input
-
-  type="date"
-
-  value={form.tanggal_kembali}
-
-  onChange={(e) =>
-
-    setForm({
-
-      ...form,
-
-      tanggal_kembali:
-      e.target.value
-
-    })
-
-  }
-
-/>
-
-<input
-  type="time"
-  value={form.target_jam_kembali}
-  onChange={(e)=>
-
-    setForm({
-
-      ...form,
-
-      target_jam_kembali:
-      e.target.value
-
-    })
-
-  }
-/>
-
-          <br />
-          <br />
-
-          {/* CATATAN */}
-
-          <textarea
-
-            placeholder="Catatan"
-
-            value={form.catatan}
-
-            onChange={(e) =>
-
-              setForm({
-
-                ...form,
-
-                catatan:
-                e.target.value
-
-              })
-
-            }
-
-          />
-
-          <br />
-          <br />
-
-          <button
-
-            onClick={
-              createPerizinan
-            }
-
           >
+            <TableToolbar
+              search={
+                <SearchInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari nama santri..."
+                />
+              }
+            />
 
-            Simpan
-
-          </button>
-
+            {filtered.length === 0 ? (
+              <EmptyState
+                title={perizinan.length === 0 ? "Belum ada perizinan" : "Tidak ada hasil pencarian"}
+                description={
+                  perizinan.length === 0
+                    ? "Input perizinan pertama untuk memulai."
+                    : "Coba kata kunci lain atau hapus filter pencarian."
+                }
+              />
+            ) : (
+              <div className="table-scroll-x">
+                <table style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Nama</th>
+                      <th style={thStyle}>Tanggal</th>
+                      <th style={thStyle}>Tujuan</th>
+                      <th style={thStyle}>Alasan</th>
+                      <th style={thStyle}>Keluar</th>
+                      <th style={thStyle}>Target Kembali</th>
+                      <th style={thStyle}>Jam Kembali</th>
+                      <th style={thStyle}>Catatan</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((p) => (
+                      <tr key={p.id}>
+                        <td style={{ ...tdStyle, fontWeight: 600 }}>{p.nama}</td>
+                        <td style={tdStyle}>{p.tanggal}</td>
+                        <td style={tdStyle}>{p.tujuan || "—"}</td>
+                        <td style={tdStyle}>{p.alasan || "—"}</td>
+                        <td style={tdStyle}>{p.jam_keluar}</td>
+                        <td style={tdStyle}>{p.tanggal_kembali || "—"}</td>
+                        <td style={tdStyle}>{p.jam_kembali || "—"}</td>
+                        <td style={tdStyle}>{p.catatan || "—"}</td>
+                        <td style={tdStyle}>
+                          <Badge variant={perizinanBadgeVariant(p.status)}>{p.status}</Badge>
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={actionBarStyle}>
+                            <Button variant="outline" size="sm" onClick={() => editPerizinan(p)}>
+                              Edit
+                            </Button>
+                            <Button variant="danger" size="sm" onClick={() => deletePerizinan(p.id)}>
+                              Hapus
+                            </Button>
+                            {p.status === "keluar" && (
+                              <Button variant="primary" size="sm" onClick={() => kembali(p.id)}>
+                                Kembali
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </DataTableCard>
         </div>
-
-        {/* TABLE */}
-
-        <input
-
-  type="text"
-
-  placeholder="Cari Nama Santri..."
-
-  value={search}
-
-  onChange={(e)=>
-
-    setSearch(
-
-      e.target.value
-
-    )
-
-  }
-
-  style={{
-
-    padding:"10px",
-
-    width:"300px",
-
-    marginBottom:"15px"
-
-  }}
-
-/>
-
-        <table
-
-          border="1"
-
-          cellPadding="10"
-
-          width="100%"
-
-        >
-
-          <thead>
-
-            <tr>
-
-<th>Nama</th>
-
-<th>Tanggal</th>
-
-<th>Tujuan</th>
-
-<th>Alasan</th>
-
-<th>Keluar</th>
-
-<th>Target Kembali</th>
-
-<th>Jam Kembali</th>
-
-<th>Catatan</th>
-
-<th>Status</th>
-
-<th>Aksi</th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {
-
-              filtered.map((p) => (
-
-                <tr key={p.id}>
-
-<td>{p.nama}</td>
-
-<td>{p.tanggal}</td>
-
-<td>{p.tujuan || "-"}</td>
-
-<td>{p.alasan || "-"}</td>
-
-<td>{p.jam_keluar}</td>
-
-<td>{p.tanggal_kembali || "-"}</td>
-
-<td>{p.jam_kembali || "-"}</td>
-
-<td>{p.catatan || "-"}</td>
-
-<td>{p.status}</td>
-
-                 <td>
-
-  <button
-
-    onClick={()=>
-
-      editPerizinan(p)
-
-    }
-
-  >
-
-    Edit
-
-  </button>
-
-  {" "}
-
-  <button
-
-    onClick={()=>
-
-      deletePerizinan(
-
-        p.id
-
-      )
-
-    }
-
-  >
-
-    Hapus
-
-  </button>
-
-  {" "}
-
-  {
-
-    p.status ===
-    "keluar"
-
-    && (
-
-      <button
-
-        onClick={() =>
-
-          kembali(
-            p.id
-          )
-
-        }
-
-      >
-
-        Kembali
-
-      </button>
-
-    )
-
-  }
-
-</td>
-
-                </tr>
-
-              ))
-
-            }
-
-          </tbody>
-
-        </table>
-
       </div>
-
-    </div>
-
+    </AppShell>
   );
-
 }
 
 export default PerizinanPage;

@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
-import Sidebar from "../components/Sidebar";
+import AppShell from "../layouts/AppShell";
 import Modal from "../components/Modal";
+import Badge from "../components/ui/Badge";
+import Button, { actionBarStyle } from "../components/ui/Button";
+import DataTableCard from "../components/ui/DataTableCard";
+import TableToolbar from "../components/ui/TableToolbar";
+import SearchInput from "../components/ui/SearchInput";
+import EmptyState from "../components/ui/EmptyState";
 import { hasPermission } from "../utils/hasPermission";
-
 const FORM_INIT = {
   nama: "",
   username: "",
@@ -12,6 +17,47 @@ const FORM_INIT = {
   status: "Aktif",
 };
 
+const thStyle = {
+  padding: "11px 14px",
+  textAlign: "left",
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  borderBottom: "1px solid var(--border)",
+  background: "var(--background)",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle = {
+  padding: "12px 14px",
+  fontSize: "14px",
+  color: "var(--text-primary)",
+  verticalAlign: "middle",
+  borderBottom: "1px solid #F1F5F9",
+};
+
+function LegacyPageStyles() {
+  return (
+    <style>{`
+      .legacy-page {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .table-scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+        min-width: 0;
+      }
+      .table-scroll-x > table {
+        width: max-content;
+        min-width: 100%;
+      }
+    `}</style>
+  );
+}
 function UsersPage() {
   const [users, setUsers]       = useState([]);
   const [roles, setRoles]       = useState([]);
@@ -179,104 +225,107 @@ function UsersPage() {
   };
 
   return (
-    <div style={{ display: "flex", background: "#f5f7fb", minHeight: "100vh" }}>
-      <Sidebar />
+    <AppShell
+      title="Manajemen User"
+      description="Kelola akun admin dan hak akses login"
+      breadcrumb="Sistem / Manajemen User"
+    >
+      <LegacyPageStyles />
+      {error && (
+        <div style={bannerError}>{error}</div>
+      )}
+      {success && (
+        <div style={bannerSuccess}>{success}</div>
+      )}
 
-      <div style={{ marginLeft: "240px", width: "calc(100% - 240px)", padding: "28px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
-          Manajemen User
-        </h1>
-        <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 24px" }}>
-          Kelola akun admin dan hak akses login
-        </p>
+      <div className="legacy-page">
+        <DataTableCard
+          title="Daftar User"
+          subtitle="Kelola akun admin dan hak akses login"
+          actions={
+            <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+              {filtered.length} user
+            </span>
+          }
+        >
+          <TableToolbar
+            search={
+              <SearchInput
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama, username, atau role..."
+              />
+            }
+            actions={
+              hasPermission("user.create") ? (
+                <Button type="button" variant="primary" onClick={openAdd}>
+                  + Tambah User
+                </Button>
+              ) : null
+            }
+          />
 
-        {error && (
-          <div style={bannerError}>{error}</div>
-        )}
-        {success && (
-          <div style={bannerSuccess}>{success}</div>
-        )}
-
-        <div style={cardStyle}>
-          <div style={toolbarStyle}>
-            <input
-              type="text"
-              placeholder="Cari nama, username, atau role..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={searchStyle}
+          {loading ? (
+            <EmptyState title="Memuat data..." description="Mohon tunggu sebentar." />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              title={search ? "Tidak ada hasil pencarian" : "Belum ada data user"}
+              description={
+                search
+                  ? "Coba kata kunci lain atau hapus filter pencarian."
+                  : "Tambahkan user pertama untuk memulai."
+              }
             />
-            {hasPermission("user.create") && (
-              <button type="button" onClick={openAdd} style={btnPrimary}>
-                + Tambah User
-              </button>
-            )}
-          </div>
-
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={thStyle}>Nama</th>
-                  <th style={thStyle}>Username</th>
-                  <th style={thStyle}>Role</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Tanggal Dibuat</th>
-                  <th style={thStyle}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
+          ) : (
+            <div className="table-scroll-x">
+              <table style={{ borderCollapse: "collapse" }}>
+                <thead>
                   <tr>
-                    <td colSpan={6} style={emptyStyle}>Memuat data...</td>
+                    <th style={thStyle}>Nama</th>
+                    <th style={thStyle}>Username</th>
+                    <th style={thStyle}>Role</th>
+                    <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Tanggal Dibuat</th>
+                    <th style={thStyle}>Aksi</th>
                   </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={emptyStyle}>
-                      {search ? "Tidak ada user yang cocok." : "Belum ada data user."}
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((u) => (
-                    <tr key={u.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                </thead>
+                <tbody>
+                  {filtered.map((u) => (
+                    <tr key={u.id}>
                       <td style={{ ...tdStyle, fontWeight: 600 }}>{u.nama}</td>
                       <td style={tdStyle}>{u.username}</td>
                       <td style={tdStyle}>{u.role_label || u.role}</td>
                       <td style={tdStyle}>
-                        <StatusBadge status={u.status || "Aktif"} />
+                        <Badge variant={u.status === "Nonaktif" ? "neutral" : "success"}>
+                          {u.status || "Aktif"}
+                        </Badge>
                       </td>
                       <td style={tdStyle}>{formatDate(u.created_at)}</td>
                       <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                         {hasPermission("user.update") && (
-                          <>
-                            <button type="button" style={btnEdit} onClick={() => openEdit(u)}>
+                          <div style={actionBarStyle}>
+                            <Button type="button" variant="outline" size="sm" onClick={() => openEdit(u)}>
                               Edit
-                            </button>
-                            <button type="button" style={btnWarn} onClick={() => openResetPassword(u)}>
+                            </Button>
+                            <Button type="button" variant="primary" size="sm" onClick={() => openResetPassword(u)}>
                               Reset PIN
-                            </button>
+                            </Button>
                             {String(currentUser.id) !== String(u.id) && (
-                              <button type="button" style={btnToggle} onClick={() => openToggleStatus(u)}>
+                              <Button type="button" variant="outline" size="sm" onClick={() => openToggleStatus(u)}>
                                 {u.status === "Nonaktif" ? "Aktifkan" : "Nonaktifkan"}
-                              </button>
+                              </Button>
                             )}
-                          </>
+                          </div>
                         )}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <p style={{ margin: "12px 0 0", color: "#94a3b8", fontSize: "13px" }}>
-            Menampilkan {filtered.length} dari {users.length} user
-          </p>
-        </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DataTableCard>
       </div>
-
-      {/* MODAL TAMBAH / EDIT */}
       <Modal
         open={formModal}
         title={editId ? "Edit User" : "Tambah User Baru"}
@@ -330,18 +379,17 @@ function UsersPage() {
               <option value="Nonaktif">Nonaktif</option>
             </select>
           </Field>
-          <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-            <button type="button" style={btnPrimary} onClick={handleSave}>
+          <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+            <Button type="button" variant="primary" onClick={handleSave}>
               Simpan
-            </button>
-            <button type="button" style={btnSecondary} onClick={() => setFormModal(false)}>
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setFormModal(false)}>
               Batal
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
 
-      {/* MODAL RESET PASSWORD */}
       <Modal
         open={pwdModal}
         title={`Reset Password — ${pwdUser?.username || ""}`}
@@ -357,17 +405,16 @@ function UsersPage() {
             placeholder="Minimal 4 karakter"
           />
         </Field>
-        <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-          <button type="button" style={btnPrimary} onClick={handleResetPassword}>
+        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+          <Button type="button" variant="primary" onClick={handleResetPassword}>
             Reset Password
-          </button>
-          <button type="button" style={btnSecondary} onClick={() => setPwdModal(false)}>
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setPwdModal(false)}>
             Batal
-          </button>
+          </Button>
         </div>
       </Modal>
 
-      {/* MODAL KONFIRMASI STATUS */}
       <Modal
         open={statusModal}
         title="Ubah Status User"
@@ -379,16 +426,16 @@ function UsersPage() {
             ? `Aktifkan kembali user "${statusTarget?.username}"?`
             : `Nonaktifkan user "${statusTarget?.username}"? User tidak akan bisa login.`}
         </p>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button type="button" style={btnPrimary} onClick={handleToggleStatus}>
+        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+          <Button type="button" variant="primary" onClick={handleToggleStatus}>
             Ya, Lanjutkan
-          </button>
-          <button type="button" style={btnSecondary} onClick={() => setStatusModal(false)}>
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setStatusModal(false)}>
             Batal
-          </button>
+          </Button>
         </div>
       </Modal>
-    </div>
+    </AppShell>
   );
 }
 
@@ -404,73 +451,6 @@ function Field({ label, required, children }) {
   );
 }
 
-function StatusBadge({ status }) {
-  const aktif = status === "Aktif";
-  return (
-    <span
-      style={{
-        padding: "3px 12px",
-        borderRadius: "20px",
-        fontSize: "12px",
-        fontWeight: 600,
-        background: aktif ? "#dcfce7" : "#f1f5f9",
-        color: aktif ? "#15803d" : "#64748b",
-      }}
-    >
-      {status || "Aktif"}
-    </span>
-  );
-}
-
-const cardStyle = {
-  background: "white",
-  borderRadius: "12px",
-  padding: "20px",
-  boxShadow: "0 1px 4px rgba(0,0,0,.06)",
-};
-
-const toolbarStyle = {
-  display: "flex",
-  gap: "10px",
-  marginBottom: "16px",
-  alignItems: "center",
-  flexWrap: "wrap",
-};
-
-const searchStyle = {
-  padding: "9px 14px",
-  borderRadius: "8px",
-  border: "1px solid #d1d5db",
-  fontSize: "14px",
-  width: "320px",
-  outline: "none",
-};
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "12px",
-  fontWeight: 600,
-  color: "#64748b",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-  borderBottom: "1px solid #e2e8f0",
-};
-
-const tdStyle = {
-  padding: "11px 14px",
-  fontSize: "14px",
-  color: "#1e293b",
-  verticalAlign: "middle",
-};
-
-const emptyStyle = {
-  textAlign: "center",
-  padding: "48px",
-  color: "#94a3b8",
-  fontSize: "14px",
-};
-
 const labelStyle = {
   display: "block",
   fontSize: "13px",
@@ -481,6 +461,7 @@ const labelStyle = {
 
 const inputStyle = {
   width: "100%",
+  maxWidth: "100%",
   padding: "9px 10px",
   borderRadius: "8px",
   border: "1px solid #d1d5db",
@@ -488,63 +469,6 @@ const inputStyle = {
   fontSize: "14px",
   outline: "none",
 };
-
-const btnPrimary = {
-  padding: "9px 20px",
-  background: "#0F766E",
-  color: "white",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: 600,
-  fontSize: "14px",
-};
-
-const btnSecondary = {
-  padding: "9px 20px",
-  background: "#f1f5f9",
-  color: "#475569",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontSize: "14px",
-};
-
-const btnEdit = {
-  padding: "4px 12px",
-  background: "#eff6ff",
-  color: "#2563eb",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: 500,
-  fontSize: "12px",
-  marginRight: "5px",
-};
-
-const btnWarn = {
-  padding: "4px 12px",
-  background: "#fffbeb",
-  color: "#d97706",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: 500,
-  fontSize: "12px",
-  marginRight: "5px",
-};
-
-const btnToggle = {
-  padding: "4px 12px",
-  background: "#fef2f2",
-  color: "#dc2626",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: 500,
-  fontSize: "12px",
-};
-
 const bannerError = {
   background: "#fef2f2",
   color: "#dc2626",

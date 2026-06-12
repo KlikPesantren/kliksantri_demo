@@ -1,3 +1,5 @@
+import { FaBars } from "react-icons/fa";
+
 function getStoredUser() {
   try {
     return JSON.parse(localStorage.getItem("user")) || null;
@@ -31,20 +33,33 @@ function formatRole(role = "") {
     .join(" ");
 }
 
-function PageHeader({ title, description, breadcrumb }) {
+function PageHeader({ title, description, breadcrumb, onMenuClick }) {
   const user = getStoredUser();
   const userName = user?.nama || user?.username || "Admin Sistem";
   const role = formatRole(user?.role);
 
   return (
-    <header style={headerStyle}>
-      <div style={leftStyle}>
-        {breadcrumb && <div style={breadcrumbStyle}>{breadcrumb}</div>}
-        {title && <h1 style={titleStyle}>{title}</h1>}
-        {description && <p style={descriptionStyle}>{description}</p>}
+    <header className="page-header">
+      <div className="page-header-leading">
+        {onMenuClick && (
+          <button
+            type="button"
+            className="page-header-menu-btn"
+            aria-label="Buka menu navigasi"
+            onClick={onMenuClick}
+          >
+            <FaBars size={16} />
+          </button>
+        )}
+
+        <div className="page-header-copy">
+          {breadcrumb && <div style={breadcrumbStyle}>{breadcrumb}</div>}
+          {title && <h1 style={titleStyle}>{title}</h1>}
+          {description && <p style={descriptionStyle}>{description}</p>}
+        </div>
       </div>
 
-      <div style={userStyle}>
+      <div className="page-header-user">
         <div style={avatarStyle}>{getInitials(userName)}</div>
         <div style={{ minWidth: 0 }}>
           <div style={userNameStyle}>{userName}</div>
@@ -54,18 +69,6 @@ function PageHeader({ title, description, breadcrumb }) {
     </header>
   );
 }
-
-const headerStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "var(--space-6)",
-  marginBottom: "var(--space-6)",
-};
-
-const leftStyle = {
-  minWidth: 0,
-};
 
 const breadcrumbStyle = {
   color: "var(--text-secondary)",
@@ -89,13 +92,6 @@ const descriptionStyle = {
   lineHeight: 1.5,
 };
 
-const userStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--space-3)",
-  flexShrink: 0,
-};
-
 const avatarStyle = {
   width: "40px",
   height: "40px",
@@ -107,6 +103,7 @@ const avatarStyle = {
   justifyContent: "center",
   fontSize: "13px",
   fontWeight: 700,
+  flexShrink: 0,
 };
 
 const userNameStyle = {

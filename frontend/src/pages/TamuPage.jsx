@@ -1,790 +1,442 @@
-import {
-  useEffect,
-  useState
-} from "react";
+import { useEffect, useState } from "react";
+import api from "../services/api";
+import AppShell from "../layouts/AppShell";
+import Card from "../components/ui/Card";
+import SectionHeading from "../components/ui/SectionHeading";
+import KpiCard from "../components/ui/KpiCard";
+import KpiGrid from "../components/ui/KpiGrid";
+import Badge from "../components/ui/Badge";
+import Button, { actionBarStyle } from "../components/ui/Button";
+import DataTableCard from "../components/ui/DataTableCard";
+import TableToolbar from "../components/ui/TableToolbar";
+import SearchInput from "../components/ui/SearchInput";
+import EmptyState from "../components/ui/EmptyState";
+import { exportExcel } from "../utils/exportExcel";
 
-import api
-from "../services/api";
+const formGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "var(--space-4)",
+};
 
-import Sidebar
-from "../components/Sidebar";
+const spanFull = { gridColumn: "1 / -1" };
 
-import {
-  exportExcel
-} from "../utils/exportExcel";
+const thStyle = {
+  padding: "11px 14px",
+  textAlign: "left",
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  borderBottom: "1px solid var(--border)",
+  background: "var(--background)",
+  whiteSpace: "nowrap",
+};
 
+const tdStyle = {
+  padding: "12px 14px",
+  fontSize: "14px",
+  color: "var(--text-primary)",
+  verticalAlign: "middle",
+  borderBottom: "1px solid #F1F5F9",
+};
+
+const fieldStyle = {
+  width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+};
+
+function LegacyPageStyles() {
+  return (
+    <style>{`
+      .legacy-page {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .table-scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+        min-width: 0;
+      }
+      .table-scroll-x > table {
+        width: max-content;
+        min-width: 100%;
+      }
+      .legacy-form-grid input,
+      .legacy-form-grid select,
+      .legacy-form-grid textarea {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+    `}</style>
+  );
+}
 
 function TamuPage() {
-
-const [tamu,setTamu] =
-useState([]);
-
-const [editId,setEditId] =
-useState(null);
-
-const [searchNama,setSearchNama] =
-useState("");
-
-const [searchTujuan,setSearchTujuan] =
-useState("");
-
-const [searchInstansi,setSearchInstansi] =
-useState("");
-
-const [filterTanggal,setFilterTanggal] =
-useState("");
-
-const [form,setForm] =
-useState({
-
-nama_tamu:"",
-no_hp:"",
-alamat:"",
-instansi:"",
-tujuan:"",
-bertemu_dengan:"",
-keperluan:"",
-jumlah_orang:1,
-petugas:""
-
-});
-
-const getTamu =
-async () => {
-
-try {
-
-const response =
-await api.get("/tamu");
-
-setTamu(
-response.data.data || []
-);
-
-}
-
-catch(err){
-
-console.log(err);
-
-}
-
-};
-
-useEffect(()=>{
-
-getTamu();
-
-},[]);
-
-const simpanTamu =
-async () => {
-
-try {
-
-if(editId){
-
-await api.put(
-
-`/tamu/${editId}`,
-
-form
-
-);
-
-}
-else{
-
-await api.post(
-
-"/tamu",
-
-form
-
-);
-
-}
-
-alert(
-"Data berhasil disimpan"
-);
-
-setEditId(null);
-
-setForm({
-
-nama_tamu:"",
-no_hp:"",
-alamat:"",
-instansi:"",
-tujuan:"",
-bertemu_dengan:"",
-keperluan:"",
-jumlah_orang:1,
-petugas:""
-
-});
-
-getTamu();
-
-}
-catch(err){
-
-console.log(err);
-
-alert("Gagal");
-
-}
-
-};
-
-const editTamu =
-(item)=>{
-
-setEditId(item.id);
-
-setForm({
-
-nama_tamu:
-item.nama_tamu || "",
-
-no_hp:
-item.no_hp || "",
-
-alamat:
-item.alamat || "",
-
-instansi:
-item.instansi || "",
-
-tujuan:
-item.tujuan || "",
-
-bertemu_dengan:
-item.bertemu_dengan || "",
-
-keperluan:
-item.keperluan || "",
-
-jumlah_orang:
-item.jumlah_orang || 1,
-
-petugas:
-item.petugas || ""
-
-});
-
-};
-
-const hapusTamu =
-async(id)=>{
-
-if(
-!window.confirm(
-"Hapus data?"
-)
-)return;
-
-try{
-
-await api.delete(
-`/tamu/${id}`
-);
-
-getTamu();
-
-}
-catch(err){
-
-console.log(err);
-
-}
-
-};
-
-const keluarTamu =
-async(id)=>{
-
-if(
-!window.confirm(
-"Tamu sudah pulang?"
-)
-)return;
-
-try{
-
-await api.patch(
-`/tamu/${id}/keluar`
-);
-
-await getTamu();
-
-}
-catch(err){
-
-console.log(err);
-
-}
-
-};
-
-const filtered = tamu.filter((item) => {
-
-  console.log("TAMU", tamu);
-  const nama =
-    (item.nama_tamu || "")
+  const [tamu, setTamu] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [searchNama, setSearchNama] = useState("");
+  const [searchTujuan, setSearchTujuan] = useState("");
+  const [searchInstansi, setSearchInstansi] = useState("");
+  const [filterTanggal, setFilterTanggal] = useState("");
+  const [form, setForm] = useState({
+    nama_tamu: "",
+    no_hp: "",
+    alamat: "",
+    instansi: "",
+    tujuan: "",
+    bertemu_dengan: "",
+    keperluan: "",
+    jumlah_orang: 1,
+    petugas: "",
+  });
+
+  const getTamu = async () => {
+    try {
+      const response = await api.get("/tamu");
+      setTamu(response.data.data || []);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  useEffect(() => {
+    getTamu();
+  }, []);
+
+  const simpanTamu = async () => {
+    try {
+      if (editId) {
+        await api.put(`/tamu/${editId}`, form);
+      } else {
+        await api.post("/tamu", form);
+      }
+
+      alert("Data berhasil disimpan");
+
+      setEditId(null);
+      setForm({
+        nama_tamu: "",
+        no_hp: "",
+        alamat: "",
+        instansi: "",
+        tujuan: "",
+        bertemu_dengan: "",
+        keperluan: "",
+        jumlah_orang: 1,
+        petugas: "",
+      });
+
+      getTamu();
+    } catch (err) {
+      console.log(err);
+      alert("Gagal");
+    }
+  };
+
+  const editTamu = (item) => {
+    setEditId(item.id);
+    setForm({
+      nama_tamu: item.nama_tamu || "",
+      no_hp: item.no_hp || "",
+      alamat: item.alamat || "",
+      instansi: item.instansi || "",
+      tujuan: item.tujuan || "",
+      bertemu_dengan: item.bertemu_dengan || "",
+      keperluan: item.keperluan || "",
+      jumlah_orang: item.jumlah_orang || 1,
+      petugas: item.petugas || "",
+    });
+  };
+
+  const hapusTamu = async (id) => {
+    if (!window.confirm("Hapus data?")) return;
+
+    try {
+      await api.delete(`/tamu/${id}`);
+      getTamu();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const keluarTamu = async (id) => {
+    if (!window.confirm("Tamu sudah pulang?")) return;
+
+    try {
+      await api.patch(`/tamu/${id}/keluar`);
+      await getTamu();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const filtered = tamu.filter((item) => {
+    console.log("TAMU", tamu);
+    const nama = (item.nama_tamu || "")
       .toLowerCase()
-      .includes(
-        searchNama.toLowerCase()
-      );
+      .includes(searchNama.toLowerCase());
 
-  const tujuan =
-    (item.tujuan || "")
+    const tujuan = (item.tujuan || "")
       .toLowerCase()
-      .includes(
-        searchTujuan.toLowerCase()
-      );
+      .includes(searchTujuan.toLowerCase());
 
-  const instansi =
-    (item.instansi || "")
+    const instansi = (item.instansi || "")
       .toLowerCase()
-      .includes(
-        searchInstansi.toLowerCase()
-      );
+      .includes(searchInstansi.toLowerCase());
 
-  const tanggal =
+    const tanggal =
+      !filterTanggal
+        ? true
+        : item.tanggal?.split("T")[0] === filterTanggal;
 
-    !filterTanggal
+    return nama && tujuan && instansi && tanggal;
+  });
 
-      ? true
+  const today = new Date().toLocaleDateString("sv-SE");
 
-      :
+  const totalHariIni = tamu.filter(
+    (t) =>
+      new Date(t.tanggal).toLocaleDateString("sv-SE") === today,
+  ).length;
 
-      item.tanggal
-        ?.split("T")[0]
+  const masihDidalam = tamu.filter((t) => t.status === "Masuk").length;
+  const sudahKeluar = tamu.filter((t) => t.status === "Keluar").length;
 
-      ===
+  const bulanIni = new Date().getMonth() + 1;
+  const tahunIni = new Date().getFullYear();
 
-      filterTanggal;
+  const totalBulanIni = tamu.filter((t) => {
+    const d = new Date(t.tanggal);
+    return d.getMonth() + 1 === bulanIni && d.getFullYear() === tahunIni;
+  }).length;
+
+  const exportData = () => {
+    exportExcel(
+      filtered.map((item) => ({
+        Tanggal: new Date(item.tanggal).toLocaleDateString("id-ID"),
+        "Jam Masuk": item.jam_masuk,
+        "Jam Keluar": item.jam_keluar || "-",
+        "Nama Tamu": item.nama_tamu,
+        Instansi: item.instansi,
+        Tujuan: item.tujuan,
+        "Bertemu Dengan": item.bertemu_dengan,
+        "Jumlah Orang": item.jumlah_orang,
+        Status: item.status,
+        Petugas: item.petugas,
+      })),
+      "DaftarTamu",
+    );
+  };
 
   return (
-    nama &&
-    tujuan &&
-    instansi &&
-    tanggal
+    <AppShell title="Daftar Hadir Tamu" breadcrumb="Keamanan / Daftar Hadir Tamu">
+      <LegacyPageStyles />
+      <div className="legacy-page">
+        <KpiGrid minColumnWidth={200} gap={16}>
+          <KpiCard layout="metric" label="Tamu Hari Ini" value={totalHariIni} accent="teal" />
+          <KpiCard layout="metric" label="Masih Di Dalam" value={masihDidalam} accent="success" />
+          <KpiCard layout="metric" label="Sudah Keluar" value={sudahKeluar} accent="danger" />
+          <KpiCard layout="metric" label="Bulan Ini" value={totalBulanIni} accent="teal" />
+        </KpiGrid>
+
+        <div style={{ marginTop: "var(--space-6)" }}>
+          <Card padding="md" shadow="card" border={false} radius="xl">
+            <SectionHeading variant="eyebrow" spacing="first">
+              Input Tamu
+            </SectionHeading>
+
+            <div className="legacy-form-grid" style={{ ...formGridStyle, marginTop: "var(--space-4)" }}>
+              <input
+                style={fieldStyle}
+                placeholder="Nama Tamu"
+                value={form.nama_tamu}
+                onChange={(e) => setForm({ ...form, nama_tamu: e.target.value })}
+              />
+
+              <input
+                style={fieldStyle}
+                placeholder="Nomor HP"
+                value={form.no_hp}
+                onChange={(e) => setForm({ ...form, no_hp: e.target.value })}
+              />
+
+              <input
+                style={fieldStyle}
+                placeholder="Instansi"
+                value={form.instansi}
+                onChange={(e) => setForm({ ...form, instansi: e.target.value })}
+              />
+
+              <input
+                style={fieldStyle}
+                placeholder="Tujuan"
+                value={form.tujuan}
+                onChange={(e) => setForm({ ...form, tujuan: e.target.value })}
+              />
+
+              <input
+                style={fieldStyle}
+                placeholder="Bertemu Dengan"
+                value={form.bertemu_dengan}
+                onChange={(e) => setForm({ ...form, bertemu_dengan: e.target.value })}
+              />
+
+              <input
+                style={fieldStyle}
+                type="number"
+                placeholder="Jumlah Orang"
+                value={form.jumlah_orang}
+                onChange={(e) => setForm({ ...form, jumlah_orang: e.target.value })}
+              />
+
+              <input
+                style={fieldStyle}
+                placeholder="Petugas"
+                value={form.petugas}
+                onChange={(e) => setForm({ ...form, petugas: e.target.value })}
+              />
+
+              <textarea
+                style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
+                placeholder="Alamat"
+                value={form.alamat}
+                onChange={(e) => setForm({ ...form, alamat: e.target.value })}
+              />
+
+              <textarea
+                style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
+                placeholder="Keperluan"
+                value={form.keperluan}
+                onChange={(e) => setForm({ ...form, keperluan: e.target.value })}
+              />
+            </div>
+
+            <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+              <Button variant="primary" onClick={simpanTamu}>
+                Simpan
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        <div style={{ marginTop: "var(--space-6)" }}>
+          <DataTableCard
+            title="Daftar Tamu"
+            subtitle="Rekap kunjungan tamu pesantren"
+            actions={
+              <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+                {tamu.length} tamu
+              </span>
+            }
+          >
+            <div
+              className="legacy-form-grid"
+              style={{ ...formGridStyle, marginBottom: "var(--space-4)" }}
+            >
+              <SearchInput
+                value={searchNama}
+                onChange={(e) => setSearchNama(e.target.value)}
+                placeholder="Cari nama..."
+              />
+              <SearchInput
+                value={searchTujuan}
+                onChange={(e) => setSearchTujuan(e.target.value)}
+                placeholder="Cari tujuan..."
+              />
+              <SearchInput
+                value={searchInstansi}
+                onChange={(e) => setSearchInstansi(e.target.value)}
+                placeholder="Cari instansi..."
+              />
+              <input
+                style={fieldStyle}
+                type="date"
+                value={filterTanggal}
+                onChange={(e) => setFilterTanggal(e.target.value)}
+              />
+            </div>
+
+            <TableToolbar
+              actions={
+                <Button variant="success" onClick={exportData}>
+                  Export Excel
+                </Button>
+              }
+            />
+
+            {tamu.length === 0 ? (
+              <EmptyState
+                title="Belum ada tamu"
+                description="Input tamu pertama untuk memulai."
+              />
+            ) : (
+              <div className="table-scroll-x">
+                <table style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Tanggal</th>
+                      <th style={thStyle}>Jam Masuk</th>
+                      <th style={thStyle}>Jam Keluar</th>
+                      <th style={thStyle}>Nama</th>
+                      <th style={thStyle}>Instansi</th>
+                      <th style={thStyle}>Tujuan</th>
+                      <th style={thStyle}>Bertemu</th>
+                      <th style={thStyle}>Jumlah</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Petugas</th>
+                      <th style={thStyle}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tamu.map((item) => (
+                      <tr key={item.id}>
+                        <td style={tdStyle}>
+                          {new Date(item.tanggal).toLocaleDateString("id-ID")}
+                        </td>
+                        <td style={tdStyle}>{item.jam_masuk}</td>
+                        <td style={tdStyle}>{item.jam_keluar || "—"}</td>
+                        <td style={{ ...tdStyle, fontWeight: 600 }}>{item.nama_tamu}</td>
+                        <td style={tdStyle}>{item.instansi}</td>
+                        <td style={tdStyle}>{item.tujuan}</td>
+                        <td style={tdStyle}>{item.bertemu_dengan}</td>
+                        <td style={tdStyle}>{item.jumlah_orang}</td>
+                        <td style={tdStyle}>
+                          <Badge variant={item.status === "Masuk" ? "success" : "danger"}>
+                            {item.status}
+                          </Badge>
+                        </td>
+                        <td style={tdStyle}>{item.petugas}</td>
+                        <td style={tdStyle}>
+                          <div style={actionBarStyle}>
+                            <Button variant="outline" size="sm" onClick={() => editTamu(item)}>
+                              Edit
+                            </Button>
+                            {item.status === "Masuk" && (
+                              <Button variant="primary" size="sm" onClick={() => keluarTamu(item.id)}>
+                                Keluar
+                              </Button>
+                            )}
+                            <Button variant="danger" size="sm" onClick={() => hapusTamu(item.id)}>
+                              Hapus
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </DataTableCard>
+        </div>
+      </div>
+    </AppShell>
   );
-
-});
-
-const today =
-
-new Date()
-.toLocaleDateString(
-"sv-SE"
-);
-
-const totalHariIni =
-
-tamu.filter(
-
-(t)=>
-
-new Date(
-t.tanggal
-)
-.toLocaleDateString(
-"sv-SE"
-)
-
-=== today
-
-).length;
-
-const masihDidalam =
-
-tamu.filter(
-
-(t)=>
-
-t.status ===
-"Masuk"
-
-).length;
-
-const sudahKeluar =
-
-tamu.filter(
-
-(t)=>
-
-t.status ===
-"Keluar"
-
-).length;
-
-const bulanIni =
-
-new Date()
-.getMonth()+1;
-
-const tahunIni =
-
-new Date()
-.getFullYear();
-
-const totalBulanIni =
-
-tamu.filter((t)=>{
-
-const d =
-new Date(t.tanggal);
-
-return (
-
-d.getMonth()+1
-
-===
-
-bulanIni
-
-&&
-
-d.getFullYear()
-
-===
-
-tahunIni
-
-);
-
-}).length;
-
-const exportData = () => {
-
-exportExcel(
-
-filtered.map((item)=>({
-
-Tanggal:
-
-new Date(
-item.tanggal
-)
-.toLocaleDateString(
-"id-ID"
-),
-
-"Jam Masuk":
-item.jam_masuk,
-
-"Jam Keluar":
-item.jam_keluar || "-",
-
-"Nama Tamu":
-item.nama_tamu,
-
-Instansi:
-item.instansi,
-
-Tujuan:
-item.tujuan,
-
-"Bertemu Dengan":
-item.bertemu_dengan,
-
-"Jumlah Orang":
-item.jumlah_orang,
-
-Status:
-item.status,
-
-Petugas:
-item.petugas
-
-})),
-
-"DaftarTamu"
-
-);
-
-};
-
-return(
-
-<div
-style={{
-display:"flex",
-background:"#f5f7fb",
-minHeight:"100vh"
-}}
->
-
-<Sidebar/>
-
-<div
-style={{
-marginLeft:"240px",
-width:"calc(100% - 240px)",
-padding:"20px"
-}}
->
-
-<h1>
-Daftar Hadir Tamu
-</h1>
-
-<br/>
-
-<div
-style={{
-display:"grid",
-gridTemplateColumns:
-"repeat(4,1fr)",
-gap:"15px",
-marginBottom:"20px"
-}}
->
-
-<div className="card">
-<h3>Tamu Hari Ini</h3>
-<h1>{totalHariIni}</h1>
-</div>
-
-<div className="card">
-<h3>Masih Di Dalam</h3>
-<h1>{masihDidalam}</h1>
-</div>
-
-<div className="card">
-<h3>Sudah Keluar</h3>
-<h1>{sudahKeluar}</h1>
-</div>
-
-<div className="card">
-<h3>Bulan Ini</h3>
-<h1>{totalBulanIni}</h1>
-</div>
-
-</div>
-
-<div
-style={{
-background:"#fff",
-padding:"20px",
-borderRadius:"12px",
-marginBottom:"20px"
-}}
->
-
-<input
-placeholder="Cari Nama"
-value={searchNama}
-onChange={(e)=>
-setSearchNama(
-e.target.value
-)}
-/>
-
-<input
-placeholder="Cari Tujuan"
-value={searchTujuan}
-onChange={(e)=>
-setSearchTujuan(
-e.target.value
-)}
-/>
-
-<input
-placeholder="Cari Instansi"
-value={searchInstansi}
-onChange={(e)=>
-setSearchInstansi(
-e.target.value
-)}
-/>
-
-<input
-type="date"
-value={filterTanggal}
-onChange={(e)=>
-setFilterTanggal(
-e.target.value
-)}
-/>
-
-<button
-onClick={exportData}
->
-
-Export Excel
-
-</button>
-
-</div>
-
-<div
-style={{
-background:"#fff",
-padding:"20px",
-borderRadius:"12px",
-marginBottom:"20px"
-}}
->
-
-<h3>Input Tamu</h3>
-
-<input
-placeholder="Nama Tamu"
-value={form.nama_tamu}
-onChange={(e)=>
-setForm({
-...form,
-nama_tamu:e.target.value
-})
-}
-/>
-
-<input
-placeholder="Nomor HP"
-value={form.no_hp}
-onChange={(e)=>
-setForm({
-...form,
-no_hp:e.target.value
-})
-}
-/>
-
-<textarea
-placeholder="Alamat"
-value={form.alamat}
-onChange={(e)=>
-setForm({
-...form,
-alamat:e.target.value
-})
-}
-/>
-
-<input
-placeholder="Instansi"
-value={form.instansi}
-onChange={(e)=>
-setForm({
-...form,
-instansi:e.target.value
-})
-}
-/>
-
-<input
-placeholder="Tujuan"
-value={form.tujuan}
-onChange={(e)=>
-setForm({
-...form,
-tujuan:e.target.value
-})
-}
-/>
-
-<input
-placeholder="Bertemu Dengan"
-value={form.bertemu_dengan}
-onChange={(e)=>
-setForm({
-...form,
-bertemu_dengan:e.target.value
-})
-}
-/>
-
-<textarea
-placeholder="Keperluan"
-value={form.keperluan}
-onChange={(e)=>
-setForm({
-...form,
-keperluan:e.target.value
-})
-}
-/>
-
-<input
-type="number"
-placeholder="Jumlah Orang"
-value={form.jumlah_orang}
-onChange={(e)=>
-setForm({
-...form,
-jumlah_orang:e.target.value
-})
-}
-/>
-
-<input
-placeholder="Petugas"
-value={form.petugas}
-onChange={(e)=>
-setForm({
-...form,
-petugas:e.target.value
-})
-}
-/>
-
-<button
-onClick={simpanTamu}
->
-
-Simpan
-
-</button>
-
-</div>
-
-<table
-border="1"
-cellPadding="10"
-width="100%"
->
-
-<thead>
-
-<tr>
-
-<th>Tanggal</th>
-<th>Jam Masuk</th>
-<th>Jam Keluar</th>
-<th>Nama</th>
-<th>Instansi</th>
-<th>Tujuan</th>
-<th>Bertemu</th>
-<th>Jumlah</th>
-<th>Status</th>
-<th>Petugas</th>
-<th>Aksi</th>
-
-</tr>
-
-</thead>
-
-<tbody>
-
-{
-tamu.map((item)=>(
-
-<tr key={item.id}>
-
-<td>
-{
-new Date(item.tanggal)
-.toLocaleDateString(
-"id-ID"
-)
-}
-</td>
-
-<td>{item.jam_masuk}</td>
-
-<td>{item.jam_keluar || "-"}</td>
-
-<td>{item.nama_tamu}</td>
-
-<td>{item.instansi}</td>
-
-<td>{item.tujuan}</td>
-
-<td>{item.bertemu_dengan}</td>
-
-<td>{item.jumlah_orang}</td>
-
-<td>
-
-<span
-style={{
-
-padding:"6px 12px",
-
-borderRadius:"20px",
-
-fontWeight:"bold",
-
-color:"white",
-
-background:
-
-item.status === "Masuk"
-
-? "#16A34A"
-
-: "#DC2626"
-
-}}
->
-
-{item.status}
-
-</span>
-
-</td>
-
-<td>{item.petugas}</td>
-
-<td>
-
-<button
-onClick={()=>
-editTamu(item)
-}
->
-Edit
-</button>
-
-{" "}
-
-{
-item.status ===
-"Masuk"
-
-&&
-
-<button
-onClick={()=>
-keluarTamu(item.id)
-}
->
-Keluar
-</button>
-}
-
-{" "}
-
-<button
-onClick={()=>
-hapusTamu(item.id)
-}
->
-Hapus
-</button>
-
-</td>
-
-</tr>
-
-))
-}
-
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-);
-
 }
 
 export default TamuPage;

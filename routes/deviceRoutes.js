@@ -4,6 +4,12 @@ const router = express.Router();
 
 const pool = require("../db");
 
+const authMiddleware =
+  require("../middleware/authMiddleware");
+
+const requirePermission =
+  require("../middleware/requirePermission");
+
 // =====================
 // DEVICE PING
 // =====================
@@ -122,6 +128,13 @@ router.post(
 router.get(
 
   "/",
+
+  authMiddleware,
+
+  requirePermission.requireAnyPermission([
+    "device.view",
+    "rfid.view",
+  ]),
 
   async (req, res) => {
 

@@ -2,32 +2,52 @@
   /* Brand colors */
   --primary: #16A34A;
   --primary-hover: #15803D;
+  --primary-subtle: #DCFCE7;
   --dark: #0F172A;
   --background: #F8FAFC;
   --surface: #FFFFFF;
   --border: #E5E7EB;
 
+  /* Accent — dashboard & RFID */
+  --accent-teal: #14B8A6;
+  --accent-teal-dark: #0F766E;
+  --accent-teal-gradient: linear-gradient(135deg, var(--accent-teal-dark), var(--accent-teal));
+  --accent-width: 5px;
+
   /* Semantic */
   --success: #22C55E;
   --warning: #F59E0B;
   --danger: #EF4444;
+  --info: #2563EB;
+  --info-subtle: #DBEAFE;
+  --neutral-subtle: #F1F5F9;
+
+  /* Chart */
+  --chart-positive: #22C55E;
+  --chart-negative: #EF4444;
 
   /* Text */
   --text-primary: #0F172A;
   --text-secondary: #64748B;
+  --text-muted: #94A3B8;
 
   /* Shadow */
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.10);
   --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.14);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-kpi: 0 2px 12px rgba(0, 0, 0, 0.06);
 
   /* Layout */
   --sidebar-width: 240px;
+  --sidebar-rail-width: 70px;
+  --main-offset: 240px;
 
   /* Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-xl: 20px;
 
   /* Spacing */
   --space-1: 4px;
@@ -43,4 +63,219 @@ body {
   background: var(--background);
   color: var(--dark);
   margin: 0;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   Sprint 66 — Responsive shell foundation
+   Desktop ≥1024: sidebar 240px | Tablet 768–1023: rail 70px | Mobile <768: drawer
+   ============================================================ */
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--background);
+}
+
+.app-shell-main {
+  margin-left: var(--main-offset);
+  width: calc(100% - var(--main-offset));
+  min-height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  min-width: 0;
+  transition: margin-left 0.25s ease, width 0.25s ease;
+}
+
+.app-shell-content {
+  min-width: 0;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+.sidebar-root {
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: #0f172a;
+  border-right: 1px solid rgba(148, 163, 184, 0.12);
+  font-size: 14px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  z-index: 20;
+}
+
+.sidebar-root .sidebar-menu-label,
+.sidebar-root .sidebar-brand-text,
+.sidebar-root .sidebar-group-title,
+.sidebar-root .sidebar-platform,
+.sidebar-root .sidebar-logout-text {
+  /* visible by default (desktop + mobile drawer) */
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.page-header-leading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.page-header-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.page-header-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.page-header-menu-btn:hover {
+  background: var(--neutral-subtle);
+  border-color: #cbd5e1;
+}
+
+.page-header-menu-btn:focus-visible {
+  outline: 2px solid var(--accent-teal);
+  outline-offset: 2px;
+}
+
+.page-header-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* Tablet — icon rail */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --main-offset: var(--sidebar-rail-width);
+  }
+
+  .sidebar-root {
+    width: var(--sidebar-rail-width);
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .sidebar-root .sidebar-brand-text,
+  .sidebar-root .sidebar-menu-label,
+  .sidebar-root .sidebar-group-title,
+  .sidebar-root .sidebar-platform,
+  .sidebar-root .sidebar-logout-text {
+    display: none !important;
+  }
+
+  .sidebar-root .sidebar-brand-wrap {
+    justify-content: center;
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .sidebar-root .sidebar-group-toggle {
+    justify-content: center;
+    width: 100%;
+    margin-left: 0;
+    padding: 6px 0;
+  }
+
+  .sidebar-root .sidebar-menu-link {
+    justify-content: center;
+    padding-left: var(--space-3) !important;
+  }
+
+  .sidebar-root .sidebar-menu-link--nested {
+    padding-left: var(--space-3) !important;
+  }
+
+  .sidebar-root .sidebar-logout-btn {
+    justify-content: center;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+}
+
+/* Mobile — drawer */
+@media (max-width: 767px) {
+  :root {
+    --main-offset: 0px;
+  }
+
+  .app-shell-main {
+    padding: 16px;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 35;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .sidebar-root {
+    width: var(--sidebar-width);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 40;
+  }
+
+  .sidebar-root.sidebar-root--open {
+    transform: translateX(0);
+  }
+
+  .page-header-menu-btn {
+    display: inline-flex;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .page-header-user {
+    align-self: flex-start;
+  }
+}
+
+/* Desktop — explicit offset */
+@media (min-width: 1024px) {
+  :root {
+    --main-offset: var(--sidebar-width);
+  }
 }

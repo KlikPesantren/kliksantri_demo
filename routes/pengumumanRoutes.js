@@ -27,6 +27,7 @@ router.get(
             id,
             judul,
             isi,
+            cover_url,
             prioritas,
             published_at,
             expires_at,
@@ -82,6 +83,7 @@ router.post(
       const {
         judul,
         isi,
+        cover_url,
         prioritas,
         expires_at,
         is_active
@@ -106,17 +108,19 @@ router.post(
           INSERT INTO pengumuman (
             judul,
             isi,
+            cover_url,
             prioritas,
             expires_at,
             is_active
           )
-          VALUES ($1, $2, $3, $4, $5)
+          VALUES ($1, $2, $3, $4, $5, $6)
           RETURNING *
           `,
 
           [
             judul,
             isi,
+            cover_url ?? null,
             prioritas ?? "normal",
             expires_at ?? null,
             is_active !== undefined
@@ -171,6 +175,7 @@ router.put(
       const {
         judul,
         isi,
+        cover_url,
         prioritas,
         expires_at,
         is_active
@@ -179,7 +184,7 @@ router.put(
       const existing =
         await pool.query(
 
-          "SELECT id FROM pengumuman WHERE id = $1",
+          "SELECT * FROM pengumuman WHERE id = $1",
 
           [id]
 
@@ -197,6 +202,11 @@ router.put(
 
       }
 
+      const current = existing.rows[0];
+      const nextCoverUrl = Object.prototype.hasOwnProperty.call(req.body, "cover_url")
+        ? (cover_url ?? null)
+        : current.cover_url;
+
       const result =
         await pool.query(
 
@@ -205,16 +215,18 @@ router.put(
           SET
             judul       = COALESCE($1, judul),
             isi         = COALESCE($2, isi),
-            prioritas   = COALESCE($3, prioritas),
-            expires_at  = $4,
-            is_active   = COALESCE($5, is_active)
-          WHERE id = $6
+            cover_url   = $3,
+            prioritas   = COALESCE($4, prioritas),
+            expires_at  = $5,
+            is_active   = COALESCE($6, is_active)
+          WHERE id = $7
           RETURNING *
           `,
 
           [
             judul ?? null,
             isi ?? null,
+            nextCoverUrl,
             prioritas ?? null,
             expires_at !== undefined ? expires_at : null,
             is_active !== undefined ? is_active : null,
