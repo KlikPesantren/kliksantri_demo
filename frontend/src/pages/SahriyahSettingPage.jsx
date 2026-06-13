@@ -1,66 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
+import Modal from "../components/Modal";
 import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-function KeuanganResponsiveStyles() {
-  return (
-    <style>{`
-      .keuangan-page {
-        min-width: 0;
-        max-width: 100%;
-      }
-
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-    `}</style>
-  );
-}
+import { Table, TableScroll, TableActions } from "../components/ui/table";
+import {
+  FormField,
+  Input,
+  Textarea,
+  FormGrid,
+  FormActionBar,
+} from "../components/ui/form";
+import { KeuanganPageStyles } from "../components/shared/PageResponsiveStyles";
 
 function SahriyahSettingPage() {
   const [data, setData] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
+  const [editModal, setEditModal] = useState(false);
+  const [editRow, setEditRow] = useState(null);
+  const [form, setForm] = useState({ nominal_uang: "", nominal_beras: "", keterangan: "" });
 
   const getData = async () => {
     try {
       const response = await api.get(`/sahriyah-setting?t=${Date.now()}`);
       setData(response.data.data);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -77,34 +46,37 @@ function SahriyahSettingPage() {
     );
   }, [data, tableSearch]);
 
-  const editSetting = async (row) => {
-    const nominalUang = prompt("Nominal Uang", row.nominal_uang || 0);
-    if (nominalUang === null) return;
+  const openEdit = (row) => {
+    setEditRow(row);
+    setForm({
+      nominal_uang: String(row.nominal_uang ?? ""),
+      nominal_beras: String(row.nominal_beras ?? ""),
+      keterangan: row.keterangan || "",
+    });
+    setEditModal(true);
+  };
 
-    const nominalBeras = prompt("Nominal Beras", row.nominal_beras || 0);
-    if (nominalBeras === null) return;
-
-    const keterangan = prompt("Keterangan", row.keterangan || "");
-    if (keterangan === null) return;
-
+  const saveSetting = async () => {
+    if (!editRow) return;
     try {
-      await api.put(`/sahriyah-setting/${row.id}`, {
-        nominal_uang: Number(nominalUang),
-        nominal_beras: Number(nominalBeras),
-        keterangan,
+      await api.put(`/sahriyah-setting/${editRow.id}`, {
+        nominal_uang: Number(form.nominal_uang),
+        nominal_beras: Number(form.nominal_beras),
+        keterangan: form.keterangan,
       });
-
+      setEditModal(false);
+      setEditRow(null);
       await getData();
       alert("Berhasil disimpan");
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal menyimpan");
     }
   };
 
   return (
     <AppShell title="Setting Sahriyah" breadcrumb="Keuangan / Setting Sahriyah">
-      <KeuanganResponsiveStyles />
+      <KeuanganPageStyles />
       <div className="keuangan-page">
       <DataTableCard
         title="Pengaturan Nominal Sahriyah"
@@ -135,36 +107,76 @@ function SahriyahSettingPage() {
             }
           />
         ) : (
-          <div className="table-scroll-x">
-            <table style={{ borderCollapse: "collapse" }}>
+          <TableScroll>
+            <Table>
               <thead>
                 <tr>
-                  <th style={thStyle}>Nama</th>
-                  <th style={thStyle}>Nominal Uang</th>
-                  <th style={thStyle}>Nominal Beras</th>
-                  <th style={thStyle}>Keterangan</th>
-                  <th style={thStyle}>Aksi</th>
+                  <th>Nama</th>
+                  <th>Nominal Uang</th>
+                  <th>Nominal Beras</th>
+                  <th>Keterangan</th>
+                  <th className="table-v3__cell--actions">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredData.map((d) => (
                   <tr key={d.id}>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{d.nama}</td>
-                    <td style={tdStyle}>Rp {Number(d.nominal_uang || 0).toLocaleString()}</td>
-                    <td style={tdStyle}>{d.nominal_beras || 0} Kg</td>
-                    <td style={tdStyle}>{d.keterangan || "—"}</td>
-                    <td style={tdStyle}>
-                      <Button variant="outline" size="sm" onClick={() => editSetting(d)}>
-                        Edit
-                      </Button>
+                    <td className="table-v3__cell--strong">{d.nama}</td>
+                    <td>Rp {Number(d.nominal_uang || 0).toLocaleString()}</td>
+                    <td>{d.nominal_beras || 0} Kg</td>
+                    <td>{d.keterangan || "—"}</td>
+                    <td className="table-v3__cell--actions">
+                      <TableActions items={[{ type: "edit", onClick: () => openEdit(d) }]} />
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+            </Table>
+          </TableScroll>
         )}
       </DataTableCard>
+
+      <Modal
+        open={editModal}
+        title={`Edit Setting — ${editRow?.nama || ""}`}
+        onClose={() => setEditModal(false)}
+        width={440}
+      >
+        <FormGrid columns="modal">
+          <FormField label="Nominal Uang" htmlFor="setting-uang" required>
+            <Input
+              id="setting-uang"
+              type="number"
+              value={form.nominal_uang}
+              onChange={(e) => setForm({ ...form, nominal_uang: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Nominal Beras (Kg)" htmlFor="setting-beras" required>
+            <Input
+              id="setting-beras"
+              type="number"
+              value={form.nominal_beras}
+              onChange={(e) => setForm({ ...form, nominal_beras: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Keterangan" htmlFor="setting-ket" fullWidth>
+            <Textarea
+              id="setting-ket"
+              value={form.keterangan}
+              onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+              rows={3}
+            />
+          </FormField>
+        </FormGrid>
+        <FormActionBar className="form-action-bar-v3--compact">
+          <Button variant="primary" onClick={saveSetting}>
+            Simpan
+          </Button>
+          <Button variant="outline" onClick={() => setEditModal(false)}>
+            Batal
+          </Button>
+        </FormActionBar>
+      </Modal>
       </div>
     </AppShell>
   );

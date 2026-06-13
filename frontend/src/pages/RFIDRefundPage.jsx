@@ -1,46 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaUndo } from "react-icons/fa";
 import AppShell from "../layouts/AppShell";
 import api from "../services/api";
 import Card from "../components/ui/Card";
-import Badge from "../components/ui/Badge";
-import Button from "../components/ui/Button";
+import StatusBadge from "../components/ui/StatusBadge";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
+import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
+import { FilterBar, FormField, Select } from "../components/ui/form";
 function trxTypeLabel(trxType) {
   if (trxType === "payment") return "PEMBAYARAN";
   if (trxType === "topup") return "TOPUP";
   if (trxType === "refund") return "REFUND";
   return String(trxType || "").toUpperCase();
-}
-
-function trxTypeBadgeVariant(trxType) {
-  if (trxType === "refund") return "warning";
-  if (trxType === "topup") return "success";
-  return "danger";
 }
 
 function RFIDRefundPage() {
@@ -57,7 +31,7 @@ function RFIDRefundPage() {
       setSantri(santriRes.data.data || []);
       setTransaksi(trxRes.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -77,6 +51,12 @@ function RFIDRefundPage() {
     );
   }, [transaksi, selectedSantri, tableSearch]);
 
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filteredTransaksi);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tableSearch, selectedSantri, setPage]);
+
   const refund = async (id) => {
     try {
       await api.post("/rfid/refund", {
@@ -86,28 +66,29 @@ function RFIDRefundPage() {
       alert("Refund berhasil");
       loadData();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
   return (
     <AppShell title="Refund RFID" breadcrumb="Keamanan / RFID Refund">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>
-          Pilih Santri
-        </label>
-        <select
-          value={selectedSantri}
-          onChange={(e) => setSelectedSantri(e.target.value)}
-          style={{ padding: "12px", minWidth: "350px", width: "100%", maxWidth: "400px" }}
-        >
-          <option value="">Pilih Santri</option>
-          {santri.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nama}
-            </option>
-          ))}
-        </select>
+        <FilterBar label="Filter">
+          <FormField label="Santri" htmlFor="refund-santri">
+            <Select
+              id="refund-santri"
+              value={selectedSantri}
+              onChange={(e) => setSelectedSantri(e.target.value)}
+            >
+              <option value="">Pilih Santri</option>
+              {santri.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nama}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        </FilterBar>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -150,46 +131,60 @@ function RFIDRefundPage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>Tanggal</th>
-                    <th style={thStyle}>Merchant</th>
-                    <th style={thStyle}>Nominal</th>
-                    <th style={thStyle}>Jenis</th>
-                    <th style={thStyle}>Aksi</th>
+                    <th>Tanggal</th>
+                    <th>Merchant</th>
+                    <th>Nominal</th>
+                    <th>Jenis</th>
+                    <th className="table-v3__cell--actions">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTransaksi.map((item) => (
+                  {paginatedItems.map((item) => (
                     <tr key={item.id}>
-                      <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "13px" }}>
+                      <td className="table-v3__cell--mono">
                         {new Date(item.created_at).toLocaleString()}
                       </td>
-                      <td style={tdStyle}>{item.nama_merchant || "—"}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>
+                      <td>{item.nama_merchant || "—"}</td>
+                      <td className="table-v3__cell--strong">
                         Rp {Number(item.nominal).toLocaleString()}
                       </td>
-                      <td style={tdStyle}>
-                        <Badge variant={trxTypeBadgeVariant(item.trx_type)}>
+                      <td>
+                        <StatusBadge status={item.trx_type}>
                           {trxTypeLabel(item.trx_type)}
-                        </Badge>
+                        </StatusBadge>
                       </td>
-                      <td style={tdStyle}>
-                        {item.trx_type === "payment" && (
-                          <Button variant="primary" size="sm" onClick={() => refund(item.id)}>
-                            Refund
-                          </Button>
-                        )}
+                      <td className="table-v3__cell--actions">
+                        <TableActions
+                          items={[
+                            {
+                              type: "custom",
+                              icon: FaUndo,
+                              title: "Refund",
+                              variant: "success",
+                              hidden: item.trx_type !== "payment",
+                              onClick: () => refund(item.id),
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
-          )}
-        </DataTableCard>
+              </Table>
+            </TableScroll>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+            />
+            </>
+          )}        </DataTableCard>
       </div>
     </AppShell>
   );

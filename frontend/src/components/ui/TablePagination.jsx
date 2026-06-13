@@ -21,7 +21,7 @@ function TablePagination({
   const pages = buildPageRange(safePage, totalPages, siblingCount);
 
   return (
-    <div style={wrapStyle}>
+    <div className="table-pagination-v3">
       <span style={summaryStyle}>
         Menampilkan {start}-{end} dari {totalItems}
       </span>
@@ -128,8 +128,8 @@ const pageButtonStyle = {
 
 const pageButtonActiveStyle = {
   background: "var(--primary-subtle)",
-  color: "var(--accent-teal-dark)",
-  borderColor: "var(--accent-teal-dark)",
+  color: "var(--primary)",
+  borderColor: "var(--primary)",
 };
 
 const ellipsisStyle = {

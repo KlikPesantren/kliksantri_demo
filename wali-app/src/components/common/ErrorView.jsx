@@ -1,17 +1,25 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants/colors';
+import { spacing } from '../../constants/theme';
+import { AppText } from '../ui/AppText';
+import { AppButton } from '../ui/AppButton';
 
 export function ErrorView({ message = 'Terjadi kesalahan.', onRetry }) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>⚠️</Text>
-      <Text style={styles.message}>{message}</Text>
-      {onRetry && (
-        <TouchableOpacity style={styles.button} onPress={onRetry}>
-          <Text style={styles.buttonText}>Coba Lagi</Text>
-        </TouchableOpacity>
-      )}
+      <View style={styles.iconWrap}>
+        <Ionicons name="alert-circle-outline" size={32} color={colors.warning} />
+      </View>
+      <AppText variant="bodyMedium" color="secondary" style={styles.message}>
+        {message}
+      </AppText>
+      {onRetry ? (
+        <AppButton variant="primary" size="sm" onPress={onRetry} style={styles.button}>
+          Coba Lagi
+        </AppButton>
+      ) : null}
     </View>
   );
 }
@@ -21,27 +29,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: colors.background,
-    gap: 12,
+    padding: spacing['2xl'],
+    backgroundColor: colors.surfaceSoft,
+    gap: spacing.md,
   },
-  icon: { fontSize: 40 },
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.warningSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   message: {
-    fontSize: 15,
-    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    maxWidth: 280,
   },
   button: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: colors.white,
-    fontWeight: '600',
-    fontSize: 14,
+    marginTop: spacing.sm,
+    minWidth: 120,
   },
 });

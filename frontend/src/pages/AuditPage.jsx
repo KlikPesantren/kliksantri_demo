@@ -1,30 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
-import Card from "../components/ui/Card";
-import SectionHeading from "../components/ui/SectionHeading";
-import Badge from "../components/ui/Badge";
-
-function auditEventVariant(eventType) {
-  const e = String(eventType || "").toUpperCase();
-  if (e === "CREATE") return "success";
-  if (e === "UPDATE") return "warning";
-  if (e === "DELETE") return "danger";
-  return "neutral";
-}
+import DataTableCard from "../components/ui/DataTableCard";
+import TableToolbar from "../components/ui/TableToolbar";
+import SearchInput from "../components/ui/SearchInput";
+import EmptyState from "../components/ui/EmptyState";
+import StatusBadge from "../components/ui/StatusBadge";
+import {
+  Table,
+  TableScroll,
+  TablePagination,
+  useClientPagination,
+} from "../components/ui/table";
 
 function AuditPage() {
   const [logs, setLogs] = useState([]);
-
-  useEffect(() => {
-    getLogs();
-
-    const interval = setInterval(() => {
-      getLogs();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const [tableSearch, setTableSearch] = useState("");
 
   const getLogs = async () => {
     try {
@@ -38,86 +29,115 @@ function AuditPage() {
 
       setLogs(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
-  return (
-    <AppShell
-      title="Audit Log"
-      breadcrumb="Sistem / Audit"
-    >
-      <Card padding="md" shadow="card" border={false} radius="xl">
-        <SectionHeading variant="eyebrow" spacing="first">
-          Log Aktivitas Device
-        </SectionHeading>
+  useEffect(() => {
+    getLogs();
 
-        <div style={{ overflowX: "auto", marginTop: "var(--space-4)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#f8fafc" }}>
-                <th style={thStyle}>ID</th>
-                <th style={thStyle}>Device</th>
-                <th style={thStyle}>Event</th>
-                <th style={thStyle}>Detail</th>
-                <th style={thStyle}>Waktu</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={emptyStyle}>
-                    Belum ada log audit.
-                  </td>
-                </tr>
-              ) : (
-                logs.map((log) => (
-                  <tr key={log.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={tdStyle}>{log.id}</td>
-                    <td style={tdStyle}>{log.device_id}</td>
-                    <td style={tdStyle}>
-                      <Badge variant={auditEventVariant(log.event_type)}>
-                        {log.event_type}
-                      </Badge>
-                    </td>
-                    <td style={tdStyle}>{log.detail}</td>
-                    <td style={tdStyle}>
-                      {new Date(log.created_at).toLocaleString()}
-                    </td>
+    const interval = setInterval(() => {
+      getLogs();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredLogs = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    if (!q) return logs;
+    return logs.filter((log) =>
+      [log.id, log.device_id, log.event_type, log.detail, log.created_at]
+        .some((field) => String(field || "").toLowerCase().includes(q)),
+    );
+  }, [logs, tableSearch]);
+
+  const { page, setPage, paginatedItems, totalItems, pageSize } =
+    useClientPagination(filteredLogs);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tableSearch, setPage]);
+
+  return (
+    <AppShell title="Audit Log" breadcrumb="Sistem / Audit">
+      <DataTableCard
+        title="Log Aktivitas Device"
+        subtitle="Riwayat event perangkat tercatat otomatis"
+        actions={
+          <span
+            style={{
+              fontSize: "13px",
+              color: "var(--text-secondary)",
+              fontWeight: 600,
+            }}
+          >
+            {filteredLogs.length} entri
+          </span>
+        }
+      >
+        <TableToolbar
+          search={
+            <SearchInput
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.target.value)}
+              placeholder="Cari device, event, detail..."
+            />
+          }
+        />
+
+        {filteredLogs.length === 0 ? (
+          <EmptyState
+            title={
+              logs.length === 0 ? "Belum ada log audit" : "Tidak ada hasil pencarian"
+            }
+            description={
+              logs.length === 0
+                ? "Aktivitas perangkat akan tercatat di sini secara otomatis."
+                : "Coba kata kunci lain atau hapus filter pencarian."
+            }
+          />
+        ) : (
+          <>
+            <TableScroll>
+              <Table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Device</th>
+                    <th>Event</th>
+                    <th>Detail</th>
+                    <th>Waktu</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                </thead>
+                <tbody>
+                  {paginatedItems.map((log) => (
+                    <tr key={log.id}>
+                      <td>{log.id}</td>
+                      <td className="table-v3__cell--strong">{log.device_id}</td>
+                      <td>
+                        <StatusBadge status={log.event_type} />
+                      </td>
+                      <td>{log.detail || "—"}</td>
+                      <td className="table-v3__cell--mono">
+                        {new Date(log.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableScroll>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+            />
+          </>
+        )}
+      </DataTableCard>
     </AppShell>
   );
 }
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "12px",
-  fontWeight: 600,
-  color: "#64748b",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-  borderBottom: "1px solid #e2e8f0",
-};
-
-const tdStyle = {
-  padding: "11px 14px",
-  fontSize: "14px",
-  color: "#1e293b",
-  verticalAlign: "middle",
-};
-
-const emptyStyle = {
-  textAlign: "center",
-  padding: "48px",
-  color: "#94a3b8",
-  fontSize: "14px",
-};
 
 export default AuditPage;

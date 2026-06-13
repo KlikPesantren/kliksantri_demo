@@ -1,13 +1,9 @@
 // Helper RBAC frontend — cek apakah user login punya permission tertentu.
 // Sumber: localStorage.user.permissions (diisi saat login / refresh /auth/me)
 
-export function getUser() {
-  try {
-    return JSON.parse(localStorage.getItem("user")) || null;
-  } catch {
-    return null;
-  }
-}
+import { getUser } from "./storage";
+
+export { getUser };
 
 export function getPermissions() {
   const user = getUser();

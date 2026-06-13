@@ -2,40 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import {
+  Table,
+  TableScroll,
+  TableActions,
+  TablePagination,
+  useClientPagination,
+} from "../components/ui/table";
+import { FaKey } from "react-icons/fa";
+import {
+  FormField,
+  Input,
+  Select,
+  FormGrid,
+  FormActionBar,
+} from "../components/ui/form";
 import { exportExcel } from "../utils/exportExcel";
-
-const formFieldsStyle = {
-  display: "flex",
-  gap: "var(--space-3)",
-  flexWrap: "wrap",
-  alignItems: "center",
-};
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
 
 function WaliPage() {
   const [wali, setWali] = useState([]);
@@ -56,7 +43,7 @@ function WaliPage() {
       const response = await api.get("/wali");
       setWali(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -70,7 +57,7 @@ function WaliPage() {
         `PIN ${nama} berhasil direset ke ${DEFAULT_PIN_DISPLAY}.\nWali wajib ganti PIN saat login berikutnya.`,
       );
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert(err.response?.data?.error || "Gagal reset PIN");
     }
   };
@@ -80,7 +67,7 @@ function WaliPage() {
       const response = await api.get("/santri");
       setSantri(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -97,6 +84,12 @@ function WaliPage() {
         .some((field) => String(field || "").toLowerCase().includes(q)),
     );
   }, [wali, tableSearch]);
+
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filteredWali);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tableSearch, setPage]);
 
   const handleChange = (e) => {
     setForm({
@@ -121,7 +114,7 @@ function WaliPage() {
       resetForm();
       getWali();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal input");
     }
   };
@@ -144,7 +137,7 @@ function WaliPage() {
       getWali();
       setEditId(null);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -153,7 +146,7 @@ function WaliPage() {
       await api.delete(`/wali/${id}`);
       getWali();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -171,25 +164,32 @@ function WaliPage() {
   return (
     <AppShell title="Wali Santri" breadcrumb="Master Data / Wali Santri">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div style={formFieldsStyle}>
-          <input type="text" name="nama" placeholder="Nama Wali" value={form.nama} onChange={handleChange} />
-          <input type="text" name="nomor_hp" placeholder="Nomor HP" value={form.nomor_hp} onChange={handleChange} />
-          <input type="text" name="alamat" placeholder="Alamat" value={form.alamat} onChange={handleChange} />
-          <select name="santri_id" value={form.santri_id} onChange={handleChange}>
-            <option value="">Pilih Santri</option>
-            {santri.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nama}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+        <FormGrid>
+          <FormField label="Nama Wali" htmlFor="wali-nama" required>
+            <Input id="wali-nama" type="text" name="nama" value={form.nama} onChange={handleChange} />
+          </FormField>
+          <FormField label="Nomor HP" htmlFor="wali-hp">
+            <Input id="wali-hp" type="text" name="nomor_hp" value={form.nomor_hp} onChange={handleChange} />
+          </FormField>
+          <FormField label="Alamat" htmlFor="wali-alamat" fullWidth>
+            <Input id="wali-alamat" type="text" name="alamat" value={form.alamat} onChange={handleChange} />
+          </FormField>
+          <FormField label="Santri" htmlFor="wali-santri" required>
+            <Select id="wali-santri" name="santri_id" value={form.santri_id} onChange={handleChange}>
+              <option value="">Pilih Santri</option>
+              {santri.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nama}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        </FormGrid>
+        <FormActionBar className="form-action-bar-v3--compact">
           <Button variant="primary" onClick={editId ? updateWali : createWali}>
             {editId ? "Update" : "Tambah"}
           </Button>
-        </div>
+        </FormActionBar>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -227,49 +227,51 @@ function WaliPage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>Nama</th>
-                    <th style={thStyle}>Nomor HP</th>
-                    <th style={thStyle}>PIN Awal</th>
-                    <th style={thStyle}>Santri</th>
-                    <th style={thStyle}>Aksi</th>
+                    <th>Nama</th>
+                    <th>Nomor HP</th>
+                    <th>PIN Awal</th>
+                    <th>Santri</th>
+                    <th className="table-v3__cell--actions">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredWali.map((item) => (
+                  {paginatedItems.map((item) => (
                     <tr key={item.id}>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{item.nama}</td>
-                      <td style={tdStyle}>{item.nomor_hp || "—"}</td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          fontFamily: "monospace",
-                          letterSpacing: "2px",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {DEFAULT_PIN_DISPLAY}
-                      </td>
-                      <td style={tdStyle}>{item.nama_santri || "—"}</td>
-                      <td style={tdStyle}>
-                        <Button variant="outline" size="sm" onClick={() => editWali(item)}>
-                          Edit
-                        </Button>{" "}
-                        <Button variant="danger" size="sm" onClick={() => deleteWali(item.id)}>
-                          Hapus
-                        </Button>{" "}
-                        <Button variant="outline" size="sm" onClick={() => resetPin(item.id, item.nama)}>
-                          Reset PIN
-                        </Button>
+                      <td className="table-v3__cell--strong">{item.nama}</td>
+                      <td>{item.nomor_hp || "—"}</td>
+                      <td className="table-v3__cell--mono">{DEFAULT_PIN_DISPLAY}</td>
+                      <td>{item.nama_santri || "—"}</td>
+                      <td className="table-v3__cell--actions">
+                        <TableActions
+                          items={[
+                            { type: "edit", onClick: () => editWali(item) },
+                            { type: "delete", onClick: () => deleteWali(item.id) },
+                            {
+                              type: "custom",
+                              icon: FaKey,
+                              title: "Reset PIN",
+                              onClick: () => resetPin(item.id, item.nama),
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+              </Table>
+            </TableScroll>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </DataTableCard>
       </div>

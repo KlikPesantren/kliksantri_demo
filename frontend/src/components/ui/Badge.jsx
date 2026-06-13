@@ -1,15 +1,15 @@
 const VARIANTS = {
   success: {
-    background: "var(--primary-subtle)",
-    color: "var(--success)",
+    background: "var(--success-subtle)",
+    color: "var(--primary)",
   },
   warning: {
-    background: "#FEF3C7",
+    background: "var(--warning-subtle)",
     color: "var(--warning)",
   },
   danger: {
-    background: "#FEE2E2",
-    color: "#DC2626",
+    background: "var(--danger-subtle)",
+    color: "var(--danger)",
   },
   info: {
     background: "var(--info-subtle)",
@@ -17,7 +17,7 @@ const VARIANTS = {
   },
   neutral: {
     background: "var(--neutral-subtle)",
-    color: "var(--text-secondary)",
+    color: "var(--neutral)",
   },
 };
 

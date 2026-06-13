@@ -42,8 +42,8 @@ export function AkademikHubScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ChildSwitcherBar />
       <View style={styles.container}>
+        <ChildSwitcherBar />
         <Text style={styles.pageTitle}>Akademik</Text>
         <Text style={styles.pageSubtitle}>
           Pantau kehadiran dan perkembangan nilai santri

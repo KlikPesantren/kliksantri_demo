@@ -34,8 +34,8 @@ export function KeamananHubScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ChildSwitcherBar />
       <View style={styles.container}>
+        <ChildSwitcherBar />
         <Text style={styles.pageTitle}>Keamanan & Kedisiplinan</Text>
         <Text style={styles.pageSubtitle}>
           Pantau perizinan dan kedisiplinan santri

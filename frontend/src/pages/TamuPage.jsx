@@ -1,80 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
 import KpiCard from "../components/ui/KpiCard";
 import KpiGrid from "../components/ui/KpiGrid";
-import Badge from "../components/ui/Badge";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import StatusBadge from "../components/ui/StatusBadge";
+import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
+import { LegacyPageStyles } from "../components/shared/PageResponsiveStyles";
+import { FaSignOutAlt } from "react-icons/fa";
+import {
+  FormField,
+  Input,
+  Textarea,
+  FormGrid,
+  FormActionBar,
+  FilterBar,
+} from "../components/ui/form";
 import { exportExcel } from "../utils/exportExcel";
-
-const formGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: "var(--space-4)",
-};
-
-const spanFull = { gridColumn: "1 / -1" };
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-const fieldStyle = {
-  width: "100%",
-  maxWidth: "100%",
-  boxSizing: "border-box",
-};
-
-function LegacyPageStyles() {
-  return (
-    <style>{`
-      .legacy-page {
-        min-width: 0;
-        max-width: 100%;
-      }
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-      .legacy-form-grid input,
-      .legacy-form-grid select,
-      .legacy-form-grid textarea {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-      }
-    `}</style>
-  );
-}
+import { formatNumber } from "../utils/formatCurrency";
 
 function TamuPage() {
   const [tamu, setTamu] = useState([]);
@@ -100,7 +49,7 @@ function TamuPage() {
       const response = await api.get("/tamu");
       setTamu(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -133,7 +82,7 @@ function TamuPage() {
 
       getTamu();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal");
     }
   };
@@ -160,7 +109,7 @@ function TamuPage() {
       await api.delete(`/tamu/${id}`);
       getTamu();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -171,12 +120,12 @@ function TamuPage() {
       await api.patch(`/tamu/${id}/keluar`);
       await getTamu();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
-  const filtered = tamu.filter((item) => {
-    console.log("TAMU", tamu);
+  const filtered = useMemo(() => tamu.filter((item) => {
+    
     const nama = (item.nama_tamu || "")
       .toLowerCase()
       .includes(searchNama.toLowerCase());
@@ -195,7 +144,13 @@ function TamuPage() {
         : item.tanggal?.split("T")[0] === filterTanggal;
 
     return nama && tujuan && instansi && tanggal;
-  });
+  }), [tamu, searchNama, searchTujuan, searchInstansi, filterTanggal]);
+
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchNama, searchTujuan, searchInstansi, filterTanggal, setPage]);
 
   const today = new Date().toLocaleDateString("sv-SE");
 
@@ -237,11 +192,11 @@ function TamuPage() {
     <AppShell title="Daftar Hadir Tamu" breadcrumb="Keamanan / Daftar Hadir Tamu">
       <LegacyPageStyles />
       <div className="legacy-page">
-        <KpiGrid minColumnWidth={200} gap={16}>
-          <KpiCard layout="metric" label="Tamu Hari Ini" value={totalHariIni} accent="teal" />
-          <KpiCard layout="metric" label="Masih Di Dalam" value={masihDidalam} accent="success" />
-          <KpiCard layout="metric" label="Sudah Keluar" value={sudahKeluar} accent="danger" />
-          <KpiCard layout="metric" label="Bulan Ini" value={totalBulanIni} accent="teal" />
+        <KpiGrid>
+          <KpiCard label="Tamu Hari Ini" value={formatNumber(totalHariIni)} accent="primary" />
+          <KpiCard label="Masih Di Dalam" value={formatNumber(masihDidalam)} accent="success" />
+          <KpiCard label="Sudah Keluar" value={formatNumber(sudahKeluar)} accent="danger" />
+          <KpiCard label="Bulan Ini" value={formatNumber(totalBulanIni)} accent="neutral" />
         </KpiGrid>
 
         <div style={{ marginTop: "var(--space-6)" }}>
@@ -250,77 +205,80 @@ function TamuPage() {
               Input Tamu
             </SectionHeading>
 
-            <div className="legacy-form-grid" style={{ ...formGridStyle, marginTop: "var(--space-4)" }}>
-              <input
-                style={fieldStyle}
-                placeholder="Nama Tamu"
-                value={form.nama_tamu}
-                onChange={(e) => setForm({ ...form, nama_tamu: e.target.value })}
-              />
+            <FormGrid style={{ marginTop: "var(--space-4)" }}>
+              <FormField label="Nama Tamu" htmlFor="tamu-nama" required>
+                <Input
+                  id="tamu-nama"
+                  value={form.nama_tamu}
+                  onChange={(e) => setForm({ ...form, nama_tamu: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Nomor HP" htmlFor="tamu-hp">
+                <Input
+                  id="tamu-hp"
+                  value={form.no_hp}
+                  onChange={(e) => setForm({ ...form, no_hp: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Instansi" htmlFor="tamu-instansi">
+                <Input
+                  id="tamu-instansi"
+                  value={form.instansi}
+                  onChange={(e) => setForm({ ...form, instansi: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Tujuan" htmlFor="tamu-tujuan">
+                <Input
+                  id="tamu-tujuan"
+                  value={form.tujuan}
+                  onChange={(e) => setForm({ ...form, tujuan: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Bertemu Dengan" htmlFor="tamu-bertemu">
+                <Input
+                  id="tamu-bertemu"
+                  value={form.bertemu_dengan}
+                  onChange={(e) => setForm({ ...form, bertemu_dengan: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Jumlah Orang" htmlFor="tamu-jumlah">
+                <Input
+                  id="tamu-jumlah"
+                  type="number"
+                  value={form.jumlah_orang}
+                  onChange={(e) => setForm({ ...form, jumlah_orang: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Petugas" htmlFor="tamu-petugas">
+                <Input
+                  id="tamu-petugas"
+                  value={form.petugas}
+                  onChange={(e) => setForm({ ...form, petugas: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Alamat" htmlFor="tamu-alamat" fullWidth>
+                <Textarea
+                  id="tamu-alamat"
+                  value={form.alamat}
+                  onChange={(e) => setForm({ ...form, alamat: e.target.value })}
+                  rows={2}
+                />
+              </FormField>
+              <FormField label="Keperluan" htmlFor="tamu-keperluan" fullWidth>
+                <Textarea
+                  id="tamu-keperluan"
+                  value={form.keperluan}
+                  onChange={(e) => setForm({ ...form, keperluan: e.target.value })}
+                  rows={2}
+                />
+              </FormField>
+            </FormGrid>
 
-              <input
-                style={fieldStyle}
-                placeholder="Nomor HP"
-                value={form.no_hp}
-                onChange={(e) => setForm({ ...form, no_hp: e.target.value })}
-              />
-
-              <input
-                style={fieldStyle}
-                placeholder="Instansi"
-                value={form.instansi}
-                onChange={(e) => setForm({ ...form, instansi: e.target.value })}
-              />
-
-              <input
-                style={fieldStyle}
-                placeholder="Tujuan"
-                value={form.tujuan}
-                onChange={(e) => setForm({ ...form, tujuan: e.target.value })}
-              />
-
-              <input
-                style={fieldStyle}
-                placeholder="Bertemu Dengan"
-                value={form.bertemu_dengan}
-                onChange={(e) => setForm({ ...form, bertemu_dengan: e.target.value })}
-              />
-
-              <input
-                style={fieldStyle}
-                type="number"
-                placeholder="Jumlah Orang"
-                value={form.jumlah_orang}
-                onChange={(e) => setForm({ ...form, jumlah_orang: e.target.value })}
-              />
-
-              <input
-                style={fieldStyle}
-                placeholder="Petugas"
-                value={form.petugas}
-                onChange={(e) => setForm({ ...form, petugas: e.target.value })}
-              />
-
-              <textarea
-                style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
-                placeholder="Alamat"
-                value={form.alamat}
-                onChange={(e) => setForm({ ...form, alamat: e.target.value })}
-              />
-
-              <textarea
-                style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
-                placeholder="Keperluan"
-                value={form.keperluan}
-                onChange={(e) => setForm({ ...form, keperluan: e.target.value })}
-              />
-            </div>
-
-            <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+            <FormActionBar className="form-action-bar-v3--compact">
               <Button variant="primary" onClick={simpanTamu}>
                 Simpan
               </Button>
-            </div>
+            </FormActionBar>
           </Card>
         </div>
 
@@ -334,10 +292,7 @@ function TamuPage() {
               </span>
             }
           >
-            <div
-              className="legacy-form-grid"
-              style={{ ...formGridStyle, marginBottom: "var(--space-4)" }}
-            >
+            <FilterBar label="Filter" className="filter-bar-v3--table">
               <SearchInput
                 value={searchNama}
                 onChange={(e) => setSearchNama(e.target.value)}
@@ -353,13 +308,13 @@ function TamuPage() {
                 onChange={(e) => setSearchInstansi(e.target.value)}
                 placeholder="Cari instansi..."
               />
-              <input
-                style={fieldStyle}
+              <Input
                 type="date"
                 value={filterTanggal}
                 onChange={(e) => setFilterTanggal(e.target.value)}
+                aria-label="Filter tanggal"
               />
-            </div>
+            </FilterBar>
 
             <TableToolbar
               actions={
@@ -375,62 +330,69 @@ function TamuPage() {
                 description="Input tamu pertama untuk memulai."
               />
             ) : (
-              <div className="table-scroll-x">
-                <table style={{ borderCollapse: "collapse" }}>
+              <>
+              <TableScroll>
+                <Table>
                   <thead>
                     <tr>
-                      <th style={thStyle}>Tanggal</th>
-                      <th style={thStyle}>Jam Masuk</th>
-                      <th style={thStyle}>Jam Keluar</th>
-                      <th style={thStyle}>Nama</th>
-                      <th style={thStyle}>Instansi</th>
-                      <th style={thStyle}>Tujuan</th>
-                      <th style={thStyle}>Bertemu</th>
-                      <th style={thStyle}>Jumlah</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Petugas</th>
-                      <th style={thStyle}>Aksi</th>
+                      <th>Tanggal</th>
+                      <th>Jam Masuk</th>
+                      <th>Jam Keluar</th>
+                      <th>Nama</th>
+                      <th>Instansi</th>
+                      <th>Tujuan</th>
+                      <th>Bertemu</th>
+                      <th>Jumlah</th>
+                      <th>Status</th>
+                      <th>Petugas</th>
+                      <th className="table-v3__cell--actions">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {tamu.map((item) => (
+                    {paginatedItems.map((item) => (
                       <tr key={item.id}>
-                        <td style={tdStyle}>
-                          {new Date(item.tanggal).toLocaleDateString("id-ID")}
-                        </td>
-                        <td style={tdStyle}>{item.jam_masuk}</td>
-                        <td style={tdStyle}>{item.jam_keluar || "—"}</td>
-                        <td style={{ ...tdStyle, fontWeight: 600 }}>{item.nama_tamu}</td>
-                        <td style={tdStyle}>{item.instansi}</td>
-                        <td style={tdStyle}>{item.tujuan}</td>
-                        <td style={tdStyle}>{item.bertemu_dengan}</td>
-                        <td style={tdStyle}>{item.jumlah_orang}</td>
-                        <td style={tdStyle}>
-                          <Badge variant={item.status === "Masuk" ? "success" : "danger"}>
+                        <td>{new Date(item.tanggal).toLocaleDateString("id-ID")}</td>
+                        <td>{item.jam_masuk}</td>
+                        <td>{item.jam_keluar || "—"}</td>
+                        <td className="table-v3__cell--strong">{item.nama_tamu}</td>
+                        <td>{item.instansi}</td>
+                        <td>{item.tujuan}</td>
+                        <td>{item.bertemu_dengan}</td>
+                        <td>{item.jumlah_orang}</td>
+                        <td>
+                          <StatusBadge status={item.status === "Masuk" ? "aktif" : "ditolak"}>
                             {item.status}
-                          </Badge>
+                          </StatusBadge>
                         </td>
-                        <td style={tdStyle}>{item.petugas}</td>
-                        <td style={tdStyle}>
-                          <div style={actionBarStyle}>
-                            <Button variant="outline" size="sm" onClick={() => editTamu(item)}>
-                              Edit
-                            </Button>
-                            {item.status === "Masuk" && (
-                              <Button variant="primary" size="sm" onClick={() => keluarTamu(item.id)}>
-                                Keluar
-                              </Button>
-                            )}
-                            <Button variant="danger" size="sm" onClick={() => hapusTamu(item.id)}>
-                              Hapus
-                            </Button>
-                          </div>
+                        <td>{item.petugas}</td>
+                        <td className="table-v3__cell--actions">
+                          <TableActions
+                            items={[
+                              { type: "edit", onClick: () => editTamu(item) },
+                              { type: "delete", onClick: () => hapusTamu(item.id) },
+                              {
+                                type: "custom",
+                                icon: FaSignOutAlt,
+                                title: "Keluar",
+                                variant: "success",
+                                hidden: item.status !== "Masuk",
+                                onClick: () => keluarTamu(item.id),
+                              },
+                            ]}
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+                </Table>
+              </TableScroll>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+              />
+              </>
             )}
           </DataTableCard>
         </div>

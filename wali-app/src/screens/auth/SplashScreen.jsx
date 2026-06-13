@@ -1,21 +1,50 @@
-import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { BrandLogo } from '../../components/branding/BrandLogo';
 import { colors } from '../../constants/colors';
+import { spacing } from '../../constants/theme';
+import { AppText } from '../../components/ui/AppText';
+import { storage } from '../../utils/storage';
+
+const VENDOR_NAME = 'KlikSantri';
 
 export function SplashScreen() {
+  const [branding, setBranding] = useState(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    storage
+      .getPesantrenBranding()
+      .then((cached) => {
+        setBranding(cached);
+      })
+      .catch(() => {})
+      .finally(() => setReady(true));
+  }, []);
+
+  const hasPesantrenBrand = Boolean(branding?.nama_pesantren?.trim());
+  const displayName = hasPesantrenBrand
+    ? branding.nama_pesantren
+    : VENDOR_NAME;
+
   return (
     <View style={styles.container}>
       <View style={styles.logoWrapper}>
-        <Text style={styles.logoIcon}>🕌</Text>
-        <Text style={styles.appName}>KlikSantri</Text>
-        <Text style={styles.tagline}>Portal Orang Tua</Text>
+        <BrandLogo
+          logoUrl={hasPesantrenBrand ? branding.logo_url : null}
+          nama={displayName}
+          size={72}
+        />
+        {ready ? (
+          <AppText variant="display" color="primary" style={styles.appName} numberOfLines={2}>
+            {displayName}
+          </AppText>
+        ) : null}
       </View>
-      <ActivityIndicator
-        size="large"
-        color={colors.primaryLight}
-        style={styles.spinner}
-      />
-      <Text style={styles.loadingText}>Memuat sesi...</Text>
+      <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
+      <AppText variant="caption" color="muted" style={styles.loadingText}>
+        Memuat sesi...
+      </AppText>
     </View>
   );
 }
@@ -23,36 +52,25 @@ export function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   logoWrapper: {
     alignItems: 'center',
-    marginBottom: 48,
-  },
-  logoIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    marginBottom: spacing['4xl'],
+    gap: spacing.md,
+    paddingHorizontal: spacing['2xl'],
   },
   appName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 4,
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
   spinner: {
-    marginTop: 8,
+    marginTop: spacing.lg,
   },
   loadingText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 4,
+    marginTop: spacing.sm,
   },
 });

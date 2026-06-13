@@ -1,24 +1,41 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text } from 'react-native';
-import { colors } from '../constants/colors';
+import { Ionicons } from '@expo/vector-icons';
+import { stackHeaderOptions, tabBarOptions } from '../constants/theme';
 
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
+import { PengumumanStack } from './PengumumanStack';
+import { MonitoringStack } from './MonitoringStack';
 import { KeuanganStack } from './KeuanganStack';
-import { AkademikStack } from './AkademikStack';
-import { KeamananStack } from './KeamananStack';
 import { ProfilStack } from './ProfilStack';
 import { AnakPilihScreen } from '../screens/anak/AnakPilihScreen';
-import { PengumumanScreen } from '../screens/pengumuman/PengumumanScreen';
-import { DetailPengumumanScreen } from '../screens/pengumuman/DetailPengumumanScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+const TAB_ICONS = {
+  Beranda: { active: 'home', inactive: 'home-outline' },
+  Pengumuman: { active: 'megaphone', inactive: 'megaphone-outline' },
+  Monitoring: { active: 'pulse', inactive: 'pulse-outline' },
+  Keuangan: { active: 'wallet', inactive: 'wallet-outline' },
+  Profil: { active: 'person', inactive: 'person-outline' },
+};
+
+function tabIcon(name) {
+  const icons = TAB_ICONS[name];
+  return ({ color, focused, size }) => (
+    <Ionicons
+      name={focused ? icons.active : icons.inactive}
+      size={size ?? 22}
+      color={color}
+    />
+  );
+}
+
 function MainStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={stackHeaderOptions}>
       <Stack.Screen
         name="MainTabs"
         component={MainTabsInner}
@@ -27,69 +44,40 @@ function MainStack() {
       <Stack.Screen
         name="AnakPilih"
         component={AnakPilihScreen}
-        options={{
-          title: 'Pilih Anak',
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: colors.white,
-          headerTitleStyle: { fontWeight: '700' },
-        }}
-      />
-      <Stack.Screen
-        name="PengumumanList"
-        component={PengumumanScreen}
-        options={{
-          title: 'Pengumuman',
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: colors.white,
-          headerTitleStyle: { fontWeight: '700' },
-        }}
-      />
-      <Stack.Screen
-        name="DetailPengumuman"
-        component={DetailPengumumanScreen}
-        options={{
-          title: 'Detail Pengumuman',
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: colors.white,
-          headerTitleStyle: { fontWeight: '700' },
-        }}
+        options={{ title: 'Pilih Anak' }}
       />
     </Stack.Navigator>
   );
 }
 
-function tabIcon(emoji) {
-  return ({ color }) => <Text style={{ fontSize: 20, color }}>{emoji}</Text>;
-}
-
 function MainTabsInner() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.gray400,
-        tabBarStyle: {
-          borderTopColor: colors.border,
-          backgroundColor: colors.white,
-          height: 60,
-          paddingBottom: 8,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.white,
-        headerTitleStyle: { fontWeight: '700' },
-      }}
-    >
+    <Tab.Navigator screenOptions={tabBarOptions}>
       <Tab.Screen
-        name="Dashboard"
+        name="Beranda"
         component={DashboardScreen}
         options={{
-          title: 'Dashboard',
-          tabBarIcon: tabIcon('🏠'),
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: colors.white,
-          headerTitleStyle: { fontWeight: '700' },
-          headerTitle: 'KlikSantri',
+          title: 'Beranda',
+          tabBarIcon: tabIcon('Beranda'),
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
+        name="Pengumuman"
+        component={PengumumanStack}
+        options={{
+          title: 'Pengumuman',
+          tabBarIcon: tabIcon('Pengumuman'),
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
+        name="Monitoring"
+        component={MonitoringStack}
+        options={{
+          title: 'Monitoring',
+          tabBarIcon: tabIcon('Monitoring'),
+          headerShown: false,
         }}
       />
       <Tab.Screen
@@ -97,25 +85,7 @@ function MainTabsInner() {
         component={KeuanganStack}
         options={{
           title: 'Keuangan',
-          tabBarIcon: tabIcon('💰'),
-          headerShown: false,
-        }}
-      />
-      <Tab.Screen
-        name="Akademik"
-        component={AkademikStack}
-        options={{
-          title: 'Akademik',
-          tabBarIcon: tabIcon('📚'),
-          headerShown: false,
-        }}
-      />
-      <Tab.Screen
-        name="Keamanan"
-        component={KeamananStack}
-        options={{
-          title: 'Keamanan',
-          tabBarIcon: tabIcon('🛡️'),
+          tabBarIcon: tabIcon('Keuangan'),
           headerShown: false,
         }}
       />
@@ -124,7 +94,7 @@ function MainTabsInner() {
         component={ProfilStack}
         options={{
           title: 'Profil',
-          tabBarIcon: tabIcon('👤'),
+          tabBarIcon: tabIcon('Profil'),
           headerShown: false,
         }}
       />

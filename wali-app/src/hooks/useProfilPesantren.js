@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { profilPesantrenApi } from '../api/profilPesantren.api';
+import { storage } from '../utils/storage';
 
 export function useProfilPesantren() {
   const [data, setData] = useState(null);
@@ -22,7 +23,19 @@ export function useProfilPesantren() {
 
       if (reqId !== reqRef.current) return;
 
-      setData(res.data ?? null);
+      const profil = res.data ?? null;
+      setData(profil);
+      if (profil?.nama_pesantren) {
+        storage
+          .savePesantrenBranding({
+            nama_pesantren: profil.nama_pesantren,
+            logo_url: profil.logo_url ?? null,
+            alamat: profil.alamat ?? null,
+            banner_url: profil.banner_url ?? null,
+            banner_active: profil.banner_active !== false,
+          })
+          .catch(() => {});
+      }
     } catch (err) {
       if (reqId !== reqRef.current) return;
       setError(

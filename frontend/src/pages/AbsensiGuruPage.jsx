@@ -8,9 +8,10 @@ import Card from "../components/ui/Card";
 
 import SectionHeading from "../components/ui/SectionHeading";
 
-import Badge from "../components/ui/Badge";
+import StatusBadge from "../components/ui/StatusBadge";
 
 import Button, { actionBarStyle } from "../components/ui/Button";
+import { Table, TableScroll } from "../components/ui/table";
 
 
 
@@ -29,34 +30,11 @@ function AkademikResponsiveStyles() {
         max-width: 100%;
       }
 
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-
       .akademik-filter-panel select,
       .akademik-filter-panel input[type="number"] {
         min-width: 0;
         flex: 1 1 140px;
         max-width: 100%;
-      }
-
-      .table-scroll-x .akademik-name-col {
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
-      }
-
-      .table-scroll-x thead .akademik-name-col {
-        z-index: 2;
       }
 
       @media (max-width: 767px) {
@@ -107,7 +85,7 @@ function AbsensiGuruPage() {
 
     } catch (err) {
 
-      console.log(err);
+      console.error(err);
 
     }
 
@@ -181,7 +159,7 @@ function AbsensiGuruPage() {
 
     } catch (err) {
 
-      console.log(err);
+      console.error(err);
 
       alert("Gagal simpan");
 
@@ -235,7 +213,7 @@ function AbsensiGuruPage() {
 
     } catch (err) {
 
-      console.log(err);
+      console.error(err);
 
     }
 
@@ -299,82 +277,41 @@ function AbsensiGuruPage() {
 
 
 
-          <div className="table-scroll-x" style={{ marginTop: "var(--space-4)" }}>
-
-          <table
-
-            style={{
-
-              borderCollapse: "collapse",
-
-              background: "white",
-
-            }}
-
-          >
-
+          <div style={{ marginTop: "var(--space-4)" }}>
+          <TableScroll matrix sticky>
+          <Table>
             <thead>
-
               <tr>
-
-                <th className="akademik-name-col" style={thStyle}>Nama Guru</th>
-
-                <th style={thStyle}>Jabatan</th>
-
+                <th className="table-v3__col--sticky">Nama Guru</th>
+                <th>Jabatan</th>
                 {STATUS_COLUMNS.map((col) => (
-
-                  <th key={col.key} style={thStyle}>
-
-                    <Badge variant={col.variant}>{col.label}</Badge>
-
+                  <th key={col.key}>
+                    <StatusBadge status={col.label} size="sm" />
                   </th>
-
                 ))}
-
               </tr>
-
             </thead>
-
             <tbody>
-
               {guru.map((g) => (
-
                 <tr key={g.id}>
-
-                  <td className="akademik-name-col" style={tdNameStyle}>{g.nama}</td>
-
-                  <td style={tdStyle}>{g.jabatan}</td>
-
+                  <td className="table-v3__col--sticky table-v3__cell--strong">{g.nama}</td>
+                  <td>{g.jabatan}</td>
                   {STATUS_COLUMNS.map((col) => (
-
-                    <td key={col.key} style={tdStyle}>
-
+                    <td key={col.key}>
                       <input
-
                         type="number"
-
                         value={data[g.id]?.[col.key] || ""}
-
                         onChange={(e) =>
-
                           handleInput(g.id, col.key, e.target.value)
-
                         }
-
                       />
-
                     </td>
-
                   ))}
-
                 </tr>
-
               ))}
-
             </tbody>
-
-          </table>
-
+          </Table>
+          </TableScroll>
           </div>
 
 
@@ -396,46 +333,6 @@ function AbsensiGuruPage() {
   );
 
 }
-
-
-
-const thStyle = {
-
-  border: "1px solid #dcdcdc",
-
-  padding: "10px",
-
-  background: "#f0f0f0",
-
-  minWidth: "100px",
-
-};
-
-
-
-const tdStyle = {
-
-  border: "1px solid #e5e5e5",
-
-  padding: "8px",
-
-  minWidth: "80px",
-
-};
-
-const tdNameStyle = {
-
-  border: "1px solid #e5e5e5",
-
-  padding: "8px",
-
-  background: "#fafafa",
-
-  fontWeight: 500,
-
-  minWidth: "160px",
-
-};
 
 
 

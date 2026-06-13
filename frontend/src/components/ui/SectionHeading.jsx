@@ -78,7 +78,7 @@ function SectionHeading({
               display: "inline-flex",
               alignItems: "center",
               fontSize: "13px",
-              color: "var(--accent-teal-dark)",
+              color: "var(--primary)",
             }}
           >
             {icon}

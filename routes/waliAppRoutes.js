@@ -2095,6 +2095,8 @@ router.get(
             email,
             website,
             logo_url,
+            banner_url,
+            COALESCE(banner_active, TRUE) AS banner_active,
             visi,
             misi,
             updated_at

@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "KlikSantri Wali",
+    "name": "Wali Santri",
     "slug": "kliksantri-wali",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#1a7f5a",
+    "backgroundColor": "#16A34A",
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1a7f5a",
+          "backgroundColor": "#16A34A",
           "image": "./assets/splash-icon.png",
           "imageWidth": 200
         }
@@ -29,7 +29,7 @@
         "android.permission.ACCESS_NETWORK_STATE"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#1a7f5a",
+        "backgroundColor": "#16A34A",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

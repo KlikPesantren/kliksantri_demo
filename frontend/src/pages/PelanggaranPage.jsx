@@ -3,11 +3,21 @@ import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
+import { LegacyPageStyles } from "../components/shared/PageResponsiveStyles";
+import {
+  FormField,
+  Input,
+  Select,
+  Textarea,
+  FormGrid,
+  FormActionBar,
+} from "../components/ui/form";
 
 const FORM_INIT = {
   santri_id: "",
@@ -21,69 +31,6 @@ const FORM_INIT = {
   petugas: "",
 };
 
-const formGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: "var(--space-4)",
-};
-
-const spanFull = { gridColumn: "1 / -1" };
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-const fieldStyle = {
-  width: "100%",
-  maxWidth: "100%",
-  boxSizing: "border-box",
-};
-
-function LegacyPageStyles() {
-  return (
-    <style>{`
-      .legacy-page {
-        min-width: 0;
-        max-width: 100%;
-      }
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-      .legacy-form-grid input,
-      .legacy-form-grid select,
-      .legacy-form-grid textarea {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-      }
-    `}</style>
-  );
-}
-
 function PelanggaranPage() {
   const [pelanggaran, setPelanggaran] = useState([]);
   const [editId, setEditId] = useState(null);
@@ -96,7 +43,7 @@ function PelanggaranPage() {
       const response = await api.get("/pelanggaran");
       setPelanggaran(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -105,7 +52,7 @@ function PelanggaranPage() {
       const response = await api.get("/santri");
       setSantri(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -116,7 +63,7 @@ function PelanggaranPage() {
       await api.delete(`/pelanggaran/${id}`);
       getPelanggaran();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal hapus");
     }
   };
@@ -152,7 +99,7 @@ function PelanggaranPage() {
       setForm(FORM_INIT);
       getPelanggaran();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal simpan");
     }
   };
@@ -170,6 +117,12 @@ function PelanggaranPage() {
     [pelanggaran, search],
   );
 
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, setPage]);
+
   return (
     <AppShell title="Pelanggaran Santri" breadcrumb="Keamanan / Pelanggaran">
       <LegacyPageStyles />
@@ -179,89 +132,96 @@ function PelanggaranPage() {
             Input Pelanggaran
           </SectionHeading>
 
-          <div className="legacy-form-grid" style={{ ...formGridStyle, marginTop: "var(--space-4)" }}>
-            <select
-              style={fieldStyle}
-              value={form.santri_id}
-              onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
-            >
-              <option value="">Pilih Santri</option>
-              {santri.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nama}
-                </option>
-              ))}
-            </select>
+          <FormGrid>
+            <FormField label="Santri" htmlFor="pel-santri" required>
+              <Select
+                id="pel-santri"
+                value={form.santri_id}
+                onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
+              >
+                <option value="">Pilih Santri</option>
+                {santri.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nama}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Tanggal" htmlFor="pel-tgl">
+              <Input
+                id="pel-tgl"
+                type="date"
+                value={form.tanggal}
+                onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Jam" htmlFor="pel-jam">
+              <Input
+                id="pel-jam"
+                type="time"
+                value={form.jam}
+                onChange={(e) => setForm({ ...form, jam: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Jenis Pelanggaran" htmlFor="pel-jenis">
+              <Input
+                id="pel-jenis"
+                type="text"
+                value={form.jenis}
+                onChange={(e) => setForm({ ...form, jenis: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Tingkat" htmlFor="pel-tingkat">
+              <Select
+                id="pel-tingkat"
+                value={form.tingkat}
+                onChange={(e) => setForm({ ...form, tingkat: e.target.value })}
+              >
+                <option value="">Pilih Tingkat</option>
+                <option value="Ringan">Ringan</option>
+                <option value="Sedang">Sedang</option>
+                <option value="Berat">Berat</option>
+              </Select>
+            </FormField>
+            <FormField label="Poin" htmlFor="pel-poin">
+              <Input
+                id="pel-poin"
+                type="number"
+                value={form.poin}
+                onChange={(e) => setForm({ ...form, poin: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Petugas" htmlFor="pel-petugas">
+              <Input
+                id="pel-petugas"
+                type="text"
+                value={form.petugas}
+                onChange={(e) => setForm({ ...form, petugas: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Catatan" htmlFor="pel-catatan" fullWidth>
+              <Textarea
+                id="pel-catatan"
+                value={form.catatan}
+                onChange={(e) => setForm({ ...form, catatan: e.target.value })}
+                rows={3}
+              />
+            </FormField>
+            <FormField label="Tindakan" htmlFor="pel-tindakan" fullWidth>
+              <Textarea
+                id="pel-tindakan"
+                value={form.tindakan}
+                onChange={(e) => setForm({ ...form, tindakan: e.target.value })}
+                rows={3}
+              />
+            </FormField>
+          </FormGrid>
 
-            <input
-              style={fieldStyle}
-              type="date"
-              value={form.tanggal}
-              onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
-            />
-
-            <input
-              style={fieldStyle}
-              type="time"
-              value={form.jam}
-              onChange={(e) => setForm({ ...form, jam: e.target.value })}
-            />
-
-            <input
-              style={fieldStyle}
-              type="text"
-              placeholder="Jenis Pelanggaran"
-              value={form.jenis}
-              onChange={(e) => setForm({ ...form, jenis: e.target.value })}
-            />
-
-            <select
-              style={fieldStyle}
-              value={form.tingkat}
-              onChange={(e) => setForm({ ...form, tingkat: e.target.value })}
-            >
-              <option value="">Pilih Tingkat</option>
-              <option value="Ringan">Ringan</option>
-              <option value="Sedang">Sedang</option>
-              <option value="Berat">Berat</option>
-            </select>
-
-            <input
-              style={fieldStyle}
-              type="number"
-              placeholder="Poin"
-              value={form.poin}
-              onChange={(e) => setForm({ ...form, poin: e.target.value })}
-            />
-
-            <input
-              style={fieldStyle}
-              type="text"
-              placeholder="Nama Petugas"
-              value={form.petugas}
-              onChange={(e) => setForm({ ...form, petugas: e.target.value })}
-            />
-
-            <textarea
-              style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
-              placeholder="Catatan"
-              value={form.catatan}
-              onChange={(e) => setForm({ ...form, catatan: e.target.value })}
-            />
-
-            <textarea
-              style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
-              placeholder="Tindakan"
-              value={form.tindakan}
-              onChange={(e) => setForm({ ...form, tindakan: e.target.value })}
-            />
-          </div>
-
-          <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+          <FormActionBar className="form-action-bar-v3--compact">
             <Button variant="primary" onClick={createPelanggaran}>
               Simpan
             </Button>
-          </div>
+          </FormActionBar>
         </Card>
 
         <div style={{ marginTop: "var(--space-6)" }}>
@@ -294,43 +254,49 @@ function PelanggaranPage() {
                 }
               />
             ) : (
-              <div className="table-scroll-x">
-                <table style={{ borderCollapse: "collapse" }}>
+              <>
+              <TableScroll>
+                <Table>
                   <thead>
                     <tr>
-                      <th style={thStyle}>Nama</th>
-                      <th style={thStyle}>Tanggal</th>
-                      <th style={thStyle}>Jenis</th>
-                      <th style={thStyle}>Poin</th>
-                      <th style={thStyle}>Tindakan</th>
-                      <th style={thStyle}>Petugas</th>
-                      <th style={thStyle}>Aksi</th>
+                      <th>Nama</th>
+                      <th>Tanggal</th>
+                      <th>Jenis</th>
+                      <th>Poin</th>
+                      <th>Tindakan</th>
+                      <th>Petugas</th>
+                      <th className="table-v3__cell--actions">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((p) => (
+                    {paginatedItems.map((p) => (
                       <tr key={p.id}>
-                        <td style={{ ...tdStyle, fontWeight: 600 }}>{p.nama}</td>
-                        <td style={tdStyle}>{p.tanggal}</td>
-                        <td style={tdStyle}>{p.jenis}</td>
-                        <td style={tdStyle}>{p.poin}</td>
-                        <td style={tdStyle}>{p.tindakan || "—"}</td>
-                        <td style={tdStyle}>{p.petugas || "—"}</td>
-                        <td style={tdStyle}>
-                          <div style={actionBarStyle}>
-                            <Button variant="outline" size="sm" onClick={() => editPelanggaran(p)}>
-                              Edit
-                            </Button>
-                            <Button variant="danger" size="sm" onClick={() => deletePelanggaran(p.id)}>
-                              Hapus
-                            </Button>
-                          </div>
+                        <td className="table-v3__cell--strong">{p.nama}</td>
+                        <td>{p.tanggal}</td>
+                        <td>{p.jenis}</td>
+                        <td>{p.poin}</td>
+                        <td>{p.tindakan || "—"}</td>
+                        <td>{p.petugas || "—"}</td>
+                        <td className="table-v3__cell--actions">
+                          <TableActions
+                            items={[
+                              { type: "edit", onClick: () => editPelanggaran(p) },
+                              { type: "delete", onClick: () => deletePelanggaran(p.id) },
+                            ]}
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+                </Table>
+              </TableScroll>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+              />
+              </>
             )}
           </DataTableCard>
         </div>

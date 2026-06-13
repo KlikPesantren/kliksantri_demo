@@ -1,14 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaKey } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Modal from "../components/Modal";
-import Badge from "../components/ui/Badge";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import StatusBadge from "../components/ui/StatusBadge";
+import {
+  Table,
+  TableScroll,
+  TableActions,
+  TablePagination,
+  useClientPagination,
+} from "../components/ui/table";
+import {
+  FormField,
+  Input,
+  Select,
+  FormGrid,
+  FormActionBar,
+} from "../components/ui/form";
 import { hasPermission } from "../utils/hasPermission";
+import { getUser } from "../utils/storage";
 const FORM_INIT = {
   nama: "",
   username: "",
@@ -17,47 +33,6 @@ const FORM_INIT = {
   status: "Aktif",
 };
 
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-function LegacyPageStyles() {
-  return (
-    <style>{`
-      .legacy-page {
-        min-width: 0;
-        max-width: 100%;
-      }
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-    `}</style>
-  );
-}
 function UsersPage() {
   const [users, setUsers]       = useState([]);
   const [roles, setRoles]       = useState([]);
@@ -77,7 +52,7 @@ function UsersPage() {
   const [statusModal, setStatusModal] = useState(false);
   const [statusTarget, setStatusTarget] = useState(null);
 
-  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUser = getUser() || {};
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -90,6 +65,12 @@ function UsersPage() {
         (u.role_label || "").toLowerCase().includes(q)
     );
   }, [users, search]);
+
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, setPage]);
 
   const load = async () => {
     setLoading(true);
@@ -230,7 +211,6 @@ function UsersPage() {
       description="Kelola akun admin dan hak akses login"
       breadcrumb="Sistem / Manajemen User"
     >
-      <LegacyPageStyles />
       {error && (
         <div style={bannerError}>{error}</div>
       )}
@@ -238,8 +218,7 @@ function UsersPage() {
         <div style={bannerSuccess}>{success}</div>
       )}
 
-      <div className="legacy-page">
-        <DataTableCard
+      <DataTableCard
           title="Daftar User"
           subtitle="Kelola akun admin dan hak akses login"
           actions={
@@ -277,87 +256,100 @@ function UsersPage() {
               }
             />
           ) : (
-            <div className="table-scroll-x">
-              <table style={{ borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Nama</th>
-                    <th style={thStyle}>Username</th>
-                    <th style={thStyle}>Role</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Tanggal Dibuat</th>
-                    <th style={thStyle}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((u) => (
-                    <tr key={u.id}>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{u.nama}</td>
-                      <td style={tdStyle}>{u.username}</td>
-                      <td style={tdStyle}>{u.role_label || u.role}</td>
-                      <td style={tdStyle}>
-                        <Badge variant={u.status === "Nonaktif" ? "neutral" : "success"}>
-                          {u.status || "Aktif"}
-                        </Badge>
-                      </td>
-                      <td style={tdStyle}>{formatDate(u.created_at)}</td>
-                      <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                        {hasPermission("user.update") && (
-                          <div style={actionBarStyle}>
-                            <Button type="button" variant="outline" size="sm" onClick={() => openEdit(u)}>
-                              Edit
-                            </Button>
-                            <Button type="button" variant="primary" size="sm" onClick={() => openResetPassword(u)}>
-                              Reset PIN
-                            </Button>
-                            {String(currentUser.id) !== String(u.id) && (
-                              <Button type="button" variant="outline" size="sm" onClick={() => openToggleStatus(u)}>
-                                {u.status === "Nonaktif" ? "Aktifkan" : "Nonaktifkan"}
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </td>
+            <>
+              <TableScroll>
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>Username</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Tanggal Dibuat</th>
+                      <th className="table-v3__cell--actions">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedItems.map((u) => (
+                      <tr key={u.id}>
+                        <td className="table-v3__cell--strong">{u.nama}</td>
+                        <td>{u.username}</td>
+                        <td>{u.role_label || u.role}</td>
+                        <td>
+                          <StatusBadge status={u.status || "Aktif"} />
+                        </td>
+                        <td>{formatDate(u.created_at)}</td>
+                        <td className="table-v3__cell--actions">
+                          {hasPermission("user.update") && (
+                            <TableActions
+                              items={[
+                                { type: "edit", onClick: () => openEdit(u) },
+                                {
+                                  type: "custom",
+                                  icon: FaKey,
+                                  title: "Reset PIN",
+                                  onClick: () => openResetPassword(u),
+                                },
+                                {
+                                  type: "toggle",
+                                  active: u.status === "Aktif",
+                                  hidden: String(currentUser.id) === String(u.id),
+                                  onClick: () => openToggleStatus(u),
+                                },
+                              ]}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </TableScroll>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </DataTableCard>
-      </div>
       <Modal
         open={formModal}
         title={editId ? "Edit User" : "Tambah User Baru"}
         onClose={() => setFormModal(false)}
       >
-        <div style={{ display: "grid", gap: "14px" }}>
-          <Field label="Nama Lengkap" required>
-            <input
-              style={inputStyle}
+        <FormGrid columns="modal">
+          <FormField label="Nama Lengkap" htmlFor="user-nama" required>
+            <Input
+              id="user-nama"
               value={form.nama}
               onChange={(e) => setForm({ ...form, nama: e.target.value })}
             />
-          </Field>
-          <Field label="Username" required>
-            <input
-              style={inputStyle}
+          </FormField>
+          <FormField label="Username" htmlFor="user-username" required>
+            <Input
+              id="user-username"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               disabled={!!editId}
             />
-          </Field>
-          <Field label={editId ? "Password Baru (kosongkan jika tidak diubah)" : "Password"} required={!editId}>
-            <input
+          </FormField>
+          <FormField
+            label={editId ? "Password Baru (kosongkan jika tidak diubah)" : "Password"}
+            htmlFor="user-password"
+            required={!editId}
+          >
+            <Input
+              id="user-password"
               type="password"
-              style={inputStyle}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
-          </Field>
-          <Field label="Role" required>
-            <select
-              style={inputStyle}
+          </FormField>
+          <FormField label="Role" htmlFor="user-role" required>
+            <Select
+              id="user-role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
             >
@@ -367,27 +359,27 @@ function UsersPage() {
                   {r.label || r.name}
                 </option>
               ))}
-            </select>
-          </Field>
-          <Field label="Status">
-            <select
-              style={inputStyle}
+            </Select>
+          </FormField>
+          <FormField label="Status" htmlFor="user-status">
+            <Select
+              id="user-status"
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
             >
               <option value="Aktif">Aktif</option>
               <option value="Nonaktif">Nonaktif</option>
-            </select>
-          </Field>
-          <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
-            <Button type="button" variant="primary" onClick={handleSave}>
-              Simpan
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setFormModal(false)}>
-              Batal
-            </Button>
-          </div>
-        </div>
+            </Select>
+          </FormField>
+        </FormGrid>
+        <FormActionBar className="form-action-bar-v3--compact">
+          <Button type="button" variant="primary" onClick={handleSave}>
+            Simpan
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setFormModal(false)}>
+            Batal
+          </Button>
+        </FormActionBar>
       </Modal>
 
       <Modal
@@ -396,23 +388,23 @@ function UsersPage() {
         onClose={() => setPwdModal(false)}
         width={420}
       >
-        <Field label="Password Baru" required>
-          <input
+        <FormField label="Password Baru" htmlFor="pwd-new" required>
+          <Input
+            id="pwd-new"
             type="password"
-            style={inputStyle}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="Minimal 4 karakter"
           />
-        </Field>
-        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+        </FormField>
+        <FormActionBar className="form-action-bar-v3--compact">
           <Button type="button" variant="primary" onClick={handleResetPassword}>
             Reset Password
           </Button>
           <Button type="button" variant="outline" onClick={() => setPwdModal(false)}>
             Batal
           </Button>
-        </div>
+        </FormActionBar>
       </Modal>
 
       <Modal
@@ -421,72 +413,42 @@ function UsersPage() {
         onClose={() => setStatusModal(false)}
         width={420}
       >
-        <p style={{ margin: "0 0 16px", color: "#475569", lineHeight: 1.5 }}>
+        <p style={{ margin: "0 0 16px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
           {statusTarget?.status === "Nonaktif"
             ? `Aktifkan kembali user "${statusTarget?.username}"?`
             : `Nonaktifkan user "${statusTarget?.username}"? User tidak akan bisa login.`}
         </p>
-        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+        <FormActionBar className="form-action-bar-v3--compact">
           <Button type="button" variant="primary" onClick={handleToggleStatus}>
             Ya, Lanjutkan
           </Button>
           <Button type="button" variant="outline" onClick={() => setStatusModal(false)}>
             Batal
           </Button>
-        </div>
+        </FormActionBar>
       </Modal>
     </AppShell>
   );
 }
 
-function Field({ label, required, children }) {
-  return (
-    <div>
-      <label style={labelStyle}>
-        {label}
-        {required && <span style={{ color: "#ef4444" }}> *</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-const labelStyle = {
-  display: "block",
-  fontSize: "13px",
-  fontWeight: 500,
-  marginBottom: "5px",
-  color: "#374151",
-};
-
-const inputStyle = {
-  width: "100%",
-  maxWidth: "100%",
-  padding: "9px 10px",
-  borderRadius: "8px",
-  border: "1px solid #d1d5db",
-  boxSizing: "border-box",
-  fontSize: "14px",
-  outline: "none",
-};
 const bannerError = {
-  background: "#fef2f2",
-  color: "#dc2626",
+  background: "var(--danger-subtle)",
+  color: "var(--danger)",
   padding: "12px 16px",
   borderRadius: "8px",
   marginBottom: "16px",
   fontSize: "14px",
-  borderLeft: "3px solid #dc2626",
+  borderLeft: "3px solid var(--danger)",
 };
 
 const bannerSuccess = {
-  background: "#f0fdf4",
-  color: "#15803d",
+  background: "var(--success-subtle)",
+  color: "var(--primary-hover)",
   padding: "12px 16px",
   borderRadius: "8px",
   marginBottom: "16px",
   fontSize: "14px",
-  borderLeft: "3px solid #15803d",
+  borderLeft: "3px solid var(--primary-hover)",
 };
 
 export default UsersPage;

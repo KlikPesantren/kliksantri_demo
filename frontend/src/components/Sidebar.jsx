@@ -13,18 +13,20 @@ import {
 } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
 import { hasPermission } from "../utils/hasPermission";
+import TenantBrand from "./TenantBrand";
+import { useTenantProfile } from "../context/TenantProfileContext";
 
 const SCROLL_KEY = "kliksantri_sidebar_scroll";
 const COLLAPSE_KEY = "kliksantri_sidebar_collapsed";
 
 const SIDEBAR = {
-  bg: "#0F172A",
+  bg: "var(--dark)",
   border: "rgba(148, 163, 184, 0.12)",
   text: "#E2E8F0",
-  textMuted: "#94A3B8",
-  textFaint: "#64748B",
+  textMuted: "var(--text-muted)",
+  textFaint: "var(--neutral)",
   hoverBg: "rgba(148, 163, 184, 0.08)",
-  activeBg: "rgba(20, 184, 166, 0.14)",
+  activeBg: "var(--sidebar-active-bg)",
   activeBorder: "var(--accent-teal)",
   activeText: "#F0FDFA",
 };
@@ -162,13 +164,16 @@ function getActiveGroupId(pathname, menuByPath) {
 }
 
 function SidebarBrand() {
+  const { display } = useTenantProfile();
+
   return (
-    <div style={brandContainerStyle} className="sidebar-brand-wrap">
-      <div style={brandMarkStyle}>K</div>
-      <div style={{ minWidth: 0 }} className="sidebar-brand-text">
-        <div style={brandTitleStyle}>KlikSantri</div>
-        <div style={brandSubtitleStyle}>Administrasi Pesantren</div>
-      </div>
+    <div className="sidebar-brand-wrap" style={brandContainerStyle}>
+      <TenantBrand
+        variant="sidebar"
+        logo={display.logo}
+        name={display.name}
+        location={display.address}
+      />
     </div>
   );
 }
@@ -405,8 +410,7 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
         </button>
 
         <div style={platformMarkWrapStyle} className="sidebar-platform">
-          <div style={{ fontWeight: 600 }}>Powered by KlikSantri</div>
-          <div style={{ fontWeight: 400, marginTop: "2px", opacity: 0.9 }}>Amanah Kita Bersama</div>
+          Powered by KlikSantri
         </div>
       </div>
     </div>
@@ -426,44 +430,6 @@ const brandContainerStyle = {
   alignItems: "center",
   gap: "var(--space-3)",
   minWidth: 0,
-};
-
-const brandMarkStyle = {
-  width: "36px",
-  height: "36px",
-  borderRadius: "10px",
-  background: "var(--accent-teal-gradient)",
-  color: "#FFFFFF",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: 700,
-  fontSize: "15px",
-  flexShrink: 0,
-  boxShadow: "0 4px 12px rgba(20, 184, 166, 0.25)",
-};
-
-const brandTitleStyle = {
-  color: "#F8FAFC",
-  fontWeight: 700,
-  fontSize: "14px",
-  lineHeight: 1.25,
-  letterSpacing: "-0.01em",
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-};
-
-const brandSubtitleStyle = {
-  color: SIDEBAR.textFaint,
-  fontWeight: 500,
-  fontSize: "11px",
-  lineHeight: 1.35,
-  marginTop: "2px",
-  letterSpacing: "0.02em",
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
 };
 
 const brandWrapperStyle = {
@@ -587,10 +553,10 @@ const logoutStyle = {
 };
 
 const platformMarkWrapStyle = {
-  color: SIDEBAR.textFaint,
+  color: SIDEBAR.textMuted,
   fontSize: "11px",
   lineHeight: 1.45,
-  opacity: 0.85,
+  fontWeight: 500,
 };
 
 export default Sidebar;

@@ -3,43 +3,15 @@ import AppShell from "../layouts/AppShell";
 import api from "../services/api";
 import KpiCard from "../components/ui/KpiCard";
 import KpiGrid from "../components/ui/KpiGrid";
-import Badge from "../components/ui/Badge";
+import { formatNumber } from "../utils/formatCurrency";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import StatusBadge from "../components/ui/StatusBadge";
+import { Table, TableScroll } from "../components/ui/table";
 
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-function syncBadgeVariant(status) {
-  const value = String(status || "").toLowerCase();
-  if (value === "online" || value === "synced") return "success";
-  if (value === "pending") return "warning";
-  if (value === "offline" || value === "failed") return "danger";
-  return "neutral";
-}
-
-function RFIDMonitorPage() {
-  const [devices, setDevices] = useState([]);
+function RFIDMonitorPage() {  const [devices, setDevices] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
 
   const getData = async () => {
@@ -47,7 +19,7 @@ function RFIDMonitorPage() {
       const res = await api.get("/rfid/monitor");
       setDevices(res.data.data);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -81,11 +53,11 @@ function RFIDMonitorPage() {
       description="Monitoring perangkat RFID pesantren"
       breadcrumb="Keamanan / RFID Monitor"
     >
-      <KpiGrid minColumnWidth={200} gap={16}>
-        <KpiCard layout="metric" label="Device Online" value={online} accent="success" />
-        <KpiCard layout="metric" label="Device Offline" value={offline} accent="danger" />
-        <KpiCard layout="metric" label="Total Device" value={devices.length} accent="teal" />
-        <KpiCard layout="metric" label="Transaksi Hari Ini" value={totalTransaksi} accent="teal" />
+      <KpiGrid>
+        <KpiCard label="Device Online" value={formatNumber(online)} accent="success" />
+        <KpiCard label="Device Offline" value={formatNumber(offline)} accent="danger" />
+        <KpiCard label="Total Device" value={formatNumber(devices.length)} accent="primary" />
+        <KpiCard label="Transaksi Hari Ini" value={formatNumber(totalTransaksi)} accent="info" />
       </KpiGrid>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -118,40 +90,39 @@ function RFIDMonitorPage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>Device</th>
-                    <th style={thStyle}>Merchant</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Last Ping</th>
-                    <th style={thStyle}>Last Sync</th>
-                    <th style={thStyle}>Transaksi</th>
+                    <th>Device</th>
+                    <th>Merchant</th>
+                    <th>Status</th>
+                    <th>Last Ping</th>
+                    <th>Last Sync</th>
+                    <th>Transaksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredDevices.map((item) => (
                     <tr key={item.id}>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{item.device_id}</td>
-                      <td style={tdStyle}>{item.nama_merchant}</td>
-                      <td style={tdStyle}>
-                        <Badge variant={syncBadgeVariant(item.status)}>{item.status}</Badge>
+                      <td className="table-v3__cell--strong">{item.device_id}</td>
+                      <td>{item.nama_merchant}</td>
+                      <td>
+                        <StatusBadge status={item.status} />
                       </td>
-                      <td style={tdStyle}>
+                      <td>
                         {item.last_ping ? new Date(item.last_ping).toLocaleString() : "—"}
                       </td>
-                      <td style={tdStyle}>
+                      <td>
                         {item.last_sync ? new Date(item.last_sync).toLocaleString() : "—"}
                       </td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{item.total_transaksi_hari_ini}</td>
+                      <td className="table-v3__cell--strong">{item.total_transaksi_hari_ini}</td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
-          )}
-        </DataTableCard>
+              </Table>
+            </TableScroll>
+          )}        </DataTableCard>
       </div>
     </AppShell>
   );

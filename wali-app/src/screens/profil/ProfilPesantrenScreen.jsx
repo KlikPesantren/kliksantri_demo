@@ -1,428 +1,569 @@
 import React from 'react';
+
 import {
+
   View,
-  Text,
+
   ScrollView,
+
   RefreshControl,
+
   Image,
+
   Linking,
-  TouchableOpacity,
+
   StyleSheet,
-  SafeAreaView,
+
 } from 'react-native';
+
+import { Ionicons } from '@expo/vector-icons';
+
 import { useProfilPesantren } from '../../hooks/useProfilPesantren';
+
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+
 import { ErrorView } from '../../components/common/ErrorView';
+
+import { PesantrenHeroBanner } from '../../components/home/PesantrenHeroBanner';
+
+import { resolveMediaUrl } from '../../utils/mediaUrl';
+
+import { formatShortAddress } from '../../utils/formatAddress';
+
+import { shouldShowPesantrenBanner } from '../../utils/pesantrenBanner';
+
+import {
+
+  ScreenContainer,
+
+  AppCard,
+
+  AppText,
+
+  SectionHeading,
+
+  EmptyState,
+
+  MenuRow,
+
+} from '../../components/ui';
+
 import { colors } from '../../constants/colors';
 
-// ─── Logo / Emblem ────────────────────────────────────────────────────────────
+import { radius, shadows, spacing } from '../../constants/theme';
 
-const LOGO_SIZE = 88;
 
-function LogoHero({ logoUrl, namaPesantren }) {
-  const initials = (namaPesantren ?? 'PP')
+
+const LOGO_SIZE = 80;
+
+
+
+function PesantrenLogo({ logoUrl, nama }) {
+
+  const uri = resolveMediaUrl(logoUrl);
+
+  const initials = (nama ?? 'PP')
+
     .split(' ')
+
     .filter((w) => /^[A-Za-z]/.test(w))
-    .slice(0, 3)
+
+    .slice(0, 2)
+
     .map((w) => w.charAt(0).toUpperCase())
+
     .join('');
 
-  if (logoUrl) {
+
+
+  if (uri) {
+
     return (
-      <Image
-        source={{ uri: logoUrl }}
-        style={styles.logo}
-        resizeMode="contain"
-        onError={() => {}}
-      />
+
+      <Image source={{ uri }} style={styles.logo} resizeMode="contain" />
+
     );
+
   }
 
+
+
   return (
+
     <View style={styles.logoFallback}>
-      <Text style={styles.logoInitials}>{initials}</Text>
+
+      <AppText variant="h2" color="brand">
+
+        {initials}
+
+      </AppText>
+
     </View>
+
   );
+
 }
 
-// ─── Contact Row ─────────────────────────────────────────────────────────────
 
-function ContactRow({ icon, label, value, onPress }) {
-  if (!value) return null;
-  return (
-    <TouchableOpacity
-      style={styles.contactRow}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.65 : 1}
-      disabled={!onPress}
-    >
-      <View style={styles.contactLeft}>
-        <Text style={styles.contactIcon}>{icon}</Text>
-        <View>
-          <Text style={styles.contactLabel}>{label}</Text>
-          <Text style={styles.contactValue} numberOfLines={2}>
-            {value}
-          </Text>
-        </View>
-      </View>
-      {onPress ? (
-        <Text style={styles.contactChevron}>›</Text>
-      ) : null}
-    </TouchableOpacity>
-  );
-}
 
-// ─── Long Text Section ────────────────────────────────────────────────────────
+function TextSection({ body }) {
 
-function TextSection({ icon, title, body }) {
   if (!body) return null;
+
   return (
-    <View style={styles.textSection}>
-      <View style={styles.textSectionHeader}>
-        <Text style={styles.textSectionIcon}>{icon}</Text>
-        <Text style={styles.textSectionTitle}>{title}</Text>
+
+    <AppText variant="body" style={styles.bodyText}>
+
+      {body}
+
+    </AppText>
+
+  );
+
+}
+
+
+
+function InstitutionHero({ profil }) {
+
+  if (shouldShowPesantrenBanner(profil)) {
+
+    return (
+
+      <PesantrenHeroBanner
+
+        bannerUrl={profil.banner_url}
+
+        nama={profil.nama_pesantren}
+
+        alamat={profil.alamat}
+
+      />
+
+    );
+
+  }
+
+
+
+  return (
+
+    <View style={styles.heroBanner}>
+
+      <View style={styles.heroGradient} />
+
+      <View style={styles.heroContent}>
+
+        <PesantrenLogo logoUrl={profil.logo_url} nama={profil.nama_pesantren} />
+
+        <AppText variant="h1" color="inverse" style={styles.center} numberOfLines={2}>
+
+          {profil.nama_pesantren}
+
+        </AppText>
+
+        {profil.alamat ? (
+
+          <AppText variant="caption" color="inverse" style={styles.centerHero} numberOfLines={2}>
+
+            {formatShortAddress(profil.alamat) ?? profil.alamat}
+
+          </AppText>
+
+        ) : null}
+
       </View>
-      <Text style={styles.textSectionBody}>{body}</Text>
+
     </View>
+
   );
+
 }
 
-// ─── Empty (tabel kosong di backend) ─────────────────────────────────────────
 
-function EmptyProfil() {
-  return (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🏫</Text>
-      <Text style={styles.emptyTitle}>Profil Belum Tersedia</Text>
-      <Text style={styles.emptySubtitle}>
-        Admin pesantren belum mengisi data profil pesantren.
-      </Text>
-    </View>
-  );
-}
-
-// ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export function ProfilPesantrenScreen() {
+
   const { data, isLoading, isRefreshing, error, refresh } = useProfilPesantren();
 
+
+
   if (isLoading && !data) {
+
     return (
-      <SafeAreaView style={styles.safe}>
+
+      <ScreenContainer>
+
         <LoadingSpinner message="Memuat profil pesantren..." />
-      </SafeAreaView>
+
+      </ScreenContainer>
+
     );
+
   }
 
+
+
   if (error && !data) {
+
     return (
-      <SafeAreaView style={styles.safe}>
+
+      <ScreenContainer>
+
         <ErrorView message={error} onRetry={refresh} />
-      </SafeAreaView>
+
+      </ScreenContainer>
+
     );
+
   }
+
+
 
   const p = data;
 
+
+
   return (
-    <SafeAreaView style={styles.safe}>
+
+    <ScreenContainer>
+
       <ScrollView
+
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+
+        contentContainerStyle={styles.scroll}
+
         refreshControl={
+
           <RefreshControl
+
             refreshing={isRefreshing}
+
             onRefresh={refresh}
+
             colors={[colors.primary]}
+
             tintColor={colors.primary}
+
           />
+
         }
+
       >
+
         {!p ? (
-          <EmptyProfil />
+
+          <EmptyState
+
+            icon="business-outline"
+
+            title="Profil Belum Tersedia"
+
+            description="Admin pesantren belum mengisi data profil pesantren."
+
+          />
+
         ) : (
+
           <>
-            {/* ── Hero ── */}
-            <View style={styles.hero}>
-              <LogoHero logoUrl={p.logo_url} namaPesantren={p.nama_pesantren} />
 
-              <Text style={styles.heroName}>{p.nama_pesantren}</Text>
+            <InstitutionHero profil={p} />
 
-              {p.alamat ? (
-                <View style={styles.heroAlamat}>
-                  <Text style={styles.heroAlamatText} numberOfLines={3}>
-                    📍 {p.alamat}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
 
-            {/* ── Kontak ── */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardIcon}>📞</Text>
-                <Text style={styles.cardTitle}>Kontak</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <ContactRow
-                  icon="📱"
-                  label="Telepon"
-                  value={p.telepon}
-                  onPress={
-                    p.telepon
-                      ? () => Linking.openURL(`tel:${p.telepon.replace(/\D/g, '')}`)
-                      : null
-                  }
-                />
-                <ContactRow
-                  icon="✉️"
-                  label="Email"
-                  value={p.email}
-                  onPress={
-                    p.email
-                      ? () => Linking.openURL(`mailto:${p.email}`)
-                      : null
-                  }
-                />
-                <ContactRow
-                  icon="🌐"
-                  label="Website"
-                  value={p.website}
-                  onPress={
-                    p.website
-                      ? () => Linking.openURL(p.website)
-                      : null
-                  }
-                />
-                {!p.telepon && !p.email && !p.website ? (
-                  <Text style={styles.emptyContactText}>Kontak belum tersedia.</Text>
-                ) : null}
-              </View>
-            </View>
 
-            {/* ── Visi ── */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardIcon}>🎯</Text>
-                <Text style={styles.cardTitle}>Visi</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <TextSection body={p.visi} />
-                {!p.visi ? (
-                  <Text style={styles.emptyContactText}>Visi belum diisi.</Text>
-                ) : null}
-              </View>
-            </View>
+            {p.visi ? (
 
-            {/* ── Misi ── */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardIcon}>📋</Text>
-                <Text style={styles.cardTitle}>Misi</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <TextSection body={p.misi} />
-                {!p.misi ? (
-                  <Text style={styles.emptyContactText}>Misi belum diisi.</Text>
-                ) : null}
-              </View>
-            </View>
+              <>
 
-            {/* ── Footer ── */}
-            {p.updated_at ? (
-              <Text style={styles.updatedAt}>
-                Terakhir diperbarui:{' '}
-                {new Date(p.updated_at).toLocaleDateString('id-ID', {
-                  day: '2-digit', month: 'long', year: 'numeric',
-                })}
-              </Text>
+                <SectionHeading title="Visi" />
+
+                <AppCard padding="md" style={styles.sectionCard}>
+
+                  <TextSection body={p.visi} />
+
+                </AppCard>
+
+              </>
+
             ) : null}
 
-            <View style={{ height: 40 }} />
+
+
+            {p.misi ? (
+
+              <>
+
+                <SectionHeading title="Misi" />
+
+                <AppCard padding="md" style={styles.sectionCard}>
+
+                  <TextSection body={p.misi} />
+
+                </AppCard>
+
+              </>
+
+            ) : null}
+
+
+
+            {(p.telepon || p.email) ? (
+
+              <>
+
+                <SectionHeading title="Kontak" />
+
+                <AppCard padding="none" style={styles.sectionCard}>
+
+                  {p.telepon ? (
+
+                    <MenuRow
+
+                      icon="call-outline"
+
+                      title="Telepon"
+
+                      subtitle={p.telepon}
+
+                      onPress={() => Linking.openURL(`tel:${p.telepon.replace(/\D/g, '')}`)}
+
+                    />
+
+                  ) : null}
+
+                  {p.email ? (
+
+                    <MenuRow
+
+                      icon="mail-outline"
+
+                      title="Email"
+
+                      subtitle={p.email}
+
+                      onPress={() => Linking.openURL(`mailto:${p.email}`)}
+
+                    />
+
+                  ) : null}
+
+                </AppCard>
+
+              </>
+
+            ) : null}
+
+
+
+            {p.alamat ? (
+
+              <>
+
+                <SectionHeading title="Alamat" />
+
+                <AppCard padding="md" style={styles.sectionCard}>
+
+                  <View style={styles.inlineRow}>
+
+                    <Ionicons name="location-outline" size={20} color={colors.primary} />
+
+                    <AppText variant="body" style={styles.bodyText}>
+
+                      {p.alamat}
+
+                    </AppText>
+
+                  </View>
+
+                </AppCard>
+
+              </>
+
+            ) : null}
+
+
+
+            {p.website ? (
+
+              <>
+
+                <SectionHeading title="Website" />
+
+                <AppCard padding="none" style={styles.sectionCard}>
+
+                  <MenuRow
+
+                    icon="globe-outline"
+
+                    title="Website Resmi"
+
+                    subtitle={p.website}
+
+                    onPress={() => Linking.openURL(p.website)}
+
+                  />
+
+                </AppCard>
+
+              </>
+
+            ) : null}
+
+
+
+            {p.updated_at ? (
+
+              <AppText variant="caption" color="muted" style={styles.updatedAt}>
+
+                Terakhir diperbarui:{' '}
+
+                {new Date(p.updated_at).toLocaleDateString('id-ID', {
+
+                  day: '2-digit',
+
+                  month: 'long',
+
+                  year: 'numeric',
+
+                })}
+
+              </AppText>
+
+            ) : null}
+
           </>
+
         )}
+
       </ScrollView>
-    </SafeAreaView>
+
+    </ScreenContainer>
+
   );
+
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { paddingBottom: 0 },
 
-  // ── Hero ──
-  hero: {
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 32,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  logo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  logoFallback: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
-    borderRadius: LOGO_SIZE / 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoInitials: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 2,
-  },
-  heroName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.white,
-    textAlign: 'center',
-    lineHeight: 28,
-  },
-  heroAlamat: {
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    maxWidth: '90%',
-  },
-  heroAlamatText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    lineHeight: 18,
+  scroll: {
+
+    paddingBottom: spacing['3xl'],
+
   },
 
-  // ── Card ──
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 16,
+  heroBanner: {
+
+    marginHorizontal: spacing.lg,
+
+    marginTop: spacing.lg,
+
+    marginBottom: spacing.sm,
+
+    borderRadius: radius.lg,
+
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  cardIcon: { fontSize: 16 },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  cardBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+
+    ...shadows.md,
+
   },
 
-  // ── Contact Row ──
-  contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  contactLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  contactIcon: { fontSize: 20 },
-  contactLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  contactValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  contactChevron: {
-    fontSize: 22,
-    color: colors.gray300,
-    marginLeft: 8,
-  },
-  emptyContactText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    paddingVertical: 14,
-    fontStyle: 'italic',
+  heroGradient: {
+
+    ...StyleSheet.absoluteFillObject,
+
+    backgroundColor: colors.primary,
+
   },
 
-  // ── Text Section ──
-  textSection: { paddingVertical: 14 },
-  textSectionHeader: {
-    flexDirection: 'row',
+  heroContent: {
+
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-  },
-  textSectionIcon: { fontSize: 16 },
-  textSectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  textSectionBody: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 24,
+
+    padding: spacing['2xl'],
+
+    gap: spacing.md,
+
   },
 
-  // ── Updated at ──
+  logo: {
+
+    width: LOGO_SIZE,
+
+    height: LOGO_SIZE,
+
+    borderRadius: radius.lg,
+
+    backgroundColor: colors.surface,
+
+  },
+
+  logoFallback: {
+
+    width: LOGO_SIZE,
+
+    height: LOGO_SIZE,
+
+    borderRadius: radius.lg,
+
+    backgroundColor: colors.surface,
+
+    alignItems: 'center',
+
+    justifyContent: 'center',
+
+  },
+
+  center: {
+
+    textAlign: 'center',
+
+  },
+
+  centerHero: {
+
+    textAlign: 'center',
+
+    opacity: 0.9,
+
+  },
+
+  sectionCard: {
+
+    marginHorizontal: spacing.lg,
+
+    marginBottom: spacing.sm,
+
+  },
+
+  bodyText: {
+
+    lineHeight: 22,
+
+  },
+
+  inlineRow: {
+
+    flexDirection: 'row',
+
+    alignItems: 'flex-start',
+
+    gap: spacing.md,
+
+  },
+
   updatedAt: {
+
     textAlign: 'center',
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 20,
-    marginHorizontal: 16,
+
+    marginTop: spacing.lg,
+
+    marginHorizontal: spacing.lg,
+
   },
 
-  // ── Empty ──
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 100,
-    paddingHorizontal: 32,
-    gap: 10,
-  },
-  emptyIcon: { fontSize: 52 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  emptySubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
 });
+
+

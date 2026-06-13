@@ -1,32 +1,66 @@
-function getInitials(name = "") {
-  const words = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+import { useState } from "react";
+import { getTenantInitial } from "../utils/tenantProfile";
 
-  if (words.length === 0) return "PD";
-
-  return words
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase();
-}
-
-function TenantBrand({ logo, name = "Pesantren Demo", location = "Kabupaten Kuningan" }) {
-  const initials = getInitials(name);
+function TenantBrand({
+  logo,
+  name = "Pesantren",
+  location = "Lengkapi profil pesantren",
+  variant = "light",
+  size = "md",
+}) {
+  const [logoError, setLogoError] = useState(false);
+  const showLogo = logo && !logoError;
+  const initial = getTenantInitial(name);
+  const isSidebar = variant === "sidebar" || variant === "preview-sidebar";
+  const logoSize = size === "lg" ? 56 : 44;
 
   return (
     <div style={containerStyle}>
-      {logo ? (
-        <img src={logo} alt={name} style={logoStyle} />
+      {showLogo ? (
+        <img
+          src={logo}
+          alt={name}
+          style={{
+            ...logoStyle,
+            width: logoSize,
+            height: logoSize,
+            ...(isSidebar ? sidebarLogoStyle : null),
+          }}
+          onError={() => setLogoError(true)}
+        />
       ) : (
-        <div style={avatarStyle}>{initials}</div>
+        <div
+          style={{
+            ...avatarStyle,
+            width: logoSize,
+            height: logoSize,
+            fontSize: size === "lg" ? "22px" : "14px",
+            ...(isSidebar ? sidebarAvatarStyle : null),
+          }}
+        >
+          {initial}
+        </div>
       )}
 
-      <div style={{ minWidth: 0 }}>
-        <div style={nameStyle}>{name}</div>
-        <div style={locationStyle}>{location}</div>
+      <div style={{ minWidth: 0 }} className="tenant-brand-text sidebar-brand-text">
+        <div
+          style={{
+            ...nameStyle,
+            ...(isSidebar ? sidebarNameStyle : null),
+            ...(size === "lg" ? largeNameStyle : null),
+          }}
+        >
+          {name}
+        </div>
+        <div
+          style={{
+            ...locationStyle,
+            ...(isSidebar ? sidebarLocationStyle : null),
+            ...(size === "lg" ? largeLocationStyle : null),
+          }}
+        >
+          {location}
+        </div>
       </div>
     </div>
   );
@@ -40,26 +74,31 @@ const containerStyle = {
 };
 
 const logoStyle = {
-  width: "44px",
-  height: "44px",
   borderRadius: "var(--radius-md)",
   objectFit: "cover",
   border: "1px solid var(--border)",
   flexShrink: 0,
 };
 
+const sidebarLogoStyle = {
+  border: "1px solid rgba(148, 163, 184, 0.2)",
+};
+
 const avatarStyle = {
-  width: "44px",
-  height: "44px",
   borderRadius: "var(--radius-md)",
-  background: "#DCFCE7",
+  background: "var(--primary-subtle)",
   color: "var(--primary)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontWeight: 700,
-  fontSize: "14px",
   flexShrink: 0,
+};
+
+const sidebarAvatarStyle = {
+  background: "rgba(22, 163, 74, 0.18)",
+  color: "#DCFCE7",
+  border: "1px solid rgba(22, 163, 74, 0.35)",
 };
 
 const nameStyle = {
@@ -72,6 +111,17 @@ const nameStyle = {
   textOverflow: "ellipsis",
 };
 
+const sidebarNameStyle = {
+  color: "#F8FAFC",
+};
+
+const largeNameStyle = {
+  fontSize: "20px",
+  whiteSpace: "normal",
+  overflow: "visible",
+  textOverflow: "unset",
+};
+
 const locationStyle = {
   color: "var(--text-secondary)",
   fontWeight: 400,
@@ -81,6 +131,23 @@ const locationStyle = {
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
+};
+
+const sidebarLocationStyle = {
+  color: "#94A3B8",
+  whiteSpace: "normal",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+const largeLocationStyle = {
+  fontSize: "13px",
+  whiteSpace: "normal",
+  overflow: "visible",
+  textOverflow: "unset",
+  WebkitLineClamp: "unset",
 };
 
 export default TenantBrand;

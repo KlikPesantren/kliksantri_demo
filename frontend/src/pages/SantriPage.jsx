@@ -2,40 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import {
+  Table,
+  TableScroll,
+  TableActions,
+  TablePagination,
+  useClientPagination,
+} from "../components/ui/table";
+import {
+  FormField,
+  Input,
+  Select,
+  FormGrid,
+  FormSection,
+  FormActionBar,
+} from "../components/ui/form";
 import { exportExcel } from "../utils/exportExcel";
-
-const formFieldsStyle = {
-  display: "flex",
-  gap: "var(--space-3)",
-  flexWrap: "wrap",
-  alignItems: "center",
-};
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
 
 function SantriPage() {
   const [santri, setSantri] = useState([]);
@@ -58,7 +45,7 @@ function SantriPage() {
       const response = await api.get("/santri");
       setSantri(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -67,7 +54,7 @@ function SantriPage() {
       const response = await api.get("/kelas");
       setKelas(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -85,6 +72,12 @@ function SantriPage() {
     );
   }, [santri, tableSearch]);
 
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filteredSantri);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tableSearch, setPage]);
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -98,7 +91,7 @@ function SantriPage() {
       resetForm();
       getSantri();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -124,7 +117,7 @@ function SantriPage() {
       getSantri();
       setEditId(null);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -133,7 +126,7 @@ function SantriPage() {
       await api.delete(`/santri/${id}`);
       getSantri();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -167,29 +160,59 @@ function SantriPage() {
   return (
     <AppShell title="Data Santri" breadcrumb="Master Data / Santri">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div style={formFieldsStyle}>
-          <input type="text" name="nis" placeholder="NIS" value={form.nis} onChange={handleChange} />
-          <input type="text" name="nama" placeholder="Nama" value={form.nama} onChange={handleChange} />
-          <input type="text" name="uid_rfid" placeholder="UID RFID" value={form.uid_rfid} onChange={handleChange} />
-          <input type="text" name="alamat" placeholder="Alamat" value={form.alamat} onChange={handleChange} />
-          <input type="text" name="orang_tua" placeholder="Orang Tua" value={form.orang_tua} onChange={handleChange} />
-          <input type="text" name="nomor_hp_ortu" placeholder="No HP Ortu" value={form.nomor_hp_ortu} onChange={handleChange} />
-          <input type="text" name="foto" placeholder="URL Foto" value={form.foto} onChange={handleChange} />
-          <select name="kelas_id" value={form.kelas_id} onChange={handleChange}>
-            <option value="">Pilih Kelas</option>
-            {kelas.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.nama_kelas}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FormSection title={editId ? "Edit Santri" : "Tambah Santri"}>
+          <FormSection title="Data Santri">
+            <FormGrid>
+              <FormField label="NIS" htmlFor="santri-nis" required>
+                <Input id="santri-nis" type="text" name="nis" value={form.nis} onChange={handleChange} />
+              </FormField>
+              <FormField label="Nama Lengkap" htmlFor="santri-nama" required>
+                <Input id="santri-nama" type="text" name="nama" value={form.nama} onChange={handleChange} />
+              </FormField>
+              <FormField label="Kelas" htmlFor="santri-kelas">
+                <Select id="santri-kelas" name="kelas_id" value={form.kelas_id} onChange={handleChange}>
+                  <option value="">Pilih Kelas</option>
+                  {kelas.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.nama_kelas}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              <FormField label="UID RFID" htmlFor="santri-rfid">
+                <Input id="santri-rfid" type="text" name="uid_rfid" value={form.uid_rfid} onChange={handleChange} />
+              </FormField>
+            </FormGrid>
+          </FormSection>
 
-        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
-          <Button variant="primary" onClick={editId ? updateSantri : addSantri}>
-            {editId ? "Update" : "Tambah"}
-          </Button>
-        </div>
+          <FormSection title="Data Orang Tua">
+            <FormGrid>
+              <FormField label="Nama Orang Tua" htmlFor="santri-ortu">
+                <Input id="santri-ortu" type="text" name="orang_tua" value={form.orang_tua} onChange={handleChange} />
+              </FormField>
+              <FormField label="No HP Orang Tua" htmlFor="santri-hp-ortu">
+                <Input id="santri-hp-ortu" type="text" name="nomor_hp_ortu" value={form.nomor_hp_ortu} onChange={handleChange} />
+              </FormField>
+            </FormGrid>
+          </FormSection>
+
+          <FormSection title="Data Administrasi">
+            <FormGrid>
+              <FormField label="Alamat" htmlFor="santri-alamat" fullWidth>
+                <Input id="santri-alamat" type="text" name="alamat" value={form.alamat} onChange={handleChange} />
+              </FormField>
+              <FormField label="URL Foto" htmlFor="santri-foto" fullWidth>
+                <Input id="santri-foto" type="text" name="foto" value={form.foto} onChange={handleChange} />
+              </FormField>
+            </FormGrid>
+          </FormSection>
+
+          <FormActionBar className="form-action-bar-v3--compact">
+            <Button variant="primary" onClick={editId ? updateSantri : addSantri}>
+              {editId ? "Update" : "Tambah"}
+            </Button>
+          </FormActionBar>
+        </FormSection>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -227,57 +250,65 @@ function SantriPage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Foto</th>
-                    <th style={thStyle}>NIS</th>
-                    <th style={thStyle}>Nama</th>
-                    <th style={thStyle}>Kelas</th>
-                    <th style={thStyle}>Wali</th>
-                    <th style={thStyle}>No Telepon</th>
-                    <th style={thStyle}>RFID</th>
-                    <th style={thStyle}>Saldo</th>
-                    <th style={thStyle}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSantri.map((item) => (
-                    <tr key={item.id}>
-                      <td style={tdStyle}>
-                        {item.foto ? (
-                          <img
-                            src={item.foto}
-                            alt="foto"
-                            width="50"
-                            height="50"
-                            style={{ borderRadius: "10px", objectFit: "cover" }}
-                          />
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td style={tdStyle}>{item.nis}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{item.nama}</td>
-                      <td style={tdStyle}>{item.nama_kelas}</td>
-                      <td style={tdStyle}>{item.nama_wali}</td>
-                      <td style={tdStyle}>{item.nomor_hp}</td>
-                      <td style={tdStyle}>{item.uid_rfid}</td>
-                      <td style={tdStyle}>Rp {Number(item.saldo || 0).toLocaleString()}</td>
-                      <td style={tdStyle}>
-                        <Button variant="outline" size="sm" onClick={() => editSantri(item)}>
-                          Edit
-                        </Button>{" "}
-                        <Button variant="danger" size="sm" onClick={() => deleteSantri(item.id)}>
-                          Hapus
-                        </Button>
-                      </td>
+            <>
+              <TableScroll>
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>Foto</th>
+                      <th>NIS</th>
+                      <th>Nama</th>
+                      <th>Kelas</th>
+                      <th>Wali</th>
+                      <th>No Telepon</th>
+                      <th>RFID</th>
+                      <th>Saldo</th>
+                      <th className="table-v3__cell--actions">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedItems.map((item) => (
+                      <tr key={item.id}>
+                        <td>
+                          {item.foto ? (
+                            <img
+                              src={item.foto}
+                              alt="foto"
+                              width="40"
+                              height="40"
+                              style={{ borderRadius: "8px", objectFit: "cover" }}
+                            />
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td>{item.nis}</td>
+                        <td className="table-v3__cell--strong">{item.nama}</td>
+                        <td>{item.nama_kelas || "—"}</td>
+                        <td>{item.nama_wali || "—"}</td>
+                        <td>{item.nomor_hp || "—"}</td>
+                        <td className="table-v3__cell--mono">{item.uid_rfid || "—"}</td>
+                        <td>Rp {Number(item.saldo || 0).toLocaleString()}</td>
+                        <td className="table-v3__cell--actions">
+                          <TableActions
+                            items={[
+                              { type: "edit", onClick: () => editSantri(item) },
+                              { type: "delete", onClick: () => deleteSantri(item.id) },
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </TableScroll>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </DataTableCard>
       </div>

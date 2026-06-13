@@ -3,6 +3,7 @@ import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import Button, { actionBarStyle } from "../components/ui/Button";
+import { Table, TableScroll } from "../components/ui/table";
 import { exportExcel } from "../utils/exportExcel";
 
 const filterPanelStyle = {
@@ -20,34 +21,11 @@ function AkademikResponsiveStyles() {
         max-width: 100%;
       }
 
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-
       .akademik-filter-panel select,
       .akademik-filter-panel input[type="number"] {
         min-width: 0;
         flex: 1 1 140px;
         max-width: 100%;
-      }
-
-      .table-scroll-x .akademik-name-col {
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
-      }
-
-      .table-scroll-x thead .akademik-name-col {
-        z-index: 2;
       }
 
       @media (max-width: 767px) {
@@ -80,7 +58,7 @@ function NilaiPage() {
 
       setNilai(data);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -91,7 +69,7 @@ function NilaiPage() {
       const response = await api.get("/kelas");
       setKelas(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -103,7 +81,7 @@ function NilaiPage() {
       );
       setSantri(filtered);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -159,7 +137,7 @@ function NilaiPage() {
       alert(`Nilai berhasil disimpan (${entries.length} entri).`);
       getNilai(bulan, tahun);
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal simpan: " + (err.response?.data?.error || err.message));
     }
   };
@@ -221,63 +199,22 @@ function NilaiPage() {
 
       <div style={{ marginTop: "var(--space-6)" }}>
         <Card padding="md" shadow="card" border={false} radius="xl">
-          <div className="table-scroll-x">
-          <table
-            style={{
-              borderCollapse: "collapse",
-              background: "white",
-            }}
-          >
+          <TableScroll matrix sticky>
+          <Table>
             <thead>
               <tr>
-                <th
-                  className="akademik-name-col"
-                  style={{
-                    border: "1px solid #dcdcdc",
-                    padding: "10px",
-                    background: "#f0f0f0",
-                    minWidth: "180px",
-                  }}
-                >
-                  Nama
-                </th>
+                <th className="table-v3__col--sticky">Nama</th>
                 {mapelList.map((m) => (
-                  <th
-                    key={m}
-                    style={{
-                      border: "1px solid #dcdcdc",
-                      padding: "10px",
-                      background: "#f0f0f0",
-                    }}
-                  >
-                    {m}
-                  </th>
+                  <th key={m}>{m}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {santri.map((s) => (
                 <tr key={s.id}>
-                  <td
-                    className="akademik-name-col"
-                    style={{
-                      border: "1px solid #dcdcdc",
-                      padding: "8px",
-                      background: "#fafafa",
-                      fontWeight: "500",
-                    }}
-                  >
-                    {s.nama}
-                  </td>
+                  <td className="table-v3__col--sticky table-v3__cell--strong">{s.nama}</td>
                   {mapelList.map((m) => (
-                    <td
-                      key={m}
-                      style={{
-                        border: "1px solid #e5e5e5",
-                        padding: "6px",
-                        textAlign: "center",
-                      }}
-                    >
+                    <td key={m} style={{ textAlign: "center" }}>
                       <input
                         type="number"
                         min="0"
@@ -296,8 +233,8 @@ function NilaiPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
-          </div>
+          </Table>
+          </TableScroll>
 
           <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
             <Button variant="success" onClick={handleExport}>

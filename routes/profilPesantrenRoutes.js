@@ -31,6 +31,8 @@ router.get(
             email,
             website,
             logo_url,
+            banner_url,
+            COALESCE(banner_active, TRUE) AS banner_active,
             visi,
             misi,
             updated_at
@@ -89,6 +91,8 @@ router.put(
         email,
         website,
         logo_url,
+        banner_url,
+        banner_active,
         visi,
         misi
       } = req.body;
@@ -117,11 +121,13 @@ router.put(
             email,
             website,
             logo_url,
+            banner_url,
+            banner_active,
             visi,
             misi,
             updated_at
           )
-          VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, NOW())
+          VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
           ON CONFLICT (id) DO UPDATE SET
             nama_pesantren = EXCLUDED.nama_pesantren,
             alamat         = EXCLUDED.alamat,
@@ -129,6 +135,8 @@ router.put(
             email          = EXCLUDED.email,
             website        = EXCLUDED.website,
             logo_url       = EXCLUDED.logo_url,
+            banner_url     = EXCLUDED.banner_url,
+            banner_active  = EXCLUDED.banner_active,
             visi           = EXCLUDED.visi,
             misi           = EXCLUDED.misi,
             updated_at     = NOW()
@@ -142,6 +150,8 @@ router.put(
             email    ?? null,
             website  ?? null,
             logo_url ?? null,
+            banner_url ?? null,
+            banner_active !== false,
             visi     ?? null,
             misi     ?? null
           ]

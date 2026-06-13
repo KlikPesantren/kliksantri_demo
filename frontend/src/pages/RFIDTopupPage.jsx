@@ -2,32 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import AppShell from "../layouts/AppShell";
 import api, { API_BASE_URL } from "../services/api";
 import Card from "../components/ui/Card";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
+import { Table, TableScroll } from "../components/ui/table";
+import { FormField, Input, Select, FormGrid, FormActionBar } from "../components/ui/form";
+import { getUser } from "../utils/storage";
 
 function RFIDTopupPage() {
   const [santri, setSantri] = useState([]);
@@ -40,7 +22,7 @@ function RFIDTopupPage() {
       const res = await api.get("/santri");
       setSantri(res.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -58,7 +40,7 @@ function RFIDTopupPage() {
   }, [santri, tableSearch]);
 
   const submitTopup = async () => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = getUser() || {};
 
     if (!user?.id) {
       alert("User tidak ditemukan");
@@ -84,7 +66,7 @@ ${res.data.saldo_akhir}`,
 
       setNominal("");
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Topup Gagal");
     }
   };
@@ -96,37 +78,31 @@ ${res.data.saldo_akhir}`,
       breadcrumb="Keamanan / RFID Topup"
     >
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div style={{ marginBottom: "20px" }}>
-          <label>Santri</label>
-          <select
-            value={santriId}
-            onChange={(e) => setSantriId(e.target.value)}
-            style={{ width: "100%", padding: "12px" }}
-          >
-            <option value="">Pilih Santri</option>
-            {santri.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nama}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ marginBottom: "20px" }}>
-          <label>Nominal</label>
-          <input
-            type="number"
-            value={nominal}
-            onChange={(e) => setNominal(e.target.value)}
-            style={{ width: "100%", padding: "12px" }}
-          />
-        </div>
-
-        <div style={actionBarStyle}>
+        <FormGrid>
+          <FormField label="Santri" htmlFor="topup-santri" required>
+            <Select id="topup-santri" value={santriId} onChange={(e) => setSantriId(e.target.value)}>
+              <option value="">Pilih Santri</option>
+              {santri.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nama}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Nominal" htmlFor="topup-nominal" required>
+            <Input
+              id="topup-nominal"
+              type="number"
+              value={nominal}
+              onChange={(e) => setNominal(e.target.value)}
+            />
+          </FormField>
+        </FormGrid>
+        <FormActionBar className="form-action-bar-v3--compact">
           <Button type="button" variant="primary" onClick={submitTopup}>
             Topup Saldo
           </Button>
-        </div>
+        </FormActionBar>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -170,34 +146,32 @@ ${res.data.saldo_akhir}`,
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>NIS</th>
-                    <th style={thStyle}>Nama</th>
-                    <th style={thStyle}>Kelas</th>
-                    <th style={thStyle}>UID RFID</th>
-                    <th style={thStyle}>Saldo</th>
+                    <th>NIS</th>
+                    <th>Nama</th>
+                    <th>Kelas</th>
+                    <th>UID RFID</th>
+                    <th>Saldo</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSantri.map((s) => (
                     <tr key={s.id}>
-                      <td style={tdStyle}>{s.nis}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{s.nama}</td>
-                      <td style={tdStyle}>{s.nama_kelas || "—"}</td>
-                      <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "13px" }}>
-                        {s.uid_rfid || "—"}
-                      </td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>
+                      <td>{s.nis}</td>
+                      <td className="table-v3__cell--strong">{s.nama}</td>
+                      <td>{s.nama_kelas || "—"}</td>
+                      <td className="table-v3__cell--mono">{s.uid_rfid || "—"}</td>
+                      <td className="table-v3__cell--strong">
                         Rp {Number(s.saldo || 0).toLocaleString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+              </Table>
+            </TableScroll>
           )}
         </DataTableCard>
       </div>

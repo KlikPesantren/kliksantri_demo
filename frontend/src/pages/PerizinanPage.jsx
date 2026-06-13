@@ -3,81 +3,22 @@ import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
-import Badge from "../components/ui/Badge";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
-
-const formGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: "var(--space-4)",
-};
-
-const spanFull = { gridColumn: "1 / -1" };
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-const fieldStyle = {
-  width: "100%",
-  maxWidth: "100%",
-  boxSizing: "border-box",
-};
-
-function LegacyPageStyles() {
-  return (
-    <style>{`
-      .legacy-page {
-        min-width: 0;
-        max-width: 100%;
-      }
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-      .legacy-form-grid input,
-      .legacy-form-grid select,
-      .legacy-form-grid textarea {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-      }
-    `}</style>
-  );
-}
-
-function perizinanBadgeVariant(status) {
-  if (status === "kembali") return "success";
-  if (status === "keluar") return "warning";
-  return "neutral";
-}
+import StatusBadge from "../components/ui/StatusBadge";
+import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
+import { FaSignInAlt } from "react-icons/fa";
+import {
+  FormField,
+  Input,
+  Select,
+  Textarea,
+  FormGrid,
+  FormActionBar,
+} from "../components/ui/form";
 
 function PerizinanPage() {
   const [perizinan, setPerizinan] = useState([]);
@@ -101,7 +42,7 @@ function PerizinanPage() {
       const response = await api.get("/perizinan");
       setPerizinan(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -110,7 +51,7 @@ function PerizinanPage() {
       const response = await api.get("/santri");
       setSantri(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -139,7 +80,7 @@ function PerizinanPage() {
 
       getPerizinan();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal simpan");
     }
   };
@@ -149,7 +90,7 @@ function PerizinanPage() {
       await api.put(`/perizinan/kembali/${id}`);
       getPerizinan();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -175,7 +116,7 @@ function PerizinanPage() {
       await api.delete(`/perizinan/${id}`);
       getPerizinan();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -192,85 +133,98 @@ function PerizinanPage() {
     [perizinan, search],
   );
 
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, setPage]);
+
   return (
     <AppShell title="Perizinan Santri" breadcrumb="Keamanan / Perizinan">
-      <LegacyPageStyles />
-      <div className="legacy-page">
+      <div>
         <Card padding="md" shadow="card" border={false} radius="xl">
           <SectionHeading variant="eyebrow" spacing="first">
             Input Perizinan
           </SectionHeading>
 
-          <div className="legacy-form-grid" style={{ ...formGridStyle, marginTop: "var(--space-4)" }}>
-            <select
-              style={fieldStyle}
-              value={form.santri_id}
-              onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
-            >
-              <option value="">Pilih Santri</option>
-              {santri.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nama}
-                </option>
-              ))}
-            </select>
+          <FormGrid>
+            <FormField label="Santri" htmlFor="izin-santri" required>
+              <Select
+                id="izin-santri"
+                value={form.santri_id}
+                onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
+              >
+                <option value="">Pilih Santri</option>
+                {santri.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nama}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Tanggal Keluar" htmlFor="izin-tgl">
+              <Input
+                id="izin-tgl"
+                type="date"
+                value={form.tanggal}
+                onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Jam Keluar" htmlFor="izin-jam-keluar">
+              <Input
+                id="izin-jam-keluar"
+                type="time"
+                value={form.jam_keluar}
+                onChange={(e) => setForm({ ...form, jam_keluar: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Tujuan" htmlFor="izin-tujuan">
+              <Input
+                id="izin-tujuan"
+                type="text"
+                value={form.tujuan}
+                onChange={(e) => setForm({ ...form, tujuan: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Tanggal Kembali" htmlFor="izin-tgl-kembali">
+              <Input
+                id="izin-tgl-kembali"
+                type="date"
+                value={form.tanggal_kembali}
+                onChange={(e) => setForm({ ...form, tanggal_kembali: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Target Jam Kembali" htmlFor="izin-jam-kembali">
+              <Input
+                id="izin-jam-kembali"
+                type="time"
+                value={form.target_jam_kembali}
+                onChange={(e) => setForm({ ...form, target_jam_kembali: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Alasan" htmlFor="izin-alasan" fullWidth>
+              <Textarea
+                id="izin-alasan"
+                value={form.alasan}
+                onChange={(e) => setForm({ ...form, alasan: e.target.value })}
+                rows={3}
+              />
+            </FormField>
+            <FormField label="Catatan" htmlFor="izin-catatan" fullWidth>
+              <Textarea
+                id="izin-catatan"
+                value={form.catatan}
+                onChange={(e) => setForm({ ...form, catatan: e.target.value })}
+                rows={3}
+              />
+            </FormField>
+          </FormGrid>
 
-            <input
-              style={fieldStyle}
-              type="date"
-              value={form.tanggal}
-              onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
-            />
-
-            <input
-              style={fieldStyle}
-              type="time"
-              value={form.jam_keluar}
-              onChange={(e) => setForm({ ...form, jam_keluar: e.target.value })}
-            />
-
-            <input
-              style={fieldStyle}
-              type="text"
-              placeholder="Tujuan"
-              value={form.tujuan}
-              onChange={(e) => setForm({ ...form, tujuan: e.target.value })}
-            />
-
-            <input
-              style={fieldStyle}
-              type="date"
-              value={form.tanggal_kembali}
-              onChange={(e) => setForm({ ...form, tanggal_kembali: e.target.value })}
-            />
-
-            <input
-              style={fieldStyle}
-              type="time"
-              value={form.target_jam_kembali}
-              onChange={(e) => setForm({ ...form, target_jam_kembali: e.target.value })}
-            />
-
-            <textarea
-              style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
-              placeholder="Alasan"
-              value={form.alasan}
-              onChange={(e) => setForm({ ...form, alasan: e.target.value })}
-            />
-
-            <textarea
-              style={{ ...fieldStyle, ...spanFull, minHeight: "80px", resize: "vertical" }}
-              placeholder="Catatan"
-              value={form.catatan}
-              onChange={(e) => setForm({ ...form, catatan: e.target.value })}
-            />
-          </div>
-
-          <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+          <FormActionBar className="form-action-bar-v3--compact">
             <Button variant="primary" onClick={createPerizinan}>
               Simpan
             </Button>
-          </div>
+          </FormActionBar>
         </Card>
 
         <div style={{ marginTop: "var(--space-6)" }}>
@@ -303,56 +257,65 @@ function PerizinanPage() {
                 }
               />
             ) : (
-              <div className="table-scroll-x">
-                <table style={{ borderCollapse: "collapse" }}>
+              <>
+              <TableScroll>
+                <Table>
                   <thead>
                     <tr>
-                      <th style={thStyle}>Nama</th>
-                      <th style={thStyle}>Tanggal</th>
-                      <th style={thStyle}>Tujuan</th>
-                      <th style={thStyle}>Alasan</th>
-                      <th style={thStyle}>Keluar</th>
-                      <th style={thStyle}>Target Kembali</th>
-                      <th style={thStyle}>Jam Kembali</th>
-                      <th style={thStyle}>Catatan</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Aksi</th>
+                      <th>Nama</th>
+                      <th>Tanggal</th>
+                      <th>Tujuan</th>
+                      <th>Alasan</th>
+                      <th>Keluar</th>
+                      <th>Target Kembali</th>
+                      <th>Jam Kembali</th>
+                      <th>Catatan</th>
+                      <th>Status</th>
+                      <th className="table-v3__cell--actions">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((p) => (
+                    {paginatedItems.map((p) => (
                       <tr key={p.id}>
-                        <td style={{ ...tdStyle, fontWeight: 600 }}>{p.nama}</td>
-                        <td style={tdStyle}>{p.tanggal}</td>
-                        <td style={tdStyle}>{p.tujuan || "—"}</td>
-                        <td style={tdStyle}>{p.alasan || "—"}</td>
-                        <td style={tdStyle}>{p.jam_keluar}</td>
-                        <td style={tdStyle}>{p.tanggal_kembali || "—"}</td>
-                        <td style={tdStyle}>{p.jam_kembali || "—"}</td>
-                        <td style={tdStyle}>{p.catatan || "—"}</td>
-                        <td style={tdStyle}>
-                          <Badge variant={perizinanBadgeVariant(p.status)}>{p.status}</Badge>
+                        <td className="table-v3__cell--strong">{p.nama}</td>
+                        <td>{p.tanggal}</td>
+                        <td>{p.tujuan || "—"}</td>
+                        <td>{p.alasan || "—"}</td>
+                        <td>{p.jam_keluar}</td>
+                        <td>{p.tanggal_kembali || "—"}</td>
+                        <td>{p.jam_kembali || "—"}</td>
+                        <td>{p.catatan || "—"}</td>
+                        <td>
+                          <StatusBadge status={p.status} />
                         </td>
-                        <td style={tdStyle}>
-                          <div style={actionBarStyle}>
-                            <Button variant="outline" size="sm" onClick={() => editPerizinan(p)}>
-                              Edit
-                            </Button>
-                            <Button variant="danger" size="sm" onClick={() => deletePerizinan(p.id)}>
-                              Hapus
-                            </Button>
-                            {p.status === "keluar" && (
-                              <Button variant="primary" size="sm" onClick={() => kembali(p.id)}>
-                                Kembali
-                              </Button>
-                            )}
-                          </div>
+                        <td className="table-v3__cell--actions">
+                          <TableActions
+                            items={[
+                              { type: "edit", onClick: () => editPerizinan(p) },
+                              { type: "delete", onClick: () => deletePerizinan(p.id) },
+                              {
+                                type: "custom",
+                                icon: FaSignInAlt,
+                                title: "Kembali",
+                                variant: "success",
+                                hidden: p.status !== "keluar",
+                                onClick: () => kembali(p.id),
+                              },
+                            ]}
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+                </Table>
+              </TableScroll>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+              />
+              </>
             )}
           </DataTableCard>
         </div>

@@ -3,8 +3,9 @@ import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
-import Badge from "../components/ui/Badge";
+import StatusBadge from "../components/ui/StatusBadge";
 import Button, { actionBarStyle } from "../components/ui/Button";
+import { Table, TableScroll } from "../components/ui/table";
 import { exportExcel } from "../utils/exportExcel";
 
 const SESI_LIST = [
@@ -30,34 +31,11 @@ function AkademikResponsiveStyles() {
         max-width: 100%;
       }
 
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-
       .akademik-filter-panel select,
       .akademik-filter-panel input[type="number"] {
         min-width: 0;
         flex: 1 1 140px;
         max-width: 100%;
-      }
-
-      .table-scroll-x .akademik-name-col {
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
-      }
-
-      .table-scroll-x thead .akademik-name-col {
-        z-index: 2;
       }
 
       @media (max-width: 767px) {
@@ -83,14 +61,6 @@ function parseKey(key) {
   const h = parseInt(hari, 10);
   if (isNaN(b) || isNaN(t) || isNaN(h) || !santriId) return null;
   return { sesi, santriId, bulan: b, tahun: t, hari: h };
-}
-
-function absensiBadgeVariant(status) {
-  if (status === "H") return "success";
-  if (status === "I") return "info";
-  if (status === "S") return "warning";
-  if (status === "A") return "danger";
-  return "neutral";
 }
 
 function absensiStatusLabel(status) {
@@ -119,7 +89,7 @@ function AbsensiPage() {
       });
 
       if (seq !== fetchSeqRef.current) {
-        console.log("STALE FETCH IGNORED seq=" + seq + " current=" + fetchSeqRef.current);
+        
         return;
       }
 
@@ -135,15 +105,11 @@ function AbsensiPage() {
         const recBulan = parseInt(parts[1], 10);
         const hari = parseInt(parts[2], 10);
         if (isNaN(recTahun) || isNaN(recBulan) || isNaN(hari)) return;
-        console.log(
-          "BUILD",
-          a.tanggal,
-          buildKey(a.sesi, a.santri_id, recBulan, recTahun, hari)
-        );
+        
         data[buildKey(a.sesi, a.santri_id, recBulan, recTahun, hari)] = a.status;
       });
 
-      console.log("AFTER SET ABSENSI", data);
+      
       setAbsensi(data);
     } catch (err) {
       console.error(err);
@@ -212,10 +178,10 @@ function AbsensiPage() {
         });
       }
 
-      console.log("BEFORE ALERT", absensi);
+      
       alert(`Absensi berhasil disimpan (${entries.length} entri).`);
-      console.log("AFTER ALERT", absensi);
-      console.log("BEFORE FETCH", { bulan, tahun });
+      
+      
       await getAbsensi(bulan, tahun);
     } catch (err) {
       alert("Gagal simpan: " + (err.response?.data?.error || err.message));
@@ -288,69 +254,28 @@ function AbsensiPage() {
               {sesi}
             </SectionHeading>
 
-            <div className="table-scroll-x" style={{ marginTop: "var(--space-4)" }}>
-            <table
-              style={{
-                borderCollapse: "collapse",
-                background: "white",
-              }}
-            >
+            <div style={{ marginTop: "var(--space-4)" }}>
+            <TableScroll matrix sticky>
+              <Table>
               <thead>
                 <tr>
-                  <th
-                    className="akademik-name-col"
-                    style={{
-                      border: "1px solid #dcdcdc",
-                      padding: "10px",
-                      background: "#f0f0f0",
-                      minWidth: "180px",
-                    }}
-                  >
-                    Nama
-                  </th>
+                  <th className="table-v3__col--sticky">Nama</th>
                   {Array.from({ length: totalHari }).map((_, i) => (
-                    <th
-                      key={i}
-                      style={{
-                        border: "1px solid #dcdcdc",
-                        padding: "6px",
-                        background: "#f0f0f0",
-                      }}
-                    >
-                      {i + 1}
-                    </th>
+                    <th key={i}>{i + 1}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {santri.map((s) => (
                   <tr key={s.id}>
-                    <td
-                      className="akademik-name-col"
-                      style={{
-                        border: "1px solid #dcdcdc",
-                        padding: "8px",
-                        background: "#fafafa",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {s.nama}
-                    </td>
+                    <td className="table-v3__col--sticky table-v3__cell--strong">{s.nama}</td>
                     {Array.from({ length: totalHari }).map((_, i) => {
                       const hari = i + 1;
                       const key = buildKey(sesi, s.id, bulan, tahun, hari);
                       const status = absensi[key] || "";
-                      console.log("RENDER CELL", key, absensi[key]);
 
                       return (
-                        <td
-                          key={hari}
-                          style={{
-                            border: "1px solid #e5e5e5",
-                            padding: "4px",
-                            textAlign: "center",
-                          }}
-                        >
+                        <td key={hari} style={{ textAlign: "center" }}>
                           <select
                             value={status}
                             onChange={(e) =>
@@ -366,9 +291,7 @@ function AbsensiPage() {
                           </select>
                           {status && (
                             <div style={{ marginTop: "4px" }}>
-                              <Badge variant={absensiBadgeVariant(status)} size="sm">
-                                {absensiStatusLabel(status)}
-                              </Badge>
+                              <StatusBadge status={absensiStatusLabel(status) || status} size="sm" />
                             </div>
                           )}
                         </td>
@@ -377,7 +300,8 @@ function AbsensiPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </Table>
+            </TableScroll>
             </div>
           </Card>
         </div>

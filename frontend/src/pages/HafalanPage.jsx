@@ -4,6 +4,7 @@ import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
 import Button, { actionBarStyle } from "../components/ui/Button";
+import { Table, TableScroll } from "../components/ui/table";
 import { exportExcel } from "../utils/exportExcel";
 
 const filterPanelStyle = {
@@ -21,34 +22,11 @@ function AkademikResponsiveStyles() {
         max-width: 100%;
       }
 
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-
       .akademik-filter-panel select,
       .akademik-filter-panel input[type="number"] {
         min-width: 0;
         flex: 1 1 140px;
         max-width: 100%;
-      }
-
-      .table-scroll-x .akademik-name-col {
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
-      }
-
-      .table-scroll-x thead .akademik-name-col {
-        z-index: 2;
       }
 
       .akademik-table-input {
@@ -100,7 +78,7 @@ function HafalanPage() {
 
       setHafalan(data);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -111,7 +89,7 @@ function HafalanPage() {
       const response = await api.get("/kelas");
       setKelas(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -123,7 +101,7 @@ function HafalanPage() {
       );
       setSantri(filtered);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -186,7 +164,7 @@ function HafalanPage() {
       alert(`Hafalan berhasil disimpan (${entries.length} entri).`);
       getHafalan(bulan, tahun);
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal simpan: " + (err.response?.data?.error || err.message));
     }
   };
@@ -256,20 +234,16 @@ function HafalanPage() {
               Pekan {pekan}
             </SectionHeading>
 
-            <div className="table-scroll-x" style={{ marginTop: "var(--space-4)" }}>
-            <table
-              style={{
-                borderCollapse: "collapse",
-                background: "white",
-              }}
-            >
+            <div style={{ marginTop: "var(--space-4)" }}>
+            <TableScroll matrix sticky>
+            <Table>
               <thead>
                 <tr>
-                  <th className="akademik-name-col" style={thStyle}>Nama</th>
-                  <th style={thStyle}>Kitab</th>
-                  <th style={thStyle}>Awal</th>
-                  <th style={thStyle}>Akhir</th>
-                  <th style={thStyle}>Catatan</th>
+                  <th className="table-v3__col--sticky">Nama</th>
+                  <th>Kitab</th>
+                  <th>Awal</th>
+                  <th>Akhir</th>
+                  <th>Catatan</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,8 +252,8 @@ function HafalanPage() {
 
                   return (
                     <tr key={key}>
-                      <td className="akademik-name-col" style={tdNameStyle}>{s.nama}</td>
-                      <td style={tdStyle}>
+                      <td className="table-v3__col--sticky table-v3__cell--strong">{s.nama}</td>
+                      <td>
                         <input
                           className="akademik-table-input"
                           type="text"
@@ -289,7 +263,7 @@ function HafalanPage() {
                           }
                         />
                       </td>
-                      <td style={tdStyle}>
+                      <td>
                         <input
                           className="akademik-table-input"
                           type="text"
@@ -299,7 +273,7 @@ function HafalanPage() {
                           }
                         />
                       </td>
-                      <td style={tdStyle}>
+                      <td>
                         <input
                           className="akademik-table-input"
                           type="text"
@@ -309,7 +283,7 @@ function HafalanPage() {
                           }
                         />
                       </td>
-                      <td style={tdStyle}>
+                      <td>
                         <input
                           className="akademik-table-input"
                           type="text"
@@ -323,7 +297,8 @@ function HafalanPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
+            </TableScroll>
             </div>
           </Card>
         </div>
@@ -341,26 +316,5 @@ function HafalanPage() {
     </AppShell>
   );
 }
-
-const thStyle = {
-  border: "1px solid #dcdcdc",
-  padding: "10px",
-  background: "#f0f0f0",
-  minWidth: "100px",
-};
-
-const tdStyle = {
-  border: "1px solid #e5e5e5",
-  padding: "8px",
-  minWidth: "100px",
-};
-
-const tdNameStyle = {
-  border: "1px solid #e5e5e5",
-  padding: "8px",
-  background: "#fafafa",
-  fontWeight: 500,
-  minWidth: "160px",
-};
 
 export default HafalanPage;

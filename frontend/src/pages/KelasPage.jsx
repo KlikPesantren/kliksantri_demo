@@ -2,40 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import { Table, TableScroll, TableActions } from "../components/ui/table";
+import { FormField, Input, FormGrid, FormActionBar } from "../components/ui/form";
 import { exportExcel } from "../utils/exportExcel";
-
-const formFieldsStyle = {
-  display: "flex",
-  gap: "var(--space-3)",
-  flexWrap: "wrap",
-  alignItems: "center",
-};
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
 
 function KelasPage() {
   const [kelas, setKelas] = useState([]);
@@ -47,7 +21,7 @@ function KelasPage() {
       const response = await api.get("/kelas");
       setKelas(response.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -72,7 +46,7 @@ function KelasPage() {
       setNamaKelas("");
       getKelas();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -81,7 +55,7 @@ function KelasPage() {
       await api.delete(`/kelas/${id}`);
       getKelas();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -97,20 +71,22 @@ function KelasPage() {
   return (
     <AppShell title="Data Kelas" breadcrumb="Master Data / Kelas">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div style={formFieldsStyle}>
-          <input
-            type="text"
-            placeholder="Nama Kelas"
-            value={namaKelas}
-            onChange={(e) => setNamaKelas(e.target.value)}
-          />
-        </div>
-
-        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+        <FormGrid columns="single">
+          <FormField label="Nama Kelas" htmlFor="kelas-nama" required>
+            <Input
+              id="kelas-nama"
+              type="text"
+              value={namaKelas}
+              onChange={(e) => setNamaKelas(e.target.value)}
+              placeholder="Contoh: Kelas 1A"
+            />
+          </FormField>
+        </FormGrid>
+        <FormActionBar className="form-action-bar-v3--compact">
           <Button variant="primary" onClick={addKelas}>
             Tambah
           </Button>
-        </div>
+        </FormActionBar>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -148,30 +124,30 @@ function KelasPage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>ID</th>
-                    <th style={thStyle}>Nama Kelas</th>
-                    <th style={thStyle}>Aksi</th>
+                    <th>ID</th>
+                    <th>Nama Kelas</th>
+                    <th className="table-v3__cell--actions">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredKelas.map((item) => (
                     <tr key={item.id}>
-                      <td style={tdStyle}>{item.id}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{item.nama_kelas}</td>
-                      <td style={tdStyle}>
-                        <Button variant="danger" size="sm" onClick={() => deleteKelas(item.id)}>
-                          Hapus
-                        </Button>
+                      <td>{item.id}</td>
+                      <td className="table-v3__cell--strong">{item.nama_kelas}</td>
+                      <td className="table-v3__cell--actions">
+                        <TableActions
+                          items={[{ type: "delete", onClick: () => deleteKelas(item.id) }]}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+              </Table>
+            </TableScroll>
           )}
         </DataTableCard>
       </div>

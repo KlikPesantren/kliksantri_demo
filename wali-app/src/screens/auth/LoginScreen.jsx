@@ -1,23 +1,48 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useActiveChild } from '../../context/ActiveChildContext';
+import { BrandLogo } from '../../components/branding/BrandLogo';
+import {
+  ScreenContainer,
+  AppCard,
+  AppButton,
+  AppText,
+} from '../../components/ui';
 import { colors } from '../../constants/colors';
+import { interaction, radius, spacing } from '../../constants/theme';
+import { storage } from '../../utils/storage';
+
+const APP_VERSION = '1.0.0';
+const DEFAULT_TAGLINE = 'Portal Wali Santri';
+
+function LoginField({ label, children, error }) {
+  return (
+    <View style={styles.field}>
+      <AppText variant="label" color="muted">
+        {label}
+      </AppText>
+      {children}
+      {error ? (
+        <AppText variant="caption" color="danger" style={styles.fieldError}>
+          {error}
+        </AppText>
+      ) : null}
+    </View>
+  );
+}
 
 export function LoginScreen() {
-  const navigation = useNavigation();
   const { login } = useAuth();
   const { setActiveSantri } = useActiveChild();
 
@@ -26,19 +51,25 @@ export function LoginScreen() {
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [branding, setBranding] = useState(null);
 
   const pinRef = useRef(null);
 
+  useEffect(() => {
+    storage.getPesantrenBranding().then(setBranding).catch(() => {});
+  }, []);
+
+  const hasPesantrenBrand = Boolean(branding?.nama_pesantren?.trim());
+  const namaPesantren = hasPesantrenBrand ? branding.nama_pesantren : 'Pesantren';
+  const tagline = hasPesantrenBrand ? DEFAULT_TAGLINE : 'Silakan masuk ke portal wali';
+
   function handlePhoneChange(text) {
-    // Hanya terima angka
-    const cleaned = text.replace(/[^0-9]/g, '');
-    setNomorHp(cleaned);
+    setNomorHp(text.replace(/[^0-9]/g, ''));
     setError('');
   }
 
   function handlePinChange(text) {
-    const cleaned = text.replace(/[^0-9]/g, '').slice(0, 6);
-    setPin(cleaned);
+    setPin(text.replace(/[^0-9]/g, '').slice(0, 6));
     setError('');
   }
 
@@ -56,7 +87,6 @@ export function LoginScreen() {
 
     setIsLoading(true);
     try {
-      console.log('LOGIN REQUEST', { nomor_hp: nomorHp, pin });
       const { anak } = await login(nomorHp, pin);
 
       if (anak.length === 0) {
@@ -64,9 +94,7 @@ export function LoginScreen() {
         return;
       }
 
-      // Selalu set anak pertama sebagai aktif — user bisa ganti dari ChildSwitcherBar
       await setActiveSantri(anak[0]);
-      // AppNavigator akan otomatis pindah ke MainTabs karena isAuthenticated berubah
     } catch (err) {
       const status = err.response?.status;
       const msg = err.response?.data?.error;
@@ -86,228 +114,229 @@ export function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
+    <ScreenContainer style={styles.screen}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerIcon}>🕌</Text>
-          <Text style={styles.appName}>KlikSantri</Text>
-          <Text style={styles.subtitle}>Portal Wali Santri</Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.card}>
-          <Text style={styles.formTitle}>Masuk ke Akun Anda</Text>
-
-          {/* Error banner */}
-          {error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          {/* Nomor HP */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Nomor HP</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Contoh: 08123456789"
-              placeholderTextColor={colors.textMuted}
-              value={nomorHp}
-              onChangeText={handlePhoneChange}
-              keyboardType="phone-pad"
-              returnKeyType="next"
-              onSubmitEditing={() => pinRef.current?.focus()}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.hero}>
+            <BrandLogo logoUrl={branding?.logo_url} nama={namaPesantren} size={72} />
+            <AppText variant="display" color="inverse" style={styles.heroTitle} numberOfLines={2}>
+              {namaPesantren}
+            </AppText>
+            <AppText variant="body" color="inverse" style={styles.heroTagline}>
+              {tagline}
+            </AppText>
           </View>
 
-          {/* PIN */}
-          <View style={styles.field}>
-            <Text style={styles.label}>PIN (6 digit)</Text>
-            <View style={styles.pinWrapper}>
+          <AppCard padding="lg" shadow="md" style={styles.formCard}>
+            <AppText variant="h2" style={styles.formTitle}>
+              Masuk ke Akun Anda
+            </AppText>
+
+            {error ? (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+                <AppText variant="caption" color="danger" style={styles.errorText}>
+                  {error}
+                </AppText>
+              </View>
+            ) : null}
+
+            <LoginField label="Nomor HP">
               <TextInput
-                ref={pinRef}
-                style={[styles.input, styles.pinInput]}
-                placeholder="••••••"
+                style={styles.input}
+                placeholder="Contoh: 08123456789"
                 placeholderTextColor={colors.textMuted}
-                value={pin}
-                onChangeText={handlePinChange}
-                keyboardType="number-pad"
-                secureTextEntry={!showPin}
-                maxLength={6}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
+                value={nomorHp}
+                onChangeText={handlePhoneChange}
+                keyboardType="phone-pad"
+                returnKeyType="next"
+                onSubmitEditing={() => pinRef.current?.focus()}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
+            </LoginField>
+
+            <LoginField label="PIN (6 digit)">
+              <View style={styles.pinWrap}>
+                <TextInput
+                  ref={pinRef}
+                  style={[styles.input, styles.pinInput]}
+                  placeholder="••••••"
+                  placeholderTextColor={colors.textMuted}
+                  value={pin}
+                  onChangeText={handlePinChange}
+                  keyboardType="number-pad"
+                  secureTextEntry={!showPin}
+                  maxLength={6}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setShowPin((v) => !v)}
+                  activeOpacity={interaction.activeOpacity}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={showPin ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                </TouchableOpacity>
+              </View>
+            </LoginField>
+
+            <AppButton
+              fullWidth
+              size="lg"
+              loading={isLoading}
+              onPress={handleLogin}
+              style={styles.loginBtn}
+            >
+              Masuk
+            </AppButton>
+
+            <View style={styles.forgotRow}>
+              <AppText variant="caption" color="secondary">
+                Lupa PIN?{' '}
+              </AppText>
               <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPin((v) => !v)}
+                onPress={() =>
+                  Alert.alert(
+                    'Lupa PIN',
+                    'Silakan hubungi admin pesantren untuk mereset PIN Anda.',
+                    [{ text: 'OK' }]
+                  )
+                }
+                activeOpacity={interaction.activeOpacity}
               >
-                <Text style={styles.eyeIcon}>{showPin ? '🙈' : '👁️'}</Text>
+                <AppText variant="caption" color="brand" style={styles.forgotLink}>
+                  Hubungi Admin
+                </AppText>
               </TouchableOpacity>
             </View>
-          </View>
 
-          {/* Login button */}
-          <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}
-            activeOpacity={0.85}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={styles.loginButtonText}>Masuk</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Lupa PIN */}
-          <View style={styles.forgotWrapper}>
-            <Text style={styles.forgotText}>Lupa PIN? </Text>
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  'Lupa PIN',
-                  'Silakan hubungi admin pesantren untuk mereset PIN Anda.',
-                  [{ text: 'OK' }]
-                )
-              }
-            >
-              <Text style={styles.forgotLink}>Hubungi Admin</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <Text style={styles.footer}>KlikSantri © 2026</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <View style={styles.vendorFooter}>
+              <AppText variant="caption" color="muted" style={styles.vendorText}>
+                Powered by KlikSantri
+              </AppText>
+              <AppText variant="caption" color="muted">
+                Versi {APP_VERSION}
+              </AppText>
+            </View>
+          </AppCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.primary },
+  screen: {
+    backgroundColor: colors.surfaceSoft,
+  },
+  flex: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
+    paddingBottom: spacing['2xl'],
   },
-
-  // Header
-  header: { alignItems: 'center', marginBottom: 32 },
-  headerIcon: { fontSize: 52, marginBottom: 12 },
-  appName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 0.5,
+  hero: {
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    paddingTop: spacing['3xl'],
+    paddingBottom: spacing['2xl'],
+    paddingHorizontal: spacing['2xl'],
+    gap: spacing.sm,
   },
-  subtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 4,
+  heroTitle: {
+    textAlign: 'center',
+    letterSpacing: 0.3,
+    marginTop: spacing.sm,
   },
-
-  // Card
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+  heroTagline: {
+    textAlign: 'center',
+    opacity: 0.9,
+  },
+  formCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.lg,
   },
   formTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 20,
     textAlign: 'center',
+    marginBottom: spacing.lg,
   },
-
-  // Error
   errorBanner: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: colors.dangerSoft,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
     borderLeftWidth: 3,
     borderLeftColor: colors.danger,
   },
   errorText: {
-    color: colors.danger,
-    fontSize: 13,
+    flex: 1,
     lineHeight: 18,
   },
-
-  // Fields
-  field: { marginBottom: 16 },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.gray700,
-    marginBottom: 6,
+  field: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  fieldError: {
+    marginTop: spacing.xs,
   },
   input: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.text,
-    backgroundColor: colors.gray50,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surfaceSoft,
+    color: colors.textPrimary,
+    fontSize: 14,
+    lineHeight: 20,
   },
-
-  // PIN field
-  pinWrapper: { flexDirection: 'row', alignItems: 'center' },
-  pinInput: { flex: 1, letterSpacing: 6 },
-  eyeButton: {
+  pinWrap: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  pinInput: {
+    paddingRight: spacing['3xl'],
+    letterSpacing: 4,
+  },
+  eyeBtn: {
     position: 'absolute',
-    right: 12,
-    padding: 4,
+    right: spacing.md,
+    padding: spacing.xs,
   },
-  eyeIcon: { fontSize: 18 },
-
-  // Button
-  loginButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
+  loginBtn: {
+    marginTop: spacing.sm,
   },
-  loginButtonDisabled: { opacity: 0.65 },
-  loginButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  // Forgot
-  forgotWrapper: {
+  forgotRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 16,
+    alignItems: 'center',
+    marginTop: spacing.lg,
   },
-  forgotText: { fontSize: 13, color: colors.textSecondary },
-  forgotLink: { fontSize: 13, color: colors.primary, fontWeight: '600' },
-
-  // Footer
-  footer: {
-    textAlign: 'center',
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 12,
-    marginTop: 24,
+  forgotLink: {
+    fontWeight: '700',
+  },
+  vendorFooter: {
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    gap: spacing.xs,
+  },
+  vendorText: {
+    fontSize: 11,
+    opacity: 0.75,
   },
 });

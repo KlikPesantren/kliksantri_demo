@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import api from "../services/api";
 import { ROUTE_PERMISSIONS } from "../constants/permissions";
 import { hasPermission, getUser } from "../utils/hasPermission";
+import { setUser } from "../utils/storage";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -30,7 +31,7 @@ function ProtectedRoute({ children }) {
       .get("/auth/me")
       .then((res) => {
         if (!cancelled && res.data?.user) {
-          localStorage.setItem("user", JSON.stringify(res.data.user));
+          setUser(res.data.user);
         }
       })
       .catch(() => {})
@@ -56,7 +57,7 @@ function ProtectedRoute({ children }) {
           justifyContent: "center",
           alignItems: "center",
           fontSize: "16px",
-          color: "#64748b",
+          color: "var(--text-secondary)",
         }}
       >
         Memuat hak akses...

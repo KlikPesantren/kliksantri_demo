@@ -2,41 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import AppShell from "../layouts/AppShell";
 import api from "../services/api";
 import Card from "../components/ui/Card";
-import Badge from "../components/ui/Badge";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-function MerchantStatusBadge({ active }) {
-  return (
-    <Badge variant={active ? "success" : "neutral"} size="md">
-      {active ? "Aktif" : "Nonaktif"}
-    </Badge>
-  );
-}
+import StatusBadge from "../components/ui/StatusBadge";
+import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
+import { FormField, Input, FormGrid, FormActionBar } from "../components/ui/form";
 
 function RFIDMerchantPage() {
   const [merchants, setMerchants] = useState([]);
@@ -48,7 +21,7 @@ function RFIDMerchantPage() {
       const res = await api.get("/rfid/merchant");
       setMerchants(res.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -65,6 +38,12 @@ function RFIDMerchantPage() {
     );
   }, [merchants, tableSearch]);
 
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filteredMerchants);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tableSearch, setPage]);
+
   const tambahMerchant = async () => {
     if (!nama.trim()) return;
 
@@ -76,7 +55,7 @@ function RFIDMerchantPage() {
       setNama("");
       loadData();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -89,7 +68,7 @@ function RFIDMerchantPage() {
 
       loadData();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -100,22 +79,21 @@ function RFIDMerchantPage() {
       breadcrumb="Keamanan / RFID Merchant"
     >
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div style={actionBarStyle}>
-          <input
-            value={nama}
-            onChange={(e) => setNama(e.target.value)}
-            placeholder="Nama Merchant"
-            style={{
-              padding: "12px",
-              width: "300px",
-              border: "1px solid #E5E7EB",
-              borderRadius: "10px",
-            }}
-          />
+        <FormGrid columns="single">
+          <FormField label="Nama Merchant" htmlFor="merchant-nama" required>
+            <Input
+              id="merchant-nama"
+              value={nama}
+              onChange={(e) => setNama(e.target.value)}
+              placeholder="Nama merchant RFID"
+            />
+          </FormField>
+        </FormGrid>
+        <FormActionBar className="form-action-bar-v3--compact">
           <Button type="button" variant="primary" onClick={tambahMerchant}>
             Tambah Merchant
           </Button>
-        </div>
+        </FormActionBar>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -148,39 +126,48 @@ function RFIDMerchantPage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>ID</th>
-                    <th style={thStyle}>Merchant</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Aksi</th>
+                    <th>ID</th>
+                    <th>Merchant</th>
+                    <th>Status</th>
+                    <th className="table-v3__cell--actions">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredMerchants.map((item) => (
+                  {paginatedItems.map((item) => (
                     <tr key={item.id}>
-                      <td style={tdStyle}>{item.id}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{item.nama_merchant}</td>
-                      <td style={tdStyle}>
-                        <MerchantStatusBadge active={item.status} />
+                      <td>{item.id}</td>
+                      <td className="table-v3__cell--strong">{item.nama_merchant}</td>
+                      <td>
+                        <StatusBadge status={item.status ? "Aktif" : "Nonaktif"} />
                       </td>
-                      <td style={tdStyle}>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleStatus(item)}
-                        >
-                          {item.status ? "Nonaktifkan" : "Aktifkan"}
-                        </Button>
+                      <td className="table-v3__cell--actions">
+                        <TableActions
+                          items={[
+                            {
+                              type: "toggle",
+                              active: item.status,
+                              onClick: () => toggleStatus(item),
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+              </Table>
+            </TableScroll>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </DataTableCard>
       </div>

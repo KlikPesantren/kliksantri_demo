@@ -18,8 +18,8 @@ function SearchInput({
     <div
       style={{
         ...wrapperStyle,
-        borderColor: focused ? "var(--accent-teal-dark)" : "var(--border)",
-        boxShadow: focused ? "0 0 0 3px rgba(15, 118, 110, 0.12)" : "none",
+        borderColor: focused ? "var(--primary)" : "var(--border)",
+        boxShadow: focused ? "0 0 0 3px var(--focus-ring)" : "none",
         ...style,
       }}
     >
@@ -57,7 +57,7 @@ const wrapperStyle = {
   alignItems: "center",
   gap: "var(--space-2)",
   width: "100%",
-  minHeight: "40px",
+  minHeight: "var(--form-control-height, 44px)",
   padding: "0 var(--space-3)",
   background: "var(--surface)",
   border: "1px solid var(--border)",

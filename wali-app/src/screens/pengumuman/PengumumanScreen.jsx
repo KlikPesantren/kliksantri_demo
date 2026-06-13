@@ -1,156 +1,142 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
   FlatList,
   RefreshControl,
   TouchableOpacity,
-  Animated,
+  View,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
 import { usePengumuman } from '../../hooks/usePengumuman';
+import { TabPesantrenHeader } from '../../components/home/TabPesantrenHeader';
+import {
+  ScreenContainer,
+  AppText,
+  AppCard,
+  StatusBadge,
+  EmptyState,
+} from '../../components/ui';
+import { PengumumanCover } from '../../components/pengumuman/PengumumanCover';
+import { PengumumanDetailModal } from '../../components/pengumuman/PengumumanDetailModal';
 import { ErrorView } from '../../components/common/ErrorView';
-import { colors } from '../../constants/colors';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { formatDate } from '../../utils/formatDate';
+import { colors } from '../../constants/colors';
+import { spacing } from '../../constants/theme';
 
-// ─── Prioritas Config ─────────────────────────────────────────────────────────
-
-const PRIORITAS = {
-  urgent:  { label: 'Urgent',  color: colors.danger,  bg: colors.dangerLight,  icon: '🚨' },
-  penting: { label: 'Penting', color: colors.warning, bg: colors.warningLight, icon: '⚠️' },
-  normal:  { label: 'Normal',  color: colors.info,    bg: colors.infoLight,    icon: '📢' },
-};
-
-function getPrioritasConfig(p) {
-  return PRIORITAS[p] ?? PRIORITAS.normal;
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  const anim = useRef(new Animated.Value(0.4)).current;
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [anim]);
-
+function FeaturedCard({ item, onPress }) {
+  if (!item) return null;
   return (
-    <Animated.View style={[styles.skeletonCard, { opacity: anim }]}>
-      <View style={styles.skeletonBadge} />
-      <View style={{ gap: 8, flex: 1 }}>
-        <View style={styles.skeletonLine} />
-        <View style={[styles.skeletonLine, { width: '80%' }]} />
-        <View style={[styles.skeletonLine, { width: '60%', height: 11 }]} />
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─── Pengumuman Card ─────────────────────────────────────────────────────────
-
-function PengumumanCard({ item, onPress }) {
-  const cfg = getPrioritasConfig(item.prioritas);
-
-  return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => onPress(item)}
-      activeOpacity={0.75}
-    >
-      {/* Badge + Tanggal */}
-      <View style={styles.cardMeta}>
-        <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
-          <Text style={[styles.badgeText, { color: cfg.color }]}>
-            {cfg.icon} {cfg.label}
-          </Text>
+    <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(item)}>
+      <AppCard padding="none" shadow="md" style={styles.featured}>
+        <PengumumanCover coverUrl={item.cover_url} variant="featured" />
+        <View style={styles.featuredBody}>
+          {(item.prioritas === 'urgent' || item.prioritas === 'penting') && (
+            <StatusBadge status={item.prioritas} size="sm" />
+          )}
+          <AppText variant="h2" numberOfLines={2}>
+            {item.judul}
+          </AppText>
+          <AppText variant="body" color="secondary" numberOfLines={2}>
+            {item.isi}
+          </AppText>
         </View>
-        <Text style={styles.dateText}>{formatDate(item.published_at)}</Text>
-      </View>
-
-      {/* Judul */}
-      <Text style={styles.judul} numberOfLines={2}>{item.judul}</Text>
-
-      {/* Preview isi */}
-      <Text style={styles.preview} numberOfLines={3}>{item.isi}</Text>
-
-      {/* "Baca selengkapnya" hint */}
-      <Text style={styles.readMore}>Baca selengkapnya →</Text>
+      </AppCard>
     </TouchableOpacity>
   );
 }
 
-// ─── Empty ────────────────────────────────────────────────────────────────────
+function FeedRow({ item, onPress }) {
+  const showBadge = item.prioritas === 'urgent' || item.prioritas === 'penting';
 
-function EmptyPengumuman() {
   return (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>📭</Text>
-      <Text style={styles.emptyTitle}>Tidak Ada Pengumuman</Text>
-      <Text style={styles.emptySubtitle}>
-        Belum ada pengumuman aktif saat ini.
-      </Text>
-    </View>
+    <TouchableOpacity activeOpacity={0.75} onPress={() => onPress(item)}>
+      <AppCard padding="sm" style={styles.feedRow}>
+        <PengumumanCover coverUrl={item.cover_url} variant="feed" style={styles.thumb} />
+        <View style={styles.feedContent}>
+          {showBadge ? <StatusBadge status={item.prioritas} size="sm" /> : null}
+          <AppText variant="bodyMedium" numberOfLines={2}>
+            {item.judul}
+          </AppText>
+          <AppText variant="caption" color="muted">
+            {formatDate(item.published_at)}
+          </AppText>
+          <AppText variant="caption" color="secondary" numberOfLines={2}>
+            {item.isi}
+          </AppText>
+        </View>
+      </AppCard>
+    </TouchableOpacity>
   );
 }
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+export function PengumumanScreen() {
+  const { data, isLoading, isRefreshing, error, refresh } = usePengumuman();
+  const [selected, setSelected] = useState(null);
 
-export function PengumumanScreen({ navigation }) {
-  const { data, total, isLoading, isRefreshing, error, refresh } = usePengumuman();
+  const featured = data[0] ?? null;
+  const feedData = data.length > 1 ? data.slice(1) : [];
 
-  const handlePress = useCallback(
-    (item) => {
-      navigation.navigate('DetailPengumuman', { item });
-    },
-    [navigation]
-  );
-
-  const renderItem = useCallback(
-    ({ item }) => <PengumumanCard item={item} onPress={handlePress} />,
-    [handlePress]
-  );
-
-  const keyExtractor = useCallback((item) => String(item.id), []);
+  const handlePress = useCallback((item) => setSelected(item), []);
 
   if (isLoading && data.length === 0) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.skeletonContainer}>
-          {[1, 2, 3].map((k) => <SkeletonCard key={k} />)}
-        </View>
-      </SafeAreaView>
+      <ScreenContainer edges={false}>
+        <TabPesantrenHeader />
+        <LoadingSpinner message="Memuat pengumuman..." />
+      </ScreenContainer>
     );
   }
 
   if (error && data.length === 0) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <ScreenContainer edges={false}>
+        <TabPesantrenHeader />
         <ErrorView message={error} onRetry={refresh} />
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      {total > 0 && (
-        <View style={styles.totalBar}>
-          <Text style={styles.totalText}>{total} pengumuman aktif</Text>
-        </View>
-      )}
+    <ScreenContainer edges={false}>
+      <TabPesantrenHeader />
+
       <FlatList
-        data={data}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        ListEmptyComponent={!isLoading ? <EmptyPengumuman /> : null}
-        ListFooterComponent={<View style={{ height: 32 }} />}
-        contentContainerStyle={styles.listContent}
+        data={feedData}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <AppText variant="label" color="muted" style={styles.sectionLabel}>
+              Featured
+            </AppText>
+            {featured ? (
+              <FeaturedCard item={featured} onPress={handlePress} />
+            ) : (
+              <AppCard padding="md">
+                <EmptyState
+                  title="Tidak Ada Pengumuman"
+                  description="Belum ada pengumuman aktif saat ini."
+                  icon="megaphone-outline"
+                />
+              </AppCard>
+            )}
+            {feedData.length > 0 ? (
+              <AppText variant="label" color="muted" style={styles.sectionLabel}>
+                Feed
+              </AppText>
+            ) : null}
+          </View>
+        }
+        renderItem={({ item }) => <FeedRow item={item} onPress={handlePress} />}
+        ListEmptyComponent={
+          featured ? null : (
+            <View style={styles.header}>
+              <EmptyState title="Kosong" description="Tidak ada pengumuman lain." />
+            </View>
+          )
+        }
+        contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={() => <View style={styles.sep} />}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -160,108 +146,46 @@ export function PengumumanScreen({ navigation }) {
           />
         }
       />
-    </SafeAreaView>
+
+      <PengumumanDetailModal
+        visible={!!selected}
+        item={selected}
+        onClose={() => setSelected(null)}
+      />
+    </ScreenContainer>
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: 12 },
-  separator: { height: 10, marginHorizontal: 16 },
-
-  totalBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    gap: spacing.md,
   },
-  totalText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
-
-  // ── Skeleton ──
-  skeletonContainer: { padding: 16, gap: 12 },
-  skeletonCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+  sectionLabel: {
+    marginBottom: spacing.xs,
   },
-  skeletonBadge: {
-    width: 72,
-    height: 22,
-    borderRadius: 8,
-    backgroundColor: colors.gray200,
+  featured: {
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
   },
-  skeletonLine: {
-    height: 13,
-    borderRadius: 6,
-    backgroundColor: colors.gray200,
-    width: '100%',
+  featuredBody: {
+    padding: spacing.lg,
+    gap: spacing.sm,
   },
-
-  // ── Card ──
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    marginHorizontal: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 1,
-    gap: 8,
+  list: {
+    paddingBottom: spacing['3xl'],
   },
-  cardMeta: {
+  feedRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    marginHorizontal: spacing.lg,
+    gap: spacing.md,
+    alignItems: 'flex-start',
   },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+  feedContent: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0,
   },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  dateText: { fontSize: 11, color: colors.textMuted },
-
-  judul: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-    lineHeight: 22,
-  },
-  preview: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  readMore: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-
-  // ── Empty ──
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 32,
-    gap: 10,
-  },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  emptySubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  sep: { height: spacing.sm },
 });

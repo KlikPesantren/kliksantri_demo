@@ -10,12 +10,22 @@ import {
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
-import Badge from "../components/ui/Badge";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import StatusBadge from "../components/ui/StatusBadge";
+import Button from "../components/ui/Button";
+import Modal from "../components/Modal";
 import KpiCard from "../components/ui/KpiCard";
 import KpiGrid from "../components/ui/KpiGrid";
+import { formatNumber } from "../utils/formatCurrency";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import {
+  FormField,
+  Input,
+  Select,
+  Textarea,
+  FormGrid,
+  FormActionBar,
+} from "../components/ui/form";
 
 const COVER_WIDTH = 1200;
 const COVER_HEIGHT = 675;
@@ -102,7 +112,7 @@ function PengumumanPageStyles() {
         aspect-ratio: 16 / 9;
         border-radius: var(--radius-xl);
         overflow: hidden;
-        background: #e2e8f0;
+        background: var(--neutral-subtle);
       }
 
       .pengumuman-cover img {
@@ -130,7 +140,7 @@ function PengumumanPageStyles() {
         justify-content: center;
         gap: 8px;
         color: var(--text-muted);
-        background: linear-gradient(145deg, #0f172a 0%, #1e3a5f 48%, #0d9488 100%);
+        background: var(--accent-teal-gradient);
       }
 
       .pengumuman-cover-placeholder span {
@@ -260,13 +270,13 @@ function PengumumanPageStyles() {
       .pengumuman-icon-btn:hover {
         background: var(--neutral-subtle);
         color: var(--text-primary);
-        border-color: #cbd5e1;
+        border-color: var(--border-hover);
       }
 
       .pengumuman-icon-btn--danger:hover {
-        background: #fef2f2;
+        background: var(--danger-subtle);
         color: var(--danger);
-        border-color: #fecaca;
+        border-color: var(--danger-subtle);
       }
 
       .pengumuman-filter-pills {
@@ -290,7 +300,7 @@ function PengumumanPageStyles() {
       .pengumuman-filter-pill--active {
         background: var(--primary);
         border-color: var(--primary);
-        color: #fff;
+        color: var(--surface);
       }
 
       .pengumuman-toolbar {
@@ -315,7 +325,7 @@ function PengumumanPageStyles() {
         max-width: 760px;
         max-height: 90vh;
         overflow-y: auto;
-        box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22);
+        box-shadow: var(--shadow-lg);
       }
 
       .pengumuman-read-body {
@@ -336,18 +346,6 @@ function PengumumanPageStyles() {
         line-height: 1.75;
         color: var(--text-primary);
         white-space: pre-wrap;
-      }
-
-      .pengumuman-read-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.55);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        padding: 16px;
-        box-sizing: border-box;
       }
 
       @media (max-width: 767px) {
@@ -379,7 +377,7 @@ function PengumumanPageStyles() {
 function CoverPlaceholder({ compact = false }) {
   return (
     <div className="pengumuman-cover-placeholder">
-      <FaImage style={{ fontSize: compact ? "22px" : "28px", opacity: 0.7, color: "#fff" }} />
+      <FaImage style={{ fontSize: compact ? "22px" : "28px", opacity: 0.7, color: "var(--surface)" }} />
       <span>Pengumuman Pesantren</span>
     </div>
   );
@@ -466,15 +464,13 @@ function FeaturedHero({ item, onPreview, onEdit, onToggle, onRemove }) {
       <div className="pengumuman-hero-body">
         <div className="pengumuman-feed-meta">
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-            <Badge variant="success" size="sm">
+            <StatusBadge status="terbaru" size="sm">
               Terbaru
-            </Badge>
-            <Badge variant={prioritas.variant} size="sm">
+            </StatusBadge>
+            <StatusBadge status={item.prioritas} size="sm">
               {prioritas.label}
-            </Badge>
-            <Badge variant={item.is_active ? "success" : "neutral"} size="sm">
-              {item.is_active ? "Aktif" : "Nonaktif"}
-            </Badge>
+            </StatusBadge>
+            <StatusBadge status={item.is_active ? "Aktif" : "Nonaktif"} size="sm" />
           </div>
           <time className="pengumuman-feed-date">
             {formatDt(item.published_at ?? item.created_at)}
@@ -493,7 +489,7 @@ function FeaturedHero({ item, onPreview, onEdit, onToggle, onRemove }) {
           </p>
         )}
 
-        <div style={{ ...actionBarStyle, marginTop: "var(--space-4)", justifyContent: "flex-start" }}>
+        <FormActionBar className="form-action-bar-v3--compact" style={{ marginTop: "var(--space-4)", justifyContent: "flex-start" }}>
           <CardActions
             item={item}
             onPreview={onPreview}
@@ -501,7 +497,7 @@ function FeaturedHero({ item, onPreview, onEdit, onToggle, onRemove }) {
             onToggle={onToggle}
             onRemove={onRemove}
           />
-        </div>
+        </FormActionBar>
       </div>
     </article>
   );
@@ -525,12 +521,10 @@ function FeedListItem({ item, onPreview, onEdit, onToggle, onRemove }) {
       <div style={{ minWidth: 0 }}>
         <div className="pengumuman-feed-meta">
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-            <Badge variant={prioritas.variant} size="sm">
+            <StatusBadge status={item.prioritas} size="sm">
               {prioritas.label}
-            </Badge>
-            <Badge variant={item.is_active ? "success" : "neutral"} size="sm">
-              {item.is_active ? "Aktif" : "Nonaktif"}
-            </Badge>
+            </StatusBadge>
+            <StatusBadge status={item.is_active ? "Aktif" : "Nonaktif"} size="sm" />
           </div>
           <time className="pengumuman-feed-date">
             {formatDt(item.published_at ?? item.created_at)}
@@ -561,46 +555,39 @@ function FeedListItem({ item, onPreview, onEdit, onToggle, onRemove }) {
   );
 }
 
-function ReadArticleModal({ item, onClose }) {
+function ReadArticleModal({ item, open, onClose }) {
   if (!item) return null;
 
   const prioritas = prioritasMeta(item.prioritas);
 
   return (
-    <div className="pengumuman-read-overlay" onClick={onClose}>
-      <article className="pengumuman-read-modal" onClick={(e) => e.stopPropagation()}>
-        <AnnouncementCover coverUrl={item.cover_url} variant="hero" />
-        <div className="pengumuman-read-body">
-          <div className="pengumuman-feed-meta">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-              <Badge variant={prioritas.variant}>{prioritas.label}</Badge>
-              <Badge variant={item.is_active ? "success" : "neutral"}>
-                {item.is_active ? "Aktif" : "Nonaktif"}
-              </Badge>
-            </div>
-            <time className="pengumuman-feed-date">
-              {formatDt(item.published_at ?? item.created_at)}
-            </time>
+    <Modal open={open} title={item.judul} onClose={onClose} width={760}>
+      <AnnouncementCover coverUrl={item.cover_url} variant="hero" />
+      <div style={{ marginTop: "var(--space-4)" }}>
+        <div className="pengumuman-feed-meta">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+            <StatusBadge status={item.prioritas}>{prioritas.label}</StatusBadge>
+            <StatusBadge status={item.is_active ? "Aktif" : "Nonaktif"} />
           </div>
-
-          <h1 className="pengumuman-read-title">{item.judul}</h1>
-
-          {item.expires_at && (
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
-              Berlaku s/d {formatDt(item.expires_at)}
-            </p>
-          )}
-
-          <div className="pengumuman-read-content">{item.isi}</div>
-
-          <div style={{ ...actionBarStyle, marginTop: "var(--space-5)" }}>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Tutup
-            </Button>
-          </div>
+          <time className="pengumuman-feed-date">
+            {formatDt(item.published_at ?? item.created_at)}
+          </time>
         </div>
-      </article>
-    </div>
+
+        {item.expires_at && (
+          <p style={{ margin: "var(--space-2) 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
+            Berlaku s/d {formatDt(item.expires_at)}
+          </p>
+        )}
+
+        <div className="pengumuman-read-content">{item.isi}</div>
+      </div>
+      <FormActionBar className="form-action-bar-v3--compact">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Tutup
+        </Button>
+      </FormActionBar>
+    </Modal>
   );
 }
 
@@ -622,7 +609,7 @@ function PengumumanPage() {
       const res = await api.get("/pengumuman");
       setList(res.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -653,7 +640,7 @@ function PengumumanPage() {
       setFormOpen(false);
       getList();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal menyimpan pengumuman.");
     }
   };
@@ -679,7 +666,7 @@ function PengumumanPage() {
       });
       getList();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal mengubah status.");
     }
   };
@@ -690,7 +677,7 @@ function PengumumanPage() {
       await api.delete(`/pengumuman/${id}`);
       getList();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal menghapus.");
     }
   };
@@ -714,7 +701,7 @@ function PengumumanPage() {
       const dataUrl = await processCoverImage(file);
       setForm((prev) => ({ ...prev, cover_url: dataUrl }));
     } catch (err) {
-      console.log(err);
+      console.error(err);
       alert("Gagal memproses gambar cover.");
     } finally {
       setCoverUploading(false);
@@ -765,15 +752,10 @@ function PengumumanPage() {
       <div className="pengumuman-page">
         {!formOpen && (
           <div style={{ marginBottom: "var(--space-6)" }}>
-            <KpiGrid minColumnWidth={180} gap={16}>
-              <KpiCard layout="metric" label="Total Pengumuman" value={stats.total} accent="teal" />
-              <KpiCard layout="metric" label="Aktif" value={stats.aktif} accent="success" />
-              <KpiCard
-                layout="metric"
-                label="Prioritas Tinggi"
-                value={stats.prioritasTinggi}
-                accent="danger"
-              />
+            <KpiGrid>
+              <KpiCard label="Total Pengumuman" value={formatNumber(stats.total)} accent="primary" />
+              <KpiCard label="Aktif" value={formatNumber(stats.aktif)} accent="success" />
+              <KpiCard label="Prioritas Tinggi" value={formatNumber(stats.prioritasTinggi)} accent="danger" />
             </KpiGrid>
           </div>
         )}
@@ -815,64 +797,66 @@ function PengumumanPage() {
           <Card padding="md" shadow="card" border={false} radius="xl">
             <p style={formEyebrowStyle}>{editId ? "Edit Pengumuman" : "Pengumuman Baru"}</p>
 
-            <label style={labelStyle}>Cover Image</label>
-            <p style={hintStyle}>Rasio 16:9 · direkomendasikan 1200 × 675 px</p>
-            <div style={coverEditorStyle}>
-              <AnnouncementCover coverUrl={form.cover_url} variant="hero" />
-              <div style={coverActionsStyle}>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={handleCoverPick}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={coverUploading}
-                >
-                  {coverUploading ? "Memproses..." : form.cover_url ? "Ganti Cover" : "Upload Cover"}
-                </Button>
-                {form.cover_url && (
+            <FormField label="Cover Image" helper="Rasio 16:9 · direkomendasikan 1200 × 675 px">
+              <div style={coverEditorStyle}>
+                <AnnouncementCover coverUrl={form.cover_url} variant="hero" />
+                <div style={coverActionsStyle}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleCoverPick}
+                  />
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setForm({ ...form, cover_url: "" })}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={coverUploading}
                   >
-                    Hapus Cover
+                    {coverUploading ? "Memproses..." : form.cover_url ? "Ganti Cover" : "Upload Cover"}
                   </Button>
-                )}
+                  {form.cover_url && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setForm({ ...form, cover_url: "" })}
+                    >
+                      Hapus Cover
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            </FormField>
 
-            <label style={labelStyle}>Judul *</label>
-            <input
-              style={inputStyle}
-              placeholder="Judul pengumuman"
-              value={form.judul}
-              onChange={(e) => setForm({ ...form, judul: e.target.value })}
-              maxLength={200}
-            />
+            <FormField label="Judul" htmlFor="pengumuman-judul" required>
+              <Input
+                id="pengumuman-judul"
+                placeholder="Judul pengumuman"
+                value={form.judul}
+                onChange={(e) => setForm({ ...form, judul: e.target.value })}
+                maxLength={200}
+              />
+            </FormField>
 
-            <label style={labelStyle}>Isi Pengumuman *</label>
-            <textarea
-              style={{ ...inputStyle, minHeight: "160px", resize: "vertical" }}
-              placeholder="Tulis informasi pesantren, kegiatan, agenda, atau pengumuman penting..."
-              value={form.isi}
-              onChange={(e) => setForm({ ...form, isi: e.target.value })}
-            />
+            <FormField label="Isi Pengumuman" htmlFor="pengumuman-isi" required>
+              <Textarea
+                id="pengumuman-isi"
+                placeholder="Tulis informasi pesantren, kegiatan, agenda, atau pengumuman penting..."
+                value={form.isi}
+                onChange={(e) => setForm({ ...form, isi: e.target.value })}
+                rows={6}
+              />
+            </FormField>
 
             <details style={advancedWrapStyle}>
               <summary style={advancedSummaryStyle}>Pengaturan lanjutan</summary>
-              <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", marginTop: "12px" }}>
-                <div style={{ flex: 1, minWidth: "180px" }}>
-                  <label style={labelStyle}>Prioritas</label>
-                  <select
-                    style={inputStyle}
+              <FormGrid style={{ marginTop: "var(--space-3)" }}>
+                <FormField label="Prioritas" htmlFor="pengumuman-prioritas">
+                  <Select
+                    id="pengumuman-prioritas"
                     value={form.prioritas}
                     onChange={(e) => setForm({ ...form, prioritas: e.target.value })}
                   >
@@ -881,39 +865,37 @@ function PengumumanPage() {
                         {o.label}
                       </option>
                     ))}
-                  </select>
-                </div>
-                <div style={{ flex: 1, minWidth: "180px" }}>
-                  <label style={labelStyle}>Berlaku Hingga (opsional)</label>
-                  <input
+                  </Select>
+                </FormField>
+                <FormField label="Berlaku Hingga (opsional)" htmlFor="pengumuman-expires">
+                  <Input
+                    id="pengumuman-expires"
                     type="date"
-                    style={inputStyle}
                     value={form.expires_at}
                     onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
                   />
-                </div>
-                <div style={{ flex: 1, minWidth: "180px" }}>
-                  <label style={labelStyle}>Status</label>
-                  <select
-                    style={inputStyle}
+                </FormField>
+                <FormField label="Status" htmlFor="pengumuman-status">
+                  <Select
+                    id="pengumuman-status"
                     value={form.is_active ? "1" : "0"}
                     onChange={(e) => setForm({ ...form, is_active: e.target.value === "1" })}
                   >
                     <option value="1">Aktif</option>
                     <option value="0">Nonaktif</option>
-                  </select>
-                </div>
-              </div>
+                  </Select>
+                </FormField>
+              </FormGrid>
             </details>
 
-            <div style={{ ...actionBarStyle, marginTop: "var(--space-5)" }}>
+            <FormActionBar className="form-action-bar-v3--compact">
               <Button type="button" variant="primary" onClick={save}>
                 {editId ? "Simpan Perubahan" : "Simpan Pengumuman"}
               </Button>
               <Button type="button" variant="outline" onClick={cancel}>
                 Batal
               </Button>
-            </div>
+            </FormActionBar>
           </Card>
         )}
 
@@ -978,7 +960,11 @@ function PengumumanPage() {
           )}
         </div>
 
-        <ReadArticleModal item={previewItem} onClose={() => setPreviewItem(null)} />
+        <ReadArticleModal
+          open={!!previewItem}
+          item={previewItem}
+          onClose={() => setPreviewItem(null)}
+        />
       </div>
     </AppShell>
   );
@@ -991,34 +977,6 @@ const formEyebrowStyle = {
   letterSpacing: "0.08em",
   textTransform: "uppercase",
   color: "var(--text-secondary)",
-};
-
-const labelStyle = {
-  display: "block",
-  fontSize: "13px",
-  fontWeight: 600,
-  color: "var(--text-primary)",
-  marginBottom: "6px",
-  marginTop: "16px",
-};
-
-const hintStyle = {
-  margin: "0 0 10px",
-  fontSize: "12px",
-  color: "var(--text-secondary)",
-};
-
-const inputStyle = {
-  width: "100%",
-  maxWidth: "100%",
-  padding: "12px 14px",
-  borderRadius: "10px",
-  border: "1px solid var(--border)",
-  fontSize: "15px",
-  boxSizing: "border-box",
-  outline: "none",
-  fontFamily: "inherit",
-  background: "var(--surface)",
 };
 
 const coverEditorStyle = {

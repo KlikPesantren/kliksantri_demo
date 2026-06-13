@@ -3,44 +3,15 @@ import AppShell from "../layouts/AppShell";
 import api from "../services/api";
 import KpiCard from "../components/ui/KpiCard";
 import KpiGrid from "../components/ui/KpiGrid";
-import Badge from "../components/ui/Badge";
+import { formatNumber } from "../utils/formatCurrency";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import StatusBadge from "../components/ui/StatusBadge";
+import { Table, TableScroll, TablePagination, useClientPagination } from "../components/ui/table";
 
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-function DeviceStatusBadge({ status }) {
-  const isOnline = status === "online";
-  return (
-    <Badge variant={isOnline ? "success" : "danger"} size="md">
-      {isOnline ? "Online" : "Offline"}
-    </Badge>
-  );
-}
-
-function RFIDDevicePage() {
-  const [devices, setDevices] = useState([]);
+function RFIDDevicePage() {  const [devices, setDevices] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
 
   const loadData = async () => {
@@ -48,7 +19,7 @@ function RFIDDevicePage() {
       const res = await api.get("/devices");
       setDevices(res.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -69,6 +40,12 @@ function RFIDDevicePage() {
     );
   }, [devices, tableSearch]);
 
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filteredDevices);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tableSearch, setPage]);
+
   const online = devices.filter((d) => d.status === "online").length;
   const offline = devices.filter((d) => d.status !== "online").length;
   const synced = devices.filter((d) => d.last_sync).length;
@@ -79,11 +56,11 @@ function RFIDDevicePage() {
       description="Monitoring seluruh RFID EDC"
       breadcrumb="Keamanan / RFID Devices"
     >
-      <KpiGrid minColumnWidth={200} gap={16}>
-        <KpiCard layout="metric" label="Total Device" value={devices.length} accent="teal" />
-        <KpiCard layout="metric" label="Device Online" value={online} accent="success" />
-        <KpiCard layout="metric" label="Device Offline" value={offline} accent="danger" />
-        <KpiCard layout="metric" label="Sync" value={synced} accent="teal" />
+      <KpiGrid>
+        <KpiCard label="Total Device" value={formatNumber(devices.length)} accent="primary" />
+        <KpiCard label="Device Online" value={formatNumber(online)} accent="success" />
+        <KpiCard label="Device Offline" value={formatNumber(offline)} accent="danger" />
+        <KpiCard label="Sync" value={formatNumber(synced)} accent="info" />
       </KpiGrid>
 
       <div style={{ marginTop: "var(--space-6)" }}>
@@ -116,44 +93,49 @@ function RFIDDevicePage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>ID</th>
-                    <th style={thStyle}>Device</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>IP Address</th>
-                    <th style={thStyle}>Last Ping</th>
-                    <th style={thStyle}>Last Sync</th>
-                    <th style={thStyle}>Firmware</th>
+                    <th>ID</th>
+                    <th>Device</th>
+                    <th>Status</th>
+                    <th>IP Address</th>
+                    <th>Last Ping</th>
+                    <th>Last Sync</th>
+                    <th>Firmware</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDevices.map((d) => (
+                  {paginatedItems.map((d) => (
                     <tr key={d.id}>
-                      <td style={tdStyle}>{d.id}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{d.device_id}</td>
-                      <td style={tdStyle}>
-                        <DeviceStatusBadge status={d.status} />
+                      <td>{d.id}</td>
+                      <td className="table-v3__cell--strong">{d.device_id}</td>
+                      <td>
+                        <StatusBadge status={d.status} />
                       </td>
-                      <td style={tdStyle}>
-                        {d.ip_address ? d.ip_address.replace("::ffff:", "") : "—"}
-                      </td>
-                      <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "13px" }}>
+                      <td>{d.ip_address ? d.ip_address.replace("::ffff:", "") : "—"}</td>
+                      <td className="table-v3__cell--mono">
                         {d.last_ping ? new Date(d.last_ping).toLocaleString() : "—"}
                       </td>
-                      <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "13px" }}>
+                      <td className="table-v3__cell--mono">
                         {d.last_sync ? new Date(d.last_sync).toLocaleString() : "—"}
                       </td>
-                      <td style={tdStyle}>{d.firmware_version || "—"}</td>
+                      <td>{d.firmware_version || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
-          )}
-        </DataTableCard>
+              </Table>
+            </TableScroll>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+            />
+            </>
+          )}        </DataTableCard>
       </div>
     </AppShell>
   );

@@ -7,35 +7,13 @@ import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-function syncBadgeVariant(status) {
-  const value = String(status || "").toLowerCase();
-  if (value === "synced") return "success";
-  if (value === "pending") return "warning";
-  if (value === "failed") return "danger";
-  return "neutral";
-}
+import StatusBadge from "../components/ui/StatusBadge";
+import {
+  Table,
+  TableScroll,
+  TablePagination,
+  useClientPagination,
+} from "../components/ui/table";
 
 function trxTypeLabel(trxType) {
   if (trxType === "payment") return "PEMBAYARAN";
@@ -59,7 +37,7 @@ function RFIDTransactionPage() {
       const res = await api.get("/rfid/transactions");
       setTransactions(res.data.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -81,6 +59,13 @@ function RFIDTransactionPage() {
       ].some((field) => String(field || "").toLowerCase().includes(q)),
     );
   }, [transactions, tableSearch]);
+
+  const { page, setPage, paginatedItems, totalItems, pageSize } =
+    useClientPagination(filteredTransactions);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tableSearch, setPage]);
 
   return (
     <AppShell
@@ -127,48 +112,56 @@ function RFIDTransactionPage() {
             }
           />
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Waktu</th>
-                  <th style={thStyle}>Santri</th>
-                  <th style={thStyle}>Tipe</th>
-                  <th style={thStyle}>Merchant</th>
-                  <th style={thStyle}>Device</th>
-                  <th style={thStyle}>Nominal</th>
-                  <th style={thStyle}>Saldo Awal</th>
-                  <th style={thStyle}>Saldo Akhir</th>
-                  <th style={thStyle}>Sync</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((trx) => (
-                  <tr key={trx.id}>
-                    <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "13px" }}>
-                      {new Date(trx.created_at).toLocaleString()}
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{trx.nama_santri}</td>
-                    <td style={tdStyle}>
-                      <Badge variant={trxTypeBadgeVariant(trx.trx_type)}>
-                        {trxTypeLabel(trx.trx_type)}
-                      </Badge>
-                    </td>
-                    <td style={tdStyle}>{trx.nama_merchant}</td>
-                    <td style={tdStyle}>{trx.device_id}</td>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>
-                      Rp {Number(trx.nominal).toLocaleString()}
-                    </td>
-                    <td style={tdStyle}>Rp {Number(trx.saldo_awal).toLocaleString()}</td>
-                    <td style={tdStyle}>Rp {Number(trx.saldo_akhir).toLocaleString()}</td>
-                    <td style={tdStyle}>
-                      <Badge variant={syncBadgeVariant(trx.sync_status)}>{trx.sync_status}</Badge>
-                    </td>
+          <>
+            <TableScroll>
+              <Table>
+                <thead>
+                  <tr>
+                    <th>Waktu</th>
+                    <th>Santri</th>
+                    <th>Tipe</th>
+                    <th>Merchant</th>
+                    <th>Device</th>
+                    <th>Nominal</th>
+                    <th>Saldo Awal</th>
+                    <th>Saldo Akhir</th>
+                    <th>Sync</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {paginatedItems.map((trx) => (
+                    <tr key={trx.id}>
+                      <td className="table-v3__cell--mono">
+                        {new Date(trx.created_at).toLocaleString()}
+                      </td>
+                      <td className="table-v3__cell--strong">{trx.nama_santri}</td>
+                      <td>
+                        <Badge variant={trxTypeBadgeVariant(trx.trx_type)}>
+                          {trxTypeLabel(trx.trx_type)}
+                        </Badge>
+                      </td>
+                      <td>{trx.nama_merchant}</td>
+                      <td>{trx.device_id}</td>
+                      <td className="table-v3__cell--strong">
+                        Rp {Number(trx.nominal).toLocaleString()}
+                      </td>
+                      <td>Rp {Number(trx.saldo_awal).toLocaleString()}</td>
+                      <td>Rp {Number(trx.saldo_akhir).toLocaleString()}</td>
+                      <td>
+                        <StatusBadge status={trx.sync_status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableScroll>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </DataTableCard>
     </AppShell>

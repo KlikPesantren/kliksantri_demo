@@ -20,6 +20,7 @@ const RADIUS = {
 };
 
 const ACCENT_COLORS = {
+  primary: "var(--primary)",
   teal: "var(--accent-teal)",
   success: "var(--success)",
   warning: "var(--warning)",

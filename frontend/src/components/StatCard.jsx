@@ -1,3 +1,6 @@
+// LEGACY
+// ORPHAN
+
 function StatCard({
 
   title,

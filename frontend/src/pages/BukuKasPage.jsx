@@ -5,90 +5,25 @@ import Card from "../components/ui/Card";
 import KpiCard from "../components/ui/KpiCard";
 import KpiGrid from "../components/ui/KpiGrid";
 import SectionHeading from "../components/ui/SectionHeading";
-import Button, { actionBarStyle } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import StatusBadge from "../components/ui/StatusBadge";
+import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
+import { KeuanganPageStyles } from "../components/shared/PageResponsiveStyles";
+import {
+  FormField,
+  Input,
+  Select,
+  Textarea,
+  FormGrid,
+  FormActionBar,
+  FilterBar,
+} from "../components/ui/form";
 import { exportExcel } from "../utils/exportExcel";
-
-const filterPanelStyle = {
-  display: "flex",
-  gap: "var(--space-3)",
-  flexWrap: "wrap",
-  alignItems: "center",
-};
-
-const thStyle = {
-  padding: "11px 14px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "1px solid var(--border)",
-  background: "var(--background)",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px 14px",
-  fontSize: "14px",
-  color: "var(--text-primary)",
-  verticalAlign: "middle",
-  borderBottom: "1px solid #F1F5F9",
-};
-
-function KeuanganResponsiveStyles() {
-  return (
-    <style>{`
-      .keuangan-page {
-        min-width: 0;
-        max-width: 100%;
-      }
-
-      .table-scroll-x {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100%;
-        min-width: 0;
-      }
-
-      .table-scroll-x > table {
-        width: max-content;
-        min-width: 100%;
-      }
-
-      .keuangan-filter-panel select,
-      .keuangan-filter-panel input:not([type="radio"]):not([type="checkbox"]) {
-        min-width: 0;
-        flex: 1 1 140px;
-        max-width: 100%;
-      }
-
-      .keuangan-form-controls input:not([type="radio"]):not([type="checkbox"]),
-      .keuangan-form-controls select,
-      .keuangan-form-controls textarea {
-        max-width: 100%;
-        box-sizing: border-box;
-      }
-
-      @media (max-width: 767px) {
-        .keuangan-filter-panel select,
-        .keuangan-filter-panel input:not([type="radio"]):not([type="checkbox"]) {
-          flex: 1 1 100%;
-        }
-
-        .keuangan-form-controls input:not([type="radio"]):not([type="checkbox"]),
-        .keuangan-form-controls select,
-        .keuangan-form-controls textarea {
-          width: 100%;
-        }
-      }
-    `}</style>
-  );
-}
+import { formatCurrency, formatNumber } from "../utils/formatCurrency";
 
 function BukuKasPage() {
   const [data, setData] = useState([]);
@@ -108,8 +43,8 @@ function BukuKasPage() {
   const getData = async () => {
     const response = await api.get("/buku-kas");
 
-    console.log("TANGGAL DB", response.data.data[0]?.tanggal);
-    console.log(response.data.data.slice(0, 5));
+    
+    
 
     setData(response.data.data);
   };
@@ -137,13 +72,13 @@ function BukuKasPage() {
         nominal: "",
         petugas: "",
       });
-      console.log("UPDATE SELESAI");
+      
 
       await getData();
 
       alert(editId ? "Data berhasil diupdate" : "Data berhasil disimpan");
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -154,7 +89,7 @@ function BukuKasPage() {
       await api.delete(`/buku-kas/${id}`);
       await getData();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -197,6 +132,12 @@ function BukuKasPage() {
       d.petugas?.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, bulan, tahun, setPage]);
+
   const saldoKas = totalMasuk - totalKeluar;
   const jumlahTransaksi = filtered.length;
 
@@ -230,11 +171,11 @@ function BukuKasPage() {
 
   return (
     <AppShell title="Buku Kas" breadcrumb="Keuangan / Buku Kas">
-      <KeuanganResponsiveStyles />
+      <KeuanganPageStyles />
       <div className="keuangan-page">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div className="keuangan-filter-panel" style={filterPanelStyle}>
-          <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))}>
+        <FilterBar label="Periode">
+          <Select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} aria-label="Bulan">
             <option value={1}>Januari</option>
             <option value={2}>Februari</option>
             <option value={3}>Maret</option>
@@ -247,38 +188,30 @@ function BukuKasPage() {
             <option value={10}>Oktober</option>
             <option value={11}>November</option>
             <option value={12}>Desember</option>
-          </select>
-
-          <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))}>
+          </Select>
+          <Select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} aria-label="Tahun">
             <option value={2025}>2025</option>
             <option value={2026}>2026</option>
             <option value={2027}>2027</option>
             <option value={2028}>2028</option>
-          </select>
-        </div>
+          </Select>
+        </FilterBar>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
-        <KpiGrid minColumnWidth={200} gap={16}>
+        <KpiGrid>
           <KpiCard
-            layout="metric"
             label="Total Pemasukan"
-            value={`Rp ${totalMasuk.toLocaleString()}`}
+            value={formatCurrency(totalMasuk)}
             accent="success"
           />
           <KpiCard
-            layout="metric"
             label="Total Pengeluaran"
-            value={`Rp ${totalKeluar.toLocaleString()}`}
+            value={formatCurrency(totalKeluar)}
             accent="danger"
           />
-          <KpiCard
-            layout="metric"
-            label="Saldo"
-            value={`Rp ${saldoKas.toLocaleString()}`}
-            accent="teal"
-          />
-          <KpiCard layout="metric" label="Jumlah Transaksi" value={jumlahTransaksi} accent="teal" />
+          <KpiCard label="Saldo" value={formatCurrency(saldoKas)} accent="primary" />
+          <KpiCard label="Jumlah Transaksi" value={formatNumber(jumlahTransaksi)} accent="neutral" />
         </KpiGrid>
       </div>
 
@@ -288,70 +221,71 @@ function BukuKasPage() {
             Tambah Transaksi
           </SectionHeading>
 
-          <div className="keuangan-form-controls">
-          <input
-            type="date"
-            value={form.tanggal}
-            onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
-            style={{ marginTop: "var(--space-4)" }}
-          />
-          <br />
-          <br />
+          <FormGrid style={{ marginTop: "var(--space-4)" }}>
+            <FormField label="Tanggal" htmlFor="kas-tgl" required>
+              <Input
+                id="kas-tgl"
+                type="date"
+                value={form.tanggal}
+                onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Jenis" htmlFor="kas-jenis" required>
+              <Select
+                id="kas-jenis"
+                value={form.jenis}
+                onChange={(e) => setForm({ ...form, jenis: e.target.value })}
+              >
+                <option>Masuk</option>
+                <option>Keluar</option>
+              </Select>
+            </FormField>
+            <FormField label="Kategori" htmlFor="kas-kategori" required>
+              <Select
+                id="kas-kategori"
+                value={form.kategori}
+                onChange={(e) => setForm({ ...form, kategori: e.target.value })}
+              >
+                <option value="">Pilih Kategori</option>
+                <option value="Sahriyah">Sahriyah</option>
+                <option value="Daftar Ulang">Daftar Ulang</option>
+                <option value="Donasi">Donasi</option>
+                <option value="Topup RFID">Topup RFID</option>
+                <option value="Operasional">Operasional</option>
+                <option value="Listrik">Listrik</option>
+                <option value="Air">Air</option>
+                <option value="Insentif Guru">Insentif Guru</option>
+                <option value="Lainnya">Lainnya</option>
+              </Select>
+            </FormField>
+            <FormField label="Nominal" htmlFor="kas-nominal" required>
+              <Input
+                id="kas-nominal"
+                type="number"
+                value={form.nominal}
+                onChange={(e) => setForm({ ...form, nominal: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Petugas" htmlFor="kas-petugas">
+              <Input
+                id="kas-petugas"
+                value={form.petugas}
+                onChange={(e) => setForm({ ...form, petugas: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Keterangan" htmlFor="kas-keterangan" fullWidth>
+              <Textarea
+                id="kas-keterangan"
+                value={form.keterangan}
+                onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+                rows={2}
+              />
+            </FormField>
+          </FormGrid>
 
-          <select
-            value={form.jenis}
-            onChange={(e) => setForm({ ...form, jenis: e.target.value })}
-          >
-            <option>Masuk</option>
-            <option>Keluar</option>
-          </select>
-          <br />
-          <br />
-
-          <select
-            value={form.kategori}
-            onChange={(e) => setForm({ ...form, kategori: e.target.value })}
-          >
-            <option value="">Pilih Kategori</option>
-            <option value="Sahriyah">Sahriyah</option>
-            <option value="Daftar Ulang">Daftar Ulang</option>
-            <option value="Donasi">Donasi</option>
-            <option value="Topup RFID">Topup RFID</option>
-            <option value="Operasional">Operasional</option>
-            <option value="Listrik">Listrik</option>
-            <option value="Air">Air</option>
-            <option value="Insentif Guru">Insentif Guru</option>
-            <option value="Lainnya">Lainnya</option>
-          </select>
-          <br />
-          <br />
-
-          <input
-            value={form.nominal}
-            placeholder="Nominal"
-            onChange={(e) => setForm({ ...form, nominal: e.target.value })}
-          />
-          <br />
-          <br />
-
-          <input
-            value={form.petugas}
-            placeholder="Petugas"
-            onChange={(e) => setForm({ ...form, petugas: e.target.value })}
-          />
-          <br />
-          <br />
-
-          <textarea
-            value={form.keterangan}
-            placeholder="Keterangan"
-            onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
-          />
-
-          <div style={{ ...actionBarStyle, marginTop: "var(--space-4)" }}>
+          <FormActionBar className="form-action-bar-v3--compact">
             <Button onClick={simpan}>{editId ? "Update" : "Simpan"}</Button>
-          </div>
-          </div>
+          </FormActionBar>
         </Card>
       </div>
 
@@ -390,58 +324,61 @@ function BukuKasPage() {
               }
             />
           ) : (
-            <div className="table-scroll-x">
-              <table style={{ borderCollapse: "collapse" }}>
+            <>
+            <TableScroll>
+              <Table>
                 <thead>
                   <tr>
-                    <th style={thStyle}>Tanggal</th>
-                    <th style={thStyle}>Jenis</th>
-                    <th style={thStyle}>Kategori</th>
-                    <th style={thStyle}>Keterangan</th>
-                    <th style={thStyle}>Nominal</th>
-                    <th style={thStyle}>Petugas</th>
-                    <th style={thStyle}>Aksi</th>
+                    <th>Tanggal</th>
+                    <th>Jenis</th>
+                    <th>Kategori</th>
+                    <th>Keterangan</th>
+                    <th>Nominal</th>
+                    <th>Petugas</th>
+                    <th className="table-v3__cell--actions">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((d) => (
+                  {paginatedItems.map((d) => (
                     <tr key={d.id}>
-                      <td style={tdStyle}>
+                      <td>
                         {new Date(d.tanggal).toLocaleDateString("id-ID", {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
                         })}
                       </td>
-                      <td style={tdStyle}>
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            color: d.jenis === "Masuk" ? "var(--success)" : "var(--danger)",
-                          }}
-                        >
+                      <td>
+                        <StatusBadge status={d.jenis === "Masuk" ? "aktif" : "ditolak"}>
                           {d.jenis}
-                        </span>
+                        </StatusBadge>
                       </td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{d.kategori}</td>
-                      <td style={tdStyle}>{d.keterangan || "—"}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>
+                      <td className="table-v3__cell--strong">{d.kategori}</td>
+                      <td>{d.keterangan || "—"}</td>
+                      <td className="table-v3__cell--strong">
                         Rp {Number(d.nominal).toLocaleString()}
                       </td>
-                      <td style={tdStyle}>{d.petugas || "—"}</td>
-                      <td style={tdStyle}>
-                        <Button size="sm" variant="outline" onClick={() => editData(d)}>
-                          Edit
-                        </Button>{" "}
-                        <Button size="sm" variant="danger" onClick={() => hapus(d.id)}>
-                          Hapus
-                        </Button>
+                      <td>{d.petugas || "—"}</td>
+                      <td className="table-v3__cell--actions">
+                        <TableActions
+                          items={[
+                            { type: "edit", onClick: () => editData(d) },
+                            { type: "delete", onClick: () => hapus(d.id) },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+              </Table>
+            </TableScroll>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </DataTableCard>
       </div>

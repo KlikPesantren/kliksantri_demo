@@ -1,573 +1,304 @@
-import ProtectedRoute
-from "./components/ProtectedRoute";
+import { lazy, Suspense } from "react";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { TenantProfileProvider } from "./context/TenantProfileContext";
 
-import {
+import LoginPage from "./pages/LoginPage";
 
-  BrowserRouter,
-  Routes,
-  Route
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const PembayaranPage = lazy(() => import("./pages/PembayaranPage"));
+const PengumumanPage = lazy(() => import("./pages/PengumumanPage"));
 
-} from "react-router-dom";
+const RFIDMonitorPage = lazy(() => import("./pages/RFIDMonitorPage"));
+const RFIDDashboardPage = lazy(() => import("./pages/RFIDDashboardPage"));
+const RFIDTransactionPage = lazy(() => import("./pages/RFIDTransactionPage"));
+const RFIDTopupPage = lazy(() => import("./pages/RFIDTopupPage"));
+const RFIDMerchantPage = lazy(() => import("./pages/RFIDMerchantPage"));
+const RFIDDevicePage = lazy(() => import("./pages/RFIDDevicePage"));
+const RFIDMutasiPage = lazy(() => import("./pages/RFIDMutasiPage"));
+const RFIDRefundPage = lazy(() => import("./pages/RFIDRefundPage"));
 
-// ======================
-// PAGES
-// ======================
+import SantriPage from "./pages/SantriPage";
+import AuditPage from "./pages/AuditPage";
+import DevicePage from "./pages/DevicePage";
+import KelasPage from "./pages/KelasPage";
+import AbsensiPage from "./pages/AbsensiPage";
+import PerizinanPage from "./pages/PerizinanPage";
+import PelanggaranPage from "./pages/PelanggaranPage";
+import HafalanPage from "./pages/HafalanPage";
+import NilaiPage from "./pages/NilaiPage";
+import WaliPage from "./pages/WaliPage";
+import AbsensiGuruPage from "./pages/AbsensiGuruPage";
+import GuruPage from "./pages/GuruPage";
+import BukuKasPage from "./pages/BukuKasPage";
+import SahriyahPage from "./pages/SahriyahPage";
+import SahriyahSettingPage from "./pages/SahriyahSettingPage";
+import TamuPage from "./pages/TamuPage";
+import ProfilPesantrenPage from "./pages/ProfilPesantrenPage";
+import UsersPage from "./pages/UsersPage";
+import RolesPage from "./pages/RolesPage";
 
-import LoginPage
-from "./pages/LoginPage";
+function RouteFallback() {
+  return null;
+}
 
-import DashboardPage
-from "./pages/DashboardPage";
-
-import SantriPage
-from "./pages/SantriPage";
-
-import AuditPage
-from "./pages/AuditPage";
-
-import DevicePage
-from "./pages/DevicePage";
-
-import KelasPage
-from "./pages/KelasPage";
-
-import PembayaranPage
-from "./pages/PembayaranPage";
-
-import AbsensiPage
-from "./pages/AbsensiPage";
-
-import PerizinanPage
-from "./pages/PerizinanPage";
-
-import PelanggaranPage
-from "./pages/PelanggaranPage";
-
-import HafalanPage
-from "./pages/HafalanPage";
-
-import NilaiPage
-from "./pages/NilaiPage";
-
-import WaliPage
-from "./pages/WaliPage";
-
-import AbsensiGuruPage
-from "./pages/AbsensiGuruPage";
-
-import GuruPage
-from "./pages/GuruPage";
-
-import BukuKasPage
-from "./pages/BukuKasPage";
-
-import SahriyahPage
-from "./pages/SahriyahPage";
-
-import SahriyahSettingPage
-from "./pages/SahriyahSettingPage";
-
-import TamuPage
-from "./pages/TamuPage";
-
-import RFIDMonitorPage
-from "./pages/RFIDMonitorPage";
-
-import RFIDDashboardPage
-from "./pages/RFIDDashboardPage";
-
-import RFIDTransactionPage
-from "./pages/RFIDTransactionPage";
-
-import RFIDTopupPage
-from "./pages/RFIDTopupPage";
-
-import RFIDMerchantPage
-from "./pages/RFIDMerchantPage";
-
-import RFIDDevicePage
-from "./pages/RFIDDevicePage";
-
-import RFIDMutasiPage
-from "./pages/RFIDMutasiPage";
-
-import RFIDRefundPage
-from "./pages/RFIDRefundPage";
-
-import PengumumanPage
-from "./pages/PengumumanPage";
-
-import ProfilPesantrenPage
-from "./pages/ProfilPesantrenPage";
-
-import UsersPage
-from "./pages/UsersPage";
-
-import RolesPage
-from "./pages/RolesPage";
+function LazyPage({ children }) {
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
+}
 
 function App() {
-
   return (
-
-    <BrowserRouter>
-
+    <TenantProfileProvider>
+      <BrowserRouter>
       <Routes>
-
-        {/* ====================== */}
-        {/* LOGIN */}
-        {/* ====================== */}
+        <Route path="/" element={<LoginPage />} />
 
         <Route
-
-          path="/"
-
-          element={
-            <LoginPage />
-          }
-
-        />
-
-        {/* ====================== */}
-        {/* DASHBOARD */}
-        {/* ====================== */}
-
-        <Route
-
           path="/dashboard"
-
           element={
-
             <ProtectedRoute>
-
-              <DashboardPage />
-
+              <LazyPage>
+                <DashboardPage />
+              </LazyPage>
             </ProtectedRoute>
-
           }
-
         />
 
-        {/* ====================== */}
-        {/* SANTRI */}
-        {/* ====================== */}
-
         <Route
-
           path="/santri"
-
           element={
-
             <ProtectedRoute>
-
               <SantriPage />
-
             </ProtectedRoute>
-
           }
-
         />
 
-        {/* ====================== */}
-        {/* KELAS */}
-        {/* ====================== */}
-
         <Route
-
           path="/kelas"
-
           element={
-
             <ProtectedRoute>
-
               <KelasPage />
-
             </ProtectedRoute>
-
           }
-
         />
 
-        {/* ====================== */}
-        {/* WALI */}
-        {/* ====================== */}
-        
         <Route
-
-  path="/wali"
-
-  element={
-
-    <ProtectedRoute>
-
-      <WaliPage />
-
-    </ProtectedRoute>
-
-  }
-
-/>
-
-        {/* ====================== */}
-        {/* PEMBAYARAN */}
-        {/* ====================== */}
+          path="/wali"
+          element={
+            <ProtectedRoute>
+              <WaliPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
-
           path="/pembayaran"
-
           element={
-
             <ProtectedRoute>
-
-              <PembayaranPage />
-
+              <LazyPage>
+                <PembayaranPage />
+              </LazyPage>
             </ProtectedRoute>
-
           }
-
         />
 
-        {/* ====================== */}
-        {/* BUKU KAS */}
-        {/* ====================== */}
-
         <Route
-
-        path="/buku-kas"
-
-        element={
-
+          path="/buku-kas"
+          element={
             <ProtectedRoute>
-
               <BukuKasPage />
-
             </ProtectedRoute>
-
-     }
-
-/>
-
-        {/* ====================== */}
-        {/* SAHRIYAH */}
-        {/* ====================== */}
-
-<Route
-
-  path="/sahriyah"
-
-  element={
-
-    <ProtectedRoute>
-
-      <SahriyahPage />
-
-    </ProtectedRoute>
-
-  }
-
-/>
-
-<Route
-  path="/sahriyah-setting"
-  element={
-
-    <ProtectedRoute>
-
-      <SahriyahSettingPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-        {/* ====================== */}
-        {/* RFID MONITOR */}
-        {/* ====================== */}
-
-
-<Route
-  path="/rfid-monitor"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDMonitorPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-        {/* ====================== */}
-        {/* RFID MONITOR */}
-        {/* ====================== */}
-
-<Route
-  path="/rfid-dashboard"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDDashboardPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-        {/* ====================== */}
-        {/* RFID TRANSACTION */}
-        {/* ====================== */}
-
-<Route
-  path="/rfid-transactions"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDTransactionPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-        {/* ====================== */}
-        {/* TOPUP RFID */}
-        {/* ====================== */}
-
-<Route
-  path="/rfid-topup"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDTopupPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-
-        {/* ====================== */}
-        {/* RFID MERCHANT */}
-        {/* ====================== */}
-
-<Route
-  path="/rfid-merchant"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDMerchantPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-<Route
-  path="/rfid-devices"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDDevicePage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-<Route
-  path="/rfid-mutasi"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDMutasiPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-<Route
-  path="/rfid-refund"
-  element={
-
-    <ProtectedRoute>
-
-      <RFIDRefundPage />
-
-    </ProtectedRoute>
-
-  }
-/>
-
-        {/* ====================== */}
-        {/* ABSENSI */}
-        {/* ====================== */}
+          }
+        />
 
         <Route
+          path="/sahriyah"
+          element={
+            <ProtectedRoute>
+              <SahriyahPage />
+            </ProtectedRoute>
+          }
+        />
 
+        <Route
+          path="/sahriyah-setting"
+          element={
+            <ProtectedRoute>
+              <SahriyahSettingPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-monitor"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDMonitorPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-dashboard"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDDashboardPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-transactions"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDTransactionPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-topup"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDTopupPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-merchant"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDMerchantPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-devices"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDDevicePage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-mutasi"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDMutasiPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rfid-refund"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <RFIDRefundPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/absensi"
-
           element={
-
             <ProtectedRoute>
-
               <AbsensiPage />
-
             </ProtectedRoute>
-
           }
-
         />
 
         <Route
-
-  path="/absensi-guru"
-
-  element={
-
-    <ProtectedRoute>
-
-      <AbsensiGuruPage />
-
-    </ProtectedRoute>
-
-  }
-
-/>
+          path="/absensi-guru"
+          element={
+            <ProtectedRoute>
+              <AbsensiGuruPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
-
           path="/guru"
-
           element={
-
             <ProtectedRoute>
-
               <GuruPage />
-
             </ProtectedRoute>
-
           }
-
         />
 
-        {/* ====================== */}
-        {/* HAFALAN */}
-        {/* ====================== */}
-
         <Route
-
-  path="/hafalan"
-
-  element={
-
-    <ProtectedRoute>
-
-      <HafalanPage />
-
-    </ProtectedRoute>
-
-  }
-
-/>
-
-        {/* ====================== */}
-        {/* NILAI */}
-        {/* ====================== */}
-
-<Route
-
-  path="/nilai"
-
-  element={
-
-    <ProtectedRoute>
-
-      <NilaiPage />
-
-    </ProtectedRoute>
-
-  }
-
-/>
-
-        {/* ====================== */}
-        {/* PERIZINAN */}
-        {/* ====================== */}
-
-        <Route
-
-          path="/perizinan"
-
+          path="/hafalan"
           element={
-
             <ProtectedRoute>
-
-              <PerizinanPage />
-
+              <HafalanPage />
             </ProtectedRoute>
-
           }
-
         />
 
-       {/* ====================== */}
-        {/* PELANGGARAN */}
-        {/* ====================== */}
+        <Route
+          path="/nilai"
+          element={
+            <ProtectedRoute>
+              <NilaiPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
+          path="/perizinan"
+          element={
+            <ProtectedRoute>
+              <PerizinanPage />
+            </ProtectedRoute>
+          }
+        />
 
-  path="/pelanggaran"
+        <Route
+          path="/pelanggaran"
+          element={
+            <ProtectedRoute>
+              <PelanggaranPage />
+            </ProtectedRoute>
+          }
+        />
 
-  element={
-
-    <ProtectedRoute>
-
-      <PelanggaranPage />
-
-    </ProtectedRoute>
-
-  }
-
-/>
-
-        {/* ====================== */}
-        {/* TAMU */}
-        {/* ====================== */}
-
-<Route
-  path="/tamu"
-  element={
-    <ProtectedRoute>
-      <TamuPage />
-    </ProtectedRoute>
-  }
-/>
-
-        {/* ====================== */}
-        {/* PENGUMUMAN */}
-        {/* ====================== */}
+        <Route
+          path="/tamu"
+          element={
+            <ProtectedRoute>
+              <TamuPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/pengumuman"
           element={
             <ProtectedRoute>
-              <PengumumanPage />
+              <LazyPage>
+                <PengumumanPage />
+              </LazyPage>
             </ProtectedRoute>
           }
         />
-
-        {/* ====================== */}
-        {/* PROFIL PESANTREN */}
-        {/* ====================== */}
 
         <Route
           path="/profil-pesantren"
@@ -577,10 +308,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* ====================== */}
-        {/* MANAJEMEN USER & ROLE */}
-        {/* ====================== */}
 
         <Route
           path="/users"
@@ -600,52 +327,27 @@ function App() {
           }
         />
 
-        {/* ====================== */}
-        {/* AUDIT */}
-        {/* ====================== */}
-
         <Route
-
           path="/audit"
-
           element={
-
             <ProtectedRoute>
-
               <AuditPage />
-
             </ProtectedRoute>
-
           }
-
         />
-
-        {/* ====================== */}
-        {/* DEVICES */}
-        {/* ====================== */}
 
         <Route
-
           path="/devices"
-
           element={
-
             <ProtectedRoute>
-
               <DevicePage />
-
             </ProtectedRoute>
-
           }
-
         />
-
       </Routes>
-
-    </BrowserRouter>
-
+      </BrowserRouter>
+    </TenantProfileProvider>
   );
-
 }
 
 export default App;

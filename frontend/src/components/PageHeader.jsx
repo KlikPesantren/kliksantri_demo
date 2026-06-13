@@ -1,12 +1,6 @@
 import { FaBars } from "react-icons/fa";
-
-function getStoredUser() {
-  try {
-    return JSON.parse(localStorage.getItem("user")) || null;
-  } catch {
-    return null;
-  }
-}
+import { getUser } from "../utils/storage";
+import { useTenantProfile } from "../context/TenantProfileContext";
 
 function getInitials(name = "") {
   const words = name
@@ -34,7 +28,8 @@ function formatRole(role = "") {
 }
 
 function PageHeader({ title, description, breadcrumb, onMenuClick }) {
-  const user = getStoredUser();
+  const user = getUser();
+  const { display } = useTenantProfile();
   const userName = user?.nama || user?.username || "Admin Sistem";
   const role = formatRole(user?.role);
 
@@ -53,6 +48,9 @@ function PageHeader({ title, description, breadcrumb, onMenuClick }) {
         )}
 
         <div className="page-header-copy">
+          {display.hasCustomName && (
+            <div style={tenantNameStyle}>{display.name}</div>
+          )}
           {breadcrumb && <div style={breadcrumbStyle}>{breadcrumb}</div>}
           {title && <h1 style={titleStyle}>{title}</h1>}
           {description && <p style={descriptionStyle}>{description}</p>}
@@ -69,6 +67,14 @@ function PageHeader({ title, description, breadcrumb, onMenuClick }) {
     </header>
   );
 }
+
+const tenantNameStyle = {
+  color: "var(--text-muted)",
+  fontSize: "12px",
+  fontWeight: 600,
+  marginBottom: "var(--space-1)",
+  lineHeight: 1.35,
+};
 
 const breadcrumbStyle = {
   color: "var(--text-secondary)",
@@ -96,7 +102,7 @@ const avatarStyle = {
   width: "40px",
   height: "40px",
   borderRadius: "999px",
-  background: "#DCFCE7",
+  background: "var(--primary-subtle)",
   color: "var(--primary)",
   display: "flex",
   alignItems: "center",

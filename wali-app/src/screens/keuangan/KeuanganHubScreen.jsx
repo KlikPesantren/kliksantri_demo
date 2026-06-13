@@ -37,12 +37,11 @@ export function KeuanganHubScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ChildSwitcherBar />
-
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        <ChildSwitcherBar />
         {activeChild ? (
           <View style={styles.childBanner}>
             <Text style={styles.childBannerText}>
