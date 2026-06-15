@@ -40,4 +40,11 @@ Bundle ID (`com.kliksantri.wali`) tetap untuk pipeline build; ubah hanya jika di
 
 ## Runtime branding (tanpa rebuild)
 
-Logo & nama pesantren di app diatur admin via **Profil Pesantren** → disimpan ke cache `pesantren_branding` setelah login.
+Logo, splash, tagline, banner & tentang pesantren diatur admin via **Profil Pesantren → Branding Aplikasi**, disimpan ke cache `pesantren_branding` setelah login Wali.
+
+Urutan logo:
+1. `splash_logo_url` (splash & login)
+2. `logo_url` (fallback)
+3. Inisial pesantren (fallback UI)
+
+Field `app_icon_url` disiapkan untuk pipeline build white-label berikutnya (lihat `app.json` untuk icon native saat ini).

@@ -2,12 +2,20 @@ import axios from 'axios';
 import { storage } from '../utils/storage';
 import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 
-// Prioritas: nilai dari wali-app/.env (API_BASE_URL)
-// Android emulator default: http://10.161.70.56:3000
-// Device fisik: ganti di wali-app/.env → API_BASE_URL=http://<IP_KOMPUTER>:3000
-const API_BASE_URL = ENV_API_BASE_URL || 'http://10.161.70.56:3000';
+const DEV_API_FALLBACK = 'http://localhost:3000';
 
-console.log('API BASE URL =', API_BASE_URL);
+const API_BASE_URL = (ENV_API_BASE_URL || (__DEV__ ? DEV_API_FALLBACK : '')).replace(
+  /\/$/,
+  '',
+);
+
+if (!API_BASE_URL && !__DEV__) {
+  console.error('API_BASE_URL is required. Set it in wali-app/.env before building APK.');
+}
+
+console.log('ENV URL =', ENV_API_BASE_URL);
+console.log('API_BASE_URL =', API_BASE_URL);
+console.log('LOGIN URL =', `${API_BASE_URL}/wali-app/login`);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -17,7 +25,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor: tambahkan token + X-Santri-Id ke setiap request
 api.interceptors.request.use(
   async (config) => {
     console.log('REQUEST', config.method?.toUpperCase(), API_BASE_URL + config.url);
@@ -34,19 +41,30 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor: tangani 401 dan error global
 let _logoutCallback = null;
 
 export function setLogoutCallback(fn) {
   _logoutCallback = fn;
 }
 
+function logAxiosError(error, context = 'response') {
+  console.log('AXIOS ERROR', error);
+  console.log('MESSAGE', error?.message);
+  console.log('CODE', error?.code);
+  console.log('STATUS', error?.response?.status);
+  console.log('DATA', error?.response?.data);
+  if (context) {
+    console.log('AXIOS CONTEXT', context);
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    logAxiosError(error, error.config?.url);
     const status = error.response?.status;
 
     if (status === 401) {
@@ -57,7 +75,8 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
+export { API_BASE_URL };
 export default api;

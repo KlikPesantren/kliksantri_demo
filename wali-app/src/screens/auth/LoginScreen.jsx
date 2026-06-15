@@ -22,6 +22,12 @@ import {
 import { colors } from '../../constants/colors';
 import { interaction, radius, spacing } from '../../constants/theme';
 import { storage } from '../../utils/storage';
+import { API_BASE_URL } from '../../api/client';
+import {
+  resolveBrandingName,
+  resolveBrandingTagline,
+  resolveLoginLogoUrl,
+} from '../../utils/branding';
 
 const APP_VERSION = '1.0.0';
 const DEFAULT_TAGLINE = 'Portal Wali Santri';
@@ -59,9 +65,9 @@ export function LoginScreen() {
     storage.getPesantrenBranding().then(setBranding).catch(() => {});
   }, []);
 
-  const hasPesantrenBrand = Boolean(branding?.nama_pesantren?.trim());
-  const namaPesantren = hasPesantrenBrand ? branding.nama_pesantren : 'Pesantren';
-  const tagline = hasPesantrenBrand ? DEFAULT_TAGLINE : 'Silakan masuk ke portal wali';
+  const namaPesantren = resolveBrandingName(branding);
+  const tagline = resolveBrandingTagline(branding, DEFAULT_TAGLINE);
+  const loginLogo = resolveLoginLogoUrl(branding);
 
   function handlePhoneChange(text) {
     setNomorHp(text.replace(/[^0-9]/g, ''));
@@ -96,6 +102,12 @@ export function LoginScreen() {
 
       await setActiveSantri(anak[0]);
     } catch (err) {
+      console.log('AXIOS ERROR', err);
+      console.log('MESSAGE', err.message);
+      console.log('CODE', err.code);
+      console.log('STATUS', err.response?.status);
+      console.log('DATA', err.response?.data);
+
       const status = err.response?.status;
       const msg = err.response?.data?.error;
 
@@ -105,8 +117,17 @@ export function LoginScreen() {
         setError('Akun Anda ditangguhkan. Hubungi admin pesantren.');
       } else if (status === 401 || status === 400) {
         setError(msg ?? 'Nomor HP atau PIN salah.');
+      } else if (status >= 500) {
+        setError(msg ?? `Error server (${status}).`);
+      } else if (err.code === 'ECONNABORTED') {
+        setError(`Timeout — server tidak merespons dalam 10 detik (${API_BASE_URL}).`);
+      } else if (err.code === 'ERR_NETWORK' || !err.response) {
+        setError(
+          `Tidak dapat terhubung ke ${API_BASE_URL}. ` +
+            `Cek WiFi HP, IP server (ipconfig), dan firewall port 3000.`
+        );
       } else {
-        setError('Gagal terhubung ke server. Periksa koneksi Anda.');
+        setError(msg ?? `Gagal terhubung (${err.message}).`);
       }
     } finally {
       setIsLoading(false);
@@ -125,7 +146,7 @@ export function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.hero}>
-            <BrandLogo logoUrl={branding?.logo_url} nama={namaPesantren} size={72} />
+            <BrandLogo logoUrl={loginLogo} nama={namaPesantren} size={72} />
             <AppText variant="display" color="inverse" style={styles.heroTitle} numberOfLines={2}>
               {namaPesantren}
             </AppText>

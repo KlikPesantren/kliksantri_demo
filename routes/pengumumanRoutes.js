@@ -142,13 +142,16 @@ router.post(
 
     catch (err) {
 
-      console.log(err);
+      console.error("PENGUMUMAN INSERT ERROR");
+      console.error(err);
 
-      res.status(500).json({
+      return res.status(500).json({
 
         success: false,
 
-        error: err.message
+        error: err.message,
+        detail: err.detail,
+        code: err.code
 
       });
 

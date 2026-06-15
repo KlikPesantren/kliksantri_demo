@@ -11,13 +11,11 @@ import { useDashboard } from '../../hooks/useDashboard';
 import { usePengumuman } from '../../hooks/usePengumuman';
 import { useProfilPesantren } from '../../hooks/useProfilPesantren';
 import { TabPesantrenHeader } from '../../components/home/TabPesantrenHeader';
-import { PesantrenHeroBanner } from '../../components/home/PesantrenHeroBanner';
-import { PesantrenWelcomeBanner } from '../../components/home/PesantrenWelcomeBanner';
-import { HeroPengumumanCard } from '../../components/home/HeroPengumumanCard';
+import { HomeCarousel } from '../../components/home/HomeCarousel';
 import { QuickAccessGrid } from '../../components/home/QuickAccessGrid';
 import { StatusHariIni } from '../../components/home/StatusHariIni';
+import { PengumumanTerbaruList } from '../../components/home/PengumumanTerbaruList';
 import { PengumumanHomeEmpty } from '../../components/home/PengumumanHomeEmpty';
-import { shouldShowPesantrenBanner } from '../../utils/pesantrenBanner';
 import {
   ScreenContainer,
   AppText,
@@ -28,7 +26,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ErrorView } from '../../components/common/ErrorView';
 import { PengumumanDetailModal } from '../../components/pengumuman/PengumumanDetailModal';
 import { colors } from '../../constants/colors';
-import { spacing } from '../../constants/theme';
+import { spacing, tabBarScrollInset } from '../../constants/theme';
 
 function santriFirstName(nama) {
   if (!nama) return '';
@@ -58,27 +56,16 @@ export function DashboardScreen({ navigation: tabNavigation }) {
   const { data: pesantren, refresh: refreshPesantren } = useProfilPesantren();
   const [detailItem, setDetailItem] = React.useState(null);
 
-  const featured = pengumuman?.[0] ?? null;
-  const showPesantrenBanner = shouldShowPesantrenBanner(pesantren);
-  const hasPengumuman = !!featured;
-  function renderBanner() {
-    if (showPesantrenBanner) {
-      return <PesantrenHeroBanner bannerUrl={pesantren.banner_url} />;
-    }
-    return <PesantrenWelcomeBanner />;
-  }
+  const hasPengumuman = (pengumuman?.length ?? 0) > 0;
 
-  function renderPengumuman() {
+  function renderPengumumanSection() {
     if (hasPengumuman) {
       return (
-        <>
-          <SectionHeading title="Pengumuman" />
-          <HeroPengumumanCard
-            item={featured}
-            onPress={setDetailItem}
-            onLihatSemua={() => tabNavigation.navigate('Pengumuman')}
-          />
-        </>
+        <PengumumanTerbaruList
+          items={pengumuman}
+          onItemPress={setDetailItem}
+          onLihatSemua={() => tabNavigation.navigate('Pengumuman')}
+        />
       );
     }
     return <PengumumanHomeEmpty />;
@@ -134,7 +121,12 @@ export function DashboardScreen({ navigation: tabNavigation }) {
         }
       >
         <HomeGreeting activeChild={activeChild} />
-        {renderBanner()}
+
+        <HomeCarousel
+          pesantren={pesantren}
+          pengumuman={pengumuman}
+          onPengumumanPress={setDetailItem}
+        />
 
         <StatusHariIni
           data={data}
@@ -144,7 +136,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
         <SectionHeading title="Menu Utama" />
         <QuickAccessGrid navigation={tabNavigation} />
 
-        {renderPengumuman()}
+        {renderPengumumanSection()}
 
         <View style={styles.bottomPad} />
       </ScrollView>
@@ -164,7 +156,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingTop: spacing.sm,
-    paddingBottom: spacing['3xl'],
+    paddingBottom: tabBarScrollInset,
   },
   greeting: {
     paddingHorizontal: spacing.lg,
@@ -189,5 +181,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
-  bottomPad: { height: spacing.lg },
+  bottomPad: {
+    height: spacing.lg,
+  },
 });

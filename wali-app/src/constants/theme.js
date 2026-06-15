@@ -12,32 +12,35 @@ export const spacing = {
   '4xl': 40,
 };
 
-/** Border radius */
+/** Border radius — premium scale */
 export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
   xl: 20,
+  '2xl': 24,
+  '3xl': 28,
   full: 9999,
 };
 
-/** Typography scale */
+/** Typography scale — premium fintech / edtech */
 export const typography = {
-  display: { fontSize: 28, fontWeight: '800', lineHeight: 34, letterSpacing: -0.5 },
-  h1: { fontSize: 22, fontWeight: '800', lineHeight: 28, letterSpacing: -0.3 },
-  h2: { fontSize: 18, fontWeight: '700', lineHeight: 24 },
-  h3: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
-  body: { fontSize: 14, fontWeight: '400', lineHeight: 20 },
-  bodyMedium: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  caption: { fontSize: 12, fontWeight: '500', lineHeight: 16 },
+  display: { fontSize: 30, fontWeight: '800', lineHeight: 36, letterSpacing: -0.6 },
+  h1: { fontSize: 24, fontWeight: '800', lineHeight: 30, letterSpacing: -0.4 },
+  h2: { fontSize: 18, fontWeight: '700', lineHeight: 24, letterSpacing: -0.2 },
+  h3: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
+  body: { fontSize: 14, fontWeight: '400', lineHeight: 21 },
+  bodyMedium: { fontSize: 14, fontWeight: '600', lineHeight: 21 },
+  caption: { fontSize: 12, fontWeight: '500', lineHeight: 17 },
   label: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 14,
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  tab: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
+  tab: { fontSize: 10, fontWeight: '700', lineHeight: 13 },
+  stat: { fontSize: 20, fontWeight: '800', lineHeight: 24, letterSpacing: -0.3 },
 };
 
 /** Shadow presets (React Native) */
@@ -58,10 +61,24 @@ export const shadows = {
   },
   lg: {
     shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  card: {
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  float: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 12,
   },
 };
 
@@ -83,7 +100,7 @@ export const stackHeaderOptions = {
   headerShadowVisible: false,
 };
 
-/** React Navigation — bottom tab bar */
+/** React Navigation — bottom tab bar (standard native style) */
 export const tabBarOptions = {
   tabBarActiveTintColor: colors.primary,
   tabBarInactiveTintColor: colors.textMuted,
@@ -97,3 +114,6 @@ export const tabBarOptions = {
   },
   tabBarLabelStyle: typography.tab,
 };
+
+/** Legacy inset — no longer needed for standard tab bar */
+export const tabBarScrollInset = spacing.lg;

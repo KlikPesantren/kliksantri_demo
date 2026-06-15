@@ -5,8 +5,11 @@ import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/theme';
 import { AppText } from '../../components/ui/AppText';
 import { storage } from '../../utils/storage';
-
-const VENDOR_NAME = 'KlikSantri';
+import {
+  resolveBrandingName,
+  resolveBrandingTagline,
+  resolveSplashLogoUrl,
+} from '../../utils/branding';
 
 export function SplashScreen() {
   const [branding, setBranding] = useState(null);
@@ -22,19 +25,13 @@ export function SplashScreen() {
       .finally(() => setReady(true));
   }, []);
 
-  const hasPesantrenBrand = Boolean(branding?.nama_pesantren?.trim());
-  const displayName = hasPesantrenBrand
-    ? branding.nama_pesantren
-    : VENDOR_NAME;
+  const displayName = resolveBrandingName(branding);
+  const splashLogo = resolveSplashLogoUrl(branding);
 
   return (
     <View style={styles.container}>
       <View style={styles.logoWrapper}>
-        <BrandLogo
-          logoUrl={hasPesantrenBrand ? branding.logo_url : null}
-          nama={displayName}
-          size={72}
-        />
+        <BrandLogo logoUrl={splashLogo} nama={displayName} size={72} />
         {ready ? (
           <AppText variant="display" color="primary" style={styles.appName} numberOfLines={2}>
             {displayName}

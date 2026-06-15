@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { profilPesantrenApi } from '../api/profilPesantren.api';
+import { normalizeBrandingCache } from '../utils/branding';
 import { storage } from '../utils/storage';
 
 export function useProfilPesantren() {
@@ -27,13 +28,7 @@ export function useProfilPesantren() {
       setData(profil);
       if (profil?.nama_pesantren) {
         storage
-          .savePesantrenBranding({
-            nama_pesantren: profil.nama_pesantren,
-            logo_url: profil.logo_url ?? null,
-            alamat: profil.alamat ?? null,
-            banner_url: profil.banner_url ?? null,
-            banner_active: profil.banner_active !== false,
-          })
+          .savePesantrenBranding(normalizeBrandingCache(profil))
           .catch(() => {});
       }
     } catch (err) {

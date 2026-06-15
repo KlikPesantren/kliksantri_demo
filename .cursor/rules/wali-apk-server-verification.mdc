@@ -1,0 +1,18 @@
+---
+description: Verifikasi koneksi server APK Wali — build hijau tidak cukup
+globs: wali-app/**/*
+alwaysApply: false
+---
+
+# APK Wali — Verifikasi Server Wajib
+
+Jangan menganggap masalah server selesai hanya karena `npm run build` atau `npx expo export --platform android` hijau.
+
+Sebelum menandai hotfix koneksi/login selesai:
+
+1. Pastikan `API_BASE_URL` di `wali-app/.env`, fallback `client.js`, dan `mediaUrl.js` **sama** dengan URL admin (`frontend/src/services/api.js`).
+2. Smoke-test aktif: `POST /wali-app/login` harus mendapat response HTTP (400/401 untuk kredensial salah), **bukan** Network Error / ETIMEDOUT / ECONNREFUSED / "Gagal terhubung ke server".
+3. Verifikasi di device/emulator yang sama dengan APK, bukan hanya dari mesin dev jika jaringannya berbeda.
+4. Log wajib dicek: `API BASE URL`, `LOGIN URL`, dan hasil request login.
+
+Build sukses ≠ APK bisa login ke server produksi/LAN.

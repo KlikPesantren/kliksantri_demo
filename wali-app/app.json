@@ -24,6 +24,7 @@
     "android": {
       "package": "com.kliksantri.wali",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"

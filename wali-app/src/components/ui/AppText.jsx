@@ -12,6 +12,7 @@ const VARIANT_MAP = {
   bodyMedium: typography.bodyMedium,
   caption: typography.caption,
   label: typography.label,
+  stat: typography.stat,
 };
 
 const COLOR_MAP = {

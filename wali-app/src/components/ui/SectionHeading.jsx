@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   action: {
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.primary,
   },
 });

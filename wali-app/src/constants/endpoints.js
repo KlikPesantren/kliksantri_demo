@@ -11,6 +11,7 @@ export const ENDPOINTS = {
   ABSENSI: '/wali-app/absensi',
   PERIZINAN: '/wali-app/perizinan',
   PELANGGARAN: '/wali-app/pelanggaran',
+  KESEHATAN: '/wali-app/kesehatan',
   NILAI: '/wali-app/nilai',
   HAFALAN: '/wali-app/hafalan',
   PENGUMUMAN: '/wali-app/pengumuman',

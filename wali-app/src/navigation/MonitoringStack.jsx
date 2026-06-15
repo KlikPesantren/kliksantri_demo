@@ -7,6 +7,7 @@ import { NilaiScreen } from '../screens/nilai/NilaiScreen';
 import { HafalanScreen } from '../screens/hafalan/HafalanScreen';
 import { PerizinanScreen } from '../screens/perizinan/PerizinanScreen';
 import { PelanggaranScreen } from '../screens/pelanggaran/PelanggaranScreen';
+import { KesehatanScreen } from '../screens/kesehatan/KesehatanScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,6 +24,7 @@ export function MonitoringStack() {
       <Stack.Screen name="Hafalan" component={HafalanScreen} options={{ title: 'Hafalan' }} />
       <Stack.Screen name="Perizinan" component={PerizinanScreen} options={{ title: 'Riwayat Izin' }} />
       <Stack.Screen name="Pelanggaran" component={PelanggaranScreen} options={{ title: 'Pelanggaran' }} />
+      <Stack.Screen name="Kesehatan" component={KesehatanScreen} options={{ title: 'Kesehatan' }} />
     </Stack.Navigator>
   );
 }

@@ -1,9 +1,9 @@
 import React from 'react';
-import { TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui/AppText';
 import { colors } from '../../constants/colors';
-import { interaction, spacing } from '../../constants/theme';
+import { interaction, radius, shadows, spacing } from '../../constants/theme';
 
 const QUICK_ITEMS = [
   { key: 'Absensi', label: 'Absensi', icon: 'calendar-outline', tab: 'Monitoring', screen: 'Absensi' },
@@ -14,6 +14,7 @@ const QUICK_ITEMS = [
   { key: 'Sahriyah', label: 'Sahriyah', icon: 'receipt-outline', tab: 'Keuangan', screen: 'Sahriyah' },
   { key: 'RFID', label: 'RFID', icon: 'card-outline', tab: 'Keuangan', screen: 'RFID' },
   { key: 'ProfilAnak', label: 'Profil Anak', icon: 'person-outline', tab: 'Profil', screen: 'ProfilSantri' },
+  { key: 'Kesehatan', label: 'Kesehatan', icon: 'fitness-outline', tab: 'Monitoring', screen: 'Kesehatan' },
   { key: 'ProfilPesantren', label: 'Profil Pesantren', icon: 'business-outline', tab: 'Profil', screen: 'ProfilPesantren' },
 ];
 
@@ -29,17 +30,18 @@ export function QuickAccessGrid({ navigation }) {
   return (
     <View style={styles.grid}>
       {QUICK_ITEMS.map((item) => (
-        <TouchableOpacity
+        <Pressable
           key={item.key}
-          style={styles.cell}
+          style={({ pressed }) => [styles.cell, pressed && styles.cellPressed]}
           onPress={() => handlePress(item)}
-          activeOpacity={interaction.activeOpacity}
         >
-          <Ionicons name={item.icon} size={22} color={colors.primary} />
+          <View style={styles.iconWrap}>
+            <Ionicons name={item.icon} size={22} color={colors.primary} />
+          </View>
           <AppText variant="caption" color="secondary" numberOfLines={2} style={styles.label}>
             {item.label}
           </AppText>
-        </TouchableOpacity>
+        </Pressable>
       ))}
     </View>
   );
@@ -50,13 +52,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: spacing.lg,
-    rowGap: spacing.sm,
+    rowGap: spacing.md,
+    marginBottom: spacing.lg,
   },
   cell: {
     width: '33.33%',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
-    gap: 4,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    gap: spacing.sm,
+  },
+  cellPressed: {
+    opacity: interaction.activeOpacity,
+    transform: [{ scale: 0.97 }],
+  },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
   },
   label: {
     textAlign: 'center',

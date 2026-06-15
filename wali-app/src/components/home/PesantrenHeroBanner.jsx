@@ -1,31 +1,98 @@
-import React from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { AppText } from '../ui/AppText';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
-import { colors } from '../../constants/colors';
-import { radius, shadows, spacing } from '../../constants/theme';
+import { formatShortAddress } from '../../utils/formatAddress';
+import { HeroBannerFrame } from './HeroBannerFrame';
+import { spacing } from '../../constants/theme';
+import { BANNER_RADIUS } from './carouselShared';
 
-const BANNER_HEIGHT = 160;
+/** @deprecated Use HeroBannerFrame directly — kept for imports */
+export function HeroSlideShell({ children, style, footer }) {
+  return (
+    <View style={style}>
+      {children}
+      {footer}
+    </View>
+  );
+}
 
-export function PesantrenHeroBanner({ bannerUrl }) {
+export { HeroImageFallback } from './HeroBannerFrame';
+
+export function PesantrenBannerSlideContent({
+  bannerUrl,
+  nama,
+  alamat,
+  fullBleed = false,
+}) {
+  const uri = resolveMediaUrl(bannerUrl);
+  const [imageError, setImageError] = useState(false);
+  const shortAddr = formatShortAddress(alamat) ?? alamat;
+
+  const footer = (
+    <View style={styles.content}>
+      <AppText variant="label" color="inverse" style={styles.badge}>
+        Pesantren
+      </AppText>
+      {nama ? (
+        <AppText variant="h3" color="inverse" style={styles.title} numberOfLines={2}>
+          {nama}
+        </AppText>
+      ) : null}
+      {shortAddr ? (
+        <AppText variant="caption" color="inverse" style={styles.subtitle} numberOfLines={2}>
+          {shortAddr}
+        </AppText>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <HeroBannerFrame
+      rawImageUrl={bannerUrl}
+      imageUrl={uri}
+      imageError={imageError}
+      onImageError={() => setImageError(true)}
+      fallbackIcon="school-outline"
+      footer={footer}
+      style={fullBleed ? styles.fullBleed : null}
+    />
+  );
+}
+
+export function PesantrenWelcomeSlideContent({ fullBleed = false }) {
+  const footer = (
+    <View style={styles.content}>
+      <AppText variant="label" color="inverse" style={styles.badge}>
+        Selamat Datang
+      </AppText>
+      <AppText variant="h3" color="inverse" style={styles.title}>
+        Bapak/Ibu Wali Santri
+      </AppText>
+      <AppText variant="caption" color="inverse" style={styles.subtitle}>
+        Pantau perkembangan ananda di pesantren
+      </AppText>
+    </View>
+  );
+
+  return (
+    <HeroBannerFrame
+      imageUrl={null}
+      fallbackIcon="school-outline"
+      footer={footer}
+      style={fullBleed ? styles.fullBleed : null}
+    />
+  );
+}
+
+export function PesantrenHeroBanner({ bannerUrl, nama, alamat }) {
   const uri = resolveMediaUrl(bannerUrl);
 
-  if (!uri) return null;
+  if (!uri && !nama) return null;
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.banner}>
-        <Image source={{ uri }} style={styles.image} resizeMode="cover" />
-        <View style={styles.overlayBottom} />
-        <View style={styles.content}>
-          <AppText variant="caption" color="inverse" style={styles.welcomeLabel}>
-            Selamat Datang
-          </AppText>
-          <AppText variant="h3" color="inverse" style={styles.welcomeTitle}>
-            Bapak/Ibu Wali Santri
-          </AppText>
-        </View>
-      </View>
+      <PesantrenBannerSlideContent bannerUrl={bannerUrl} nama={nama} alamat={alamat} />
     </View>
   );
 }
@@ -35,39 +102,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
-  banner: {
-    height: BANNER_HEIGHT,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.primarySoft,
-    ...shadows.sm,
-  },
-  image: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  overlayBottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '60%',
-    backgroundColor: 'rgba(22, 163, 74, 0.55)',
+  fullBleed: {
+    borderRadius: BANNER_RADIUS,
   },
   content: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: spacing.lg,
-    gap: 2,
+    gap: spacing.xs,
+    alignItems: 'flex-start',
   },
-  welcomeLabel: {
-    opacity: 0.95,
-    letterSpacing: 0.2,
+  badge: {
+    opacity: 0.92,
+    letterSpacing: 0.4,
   },
-  welcomeTitle: {
+  title: {
     fontWeight: '700',
+    lineHeight: 22,
+    textAlign: 'left',
+  },
+  subtitle: {
+    opacity: 0.9,
+    lineHeight: 18,
+    textAlign: 'left',
   },
 });

@@ -2,18 +2,20 @@ require("dotenv").config();
 
 const { Pool } = require("pg");
 
+function requireEnv(name) {
+  const value = process.env[name];
+  if (value === undefined || value === "") {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 const pool = new Pool({
-
-  user: process.env.DB_USER,
-
-  host: process.env.DB_HOST,
-
-  database: process.env.DB_NAME,
-
-  password: process.env.DB_PASSWORD,
-
-  port: process.env.DB_PORT,
-
+  user: requireEnv("DB_USER"),
+  host: requireEnv("DB_HOST"),
+  database: requireEnv("DB_NAME"),
+  password: requireEnv("DB_PASSWORD"),
+  port: Number(process.env.DB_PORT || 5432),
 });
 
 module.exports = pool;

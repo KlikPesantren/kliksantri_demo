@@ -749,6 +749,32 @@ FROM tamu
 WHERE status='Masuk'
 `);
 
+const kesehatanStats = await pool.query(`
+  WITH latest AS (
+    SELECT DISTINCT ON (ks.santri_id)
+      ks.santri_id,
+      ks.status_kesehatan,
+      ks.status_penanganan
+    FROM kesehatan_santri ks
+    ORDER BY ks.santri_id, ks.created_at DESC
+  ),
+  santri_aktif AS (
+    SELECT COUNT(*)::int AS total FROM santri
+  )
+  SELECT
+    (SELECT total FROM santri_aktif) AS total_santri,
+    COUNT(*) FILTER (WHERE l.status_kesehatan = 'sakit')::int AS sakit,
+    COUNT(*) FILTER (
+      WHERE l.status_kesehatan = 'sakit'
+        AND l.status_penanganan IN ('observasi', 'istirahat')
+    )::int AS perlu_tindak_lanjut
+  FROM latest l
+`);
+
+const kStat = kesehatanStats.rows[0] || {};
+const kTotalSantri = Number(kStat.total_santri || 0);
+const kSakit = Number(kStat.sakit || 0);
+
       res.json({
 
         success: true,
@@ -875,7 +901,16 @@ Number(
 tamu_masih_didalam:
 Number(
   tamuMasihDidalam.rows[0].total
-)
+),
+
+kesehatan_sehat:
+  Math.max(kTotalSantri - kSakit, 0),
+
+kesehatan_sakit:
+  kSakit,
+
+kesehatan_perlu_tindak_lanjut:
+  Number(kStat.perlu_tindak_lanjut || 0),
 
         }
 

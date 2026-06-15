@@ -308,6 +308,24 @@ export function ProfilPesantrenScreen() {
 
 
 
+            {p.tentang ? (
+
+              <>
+
+                <SectionHeading title="Tentang Pesantren" />
+
+                <AppCard padding="md" style={styles.sectionCard}>
+
+                  <TextSection body={p.tentang} />
+
+                </AppCard>
+
+              </>
+
+            ) : null}
+
+
+
             {(p.telepon || p.email) ? (
 
               <>

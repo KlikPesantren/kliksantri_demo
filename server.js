@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 console.log(
   "SERVER INI YANG JALAN"
 );
@@ -25,6 +27,9 @@ const notFound =
 
 const errorHandler =
   require("./middleware/errorHandler");
+
+const { runStartupSchemaAudit } =
+  require("./utils/schemaAudit");
 
 // =====================
 // ROUTES
@@ -68,6 +73,9 @@ require("./routes/perizinanRoutes");
 
 const pelanggaranRoutes =
 require("./routes/pelanggaranRoutes");
+
+const kesehatanRoutes =
+require("./routes/kesehatanRoutes");
 
 const hafalanRoutes =
 require("./routes/hafalanRoutes");
@@ -121,6 +129,11 @@ require("./routes/waliAppRoutes");
 const pengumumanRoutes =
 require("./routes/pengumumanRoutes");
 
+const path = require("path");
+
+const uploadRoutes =
+require("./routes/uploadRoutes");
+
 const profilPesantrenRoutes =
 require("./routes/profilPesantrenRoutes");
 
@@ -169,6 +182,8 @@ const io =
       cors: {
 
         origin:
+          process.env.CORS_ORIGIN ||
+          process.env.FRONTEND_URL ||
           "http://localhost:5173",
 
         methods: [
@@ -195,6 +210,11 @@ app.set("io", io);
 app.use(cors());
 
 app.use(express.json({ limit: "2mb" }));
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
 
 app.use(logger);
 
@@ -316,6 +336,13 @@ app.use(
 );
 
 app.use(
+  "/kesehatan",
+  authMiddleware,
+  requirePermission("kesehatan.view"),
+  kesehatanRoutes
+);
+
+app.use(
   "/pelanggaran",
   authMiddleware,
   requirePermission("pelanggaran.view"),
@@ -349,6 +376,15 @@ app.use(
   requirePermission("profil.view"),
   profilPesantrenRoutes
 );
+
+app.use(
+  "/upload",
+  authMiddleware,
+  requirePermission("profil.view"),
+  uploadRoutes
+);
+
+console.log("ROUTE REGISTERED: POST /upload/image");
 
 app.use(
   "/users",
@@ -652,6 +688,16 @@ server.listen(
       `SERVER RUNNING PORT ${PORT}`
 
     );
+
+    console.log("SERVER STARTED");
+    console.log("PORT:", PORT);
+    console.log("HOST: 0.0.0.0 (all interfaces)");
+
+    runStartupSchemaAudit().catch((err) => {
+
+      console.error("[SCHEMA AUDIT] Startup check failed:", err.message);
+
+    });
 
   }
 

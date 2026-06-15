@@ -47,11 +47,11 @@ export function PesantrenHeader({ nama, logoUrl, alamat, showGanti, onGantiPress
           )}
 
           <View style={styles.textCol}>
-            <AppText variant="bodyMedium" color="inverse" numberOfLines={2} style={styles.nama}>
+            <AppText variant="h3" color="inverse" numberOfLines={2} style={styles.nama}>
               {nama ?? 'Pesantren'}
             </AppText>
             {shortAddr ? (
-              <AppText variant="caption" color="inverse" numberOfLines={1} style={styles.alamat}>
+              <AppText variant="caption" color="inverse" numberOfLines={2} style={styles.alamat}>
                 {shortAddr}
               </AppText>
             ) : null}
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSoft,
   },
   gradient: {
-    minHeight: 120,
-    paddingHorizontal: spacing.xl,
+    minHeight: 112,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -104,17 +104,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    minHeight: 56,
+    minHeight: 52,
   },
   logo: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
   },
   logoFallback: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     alignItems: 'center',
@@ -122,20 +122,23 @@ const styles = StyleSheet.create({
   },
   textCol: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
     minWidth: 0,
-    paddingHorizontal: spacing.xs,
   },
   nama: {
-    fontWeight: '700',
-    textAlign: 'center',
-    fontSize: 16,
+    fontWeight: '800',
+    fontSize: 18,
+    lineHeight: 23,
+    textAlign: 'left',
   },
   alamat: {
-    textAlign: 'center',
-    opacity: 0.92,
+    textAlign: 'left',
+    opacity: 0.82,
+    fontSize: 12,
+    lineHeight: 16,
+    color: 'rgba(255,255,255,0.88)',
   },
   gantiButton: {
     paddingHorizontal: spacing.md,
@@ -146,11 +149,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
     minWidth: 52,
     alignItems: 'center',
+    flexShrink: 0,
   },
   gantiText: {
     fontWeight: '700',
   },
   gantiPlaceholder: {
     width: 52,
+    flexShrink: 0,
   },
 });

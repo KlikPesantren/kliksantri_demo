@@ -464,6 +464,28 @@ router.get(
 
         );
 
+      const kesehatanAktif =
+        await pool.query(
+
+          `
+          SELECT
+            id,
+            status_kesehatan,
+            status_penanganan,
+            keluhan,
+            tindakan_pertama,
+            created_at,
+            updated_at
+          FROM kesehatan_santri
+          WHERE santri_id = $1
+          ORDER BY created_at DESC
+          LIMIT 1
+          `,
+
+          [santriId]
+
+        );
+
       const hafalanBulanIni =
         await pool.query(
 
@@ -555,6 +577,12 @@ router.get(
             Number(
               pelanggaranBulanIni.rows[0]?.total || 0
             ),
+
+          kesehatan_aktif:
+            kesehatanAktif.rows[0] || {
+              status_kesehatan: "sehat",
+              status_penanganan: "observasi",
+            },
 
           hafalan_bulan_ini:
             Number(
@@ -1420,6 +1448,113 @@ router.get(
 );
 
 // ======================
+// GET /wali-app/kesehatan
+// ======================
+
+router.get(
+
+  "/kesehatan",
+
+  waliAppAuthMiddleware,
+
+  waliSantriGuard,
+
+  async (req, res) => {
+
+    const santriId = req.santriId;
+
+    try {
+
+      const records =
+        await pool.query(
+
+          `
+          SELECT
+            id,
+            santri_id,
+            status_kesehatan,
+            keluhan,
+            tindakan_pertama,
+            status_penanganan,
+            created_at,
+            updated_at
+          FROM kesehatan_santri
+          WHERE santri_id = $1
+          ORDER BY created_at ASC
+          `,
+
+          [santriId]
+
+        );
+
+      const rows = records.rows;
+      const current = rows.length
+        ? rows[rows.length - 1]
+        : {
+            status_kesehatan: "sehat",
+            status_penanganan: "observasi",
+            keluhan: null,
+            tindakan_pertama: null,
+          };
+
+      const timeline = [];
+
+      for (const row of rows) {
+        if (row.keluhan) {
+          timeline.push({
+            time: row.created_at,
+            text: row.keluhan,
+          });
+        }
+        if (row.tindakan_pertama) {
+          timeline.push({
+            time: row.created_at,
+            text: row.tindakan_pertama,
+          });
+        }
+        if (row.status_penanganan) {
+          timeline.push({
+            time: row.updated_at || row.created_at,
+            text: `Status penanganan: ${String(row.status_penanganan).replace(/_/g, " ")}`,
+          });
+        }
+      }
+
+      res.json({
+
+        success: true,
+
+        santri_id: santriId,
+
+        current,
+
+        timeline,
+
+        data: rows,
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success: false,
+
+        error: err.message
+
+      });
+
+    }
+
+  }
+
+);
+
+// ======================
 // GET /wali-app/pelanggaran
 // ======================
 
@@ -2097,6 +2232,10 @@ router.get(
             logo_url,
             banner_url,
             COALESCE(banner_active, TRUE) AS banner_active,
+            splash_logo_url,
+            app_icon_url,
+            tagline,
+            tentang,
             visi,
             misi,
             updated_at

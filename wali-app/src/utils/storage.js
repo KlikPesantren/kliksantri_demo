@@ -57,17 +57,19 @@ export const storage = {
     ]);
   },
 
-  async savePesantrenBranding({ nama_pesantren, logo_url, alamat, banner_url, banner_active }) {
-    await AsyncStorage.setItem(
-      KEYS.PESANTREN_BRANDING,
-      JSON.stringify({
-        nama_pesantren,
-        logo_url,
-        alamat: alamat ?? null,
-        banner_url: banner_url ?? null,
-        banner_active: banner_active !== false,
-      })
-    );
+  async savePesantrenBranding(profil) {
+    const payload = {
+      nama_pesantren: profil.nama_pesantren,
+      logo_url: profil.logo_url ?? null,
+      splash_logo_url: profil.splash_logo_url ?? null,
+      app_icon_url: profil.app_icon_url ?? null,
+      tagline: profil.tagline ?? null,
+      alamat: profil.alamat ?? null,
+      banner_url: profil.banner_url ?? null,
+      banner_active: profil.banner_active !== false,
+      tentang: profil.tentang ?? null,
+    };
+    await AsyncStorage.setItem(KEYS.PESANTREN_BRANDING, JSON.stringify(payload));
   },
 
   async getPesantrenBranding() {

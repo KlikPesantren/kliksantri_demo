@@ -4,60 +4,90 @@ import { AppCard, AppText } from '../ui';
 import { colors } from '../../constants/colors';
 import { interaction, radius, spacing } from '../../constants/theme';
 
+const PENANGANAN_LABELS = {
+  observasi: 'Observasi',
+  istirahat: 'Istirahat',
+  sudah_berobat: 'Sudah berobat',
+  pulang: 'Pulang',
+  rawat_lanjut: 'Rawat lanjut',
+};
+
 function buildItems(d) {
   const items = [];
 
   if ((d.izin_aktif ?? 0) > 0) {
     items.push({
-      ok: false,
-      warn: true,
+      emoji: '⚠',
       text: 'Sedang izin',
+      tone: 'warning',
     });
   } else {
     items.push({
-      ok: true,
+      emoji: '✓',
       text: 'Aktif di pesantren',
+      tone: 'success',
     });
   }
 
-  const pelanggaran = d.pelanggaran_bulan_ini ?? 0;
-  if (pelanggaran === 0) {
+  const kesehatan = d.kesehatan_aktif || { status_kesehatan: 'sehat' };
+  const isSakit = kesehatan.status_kesehatan === 'sakit';
+
+  if (isSakit) {
     items.push({
-      ok: true,
-      text: 'Tidak ada pelanggaran',
+      emoji: '🟠',
+      text: 'Sedang sakit',
+      tone: 'danger',
+    });
+    const penanganan = PENANGANAN_LABELS[kesehatan.status_penanganan] || 'Dalam penanganan';
+    const sudahBerobat =
+      kesehatan.status_penanganan === 'sudah_berobat' ||
+      kesehatan.status_penanganan === 'pulang';
+    items.push({
+      emoji: sudahBerobat ? '💊' : '⚠',
+      text: sudahBerobat ? 'Sudah berobat' : penanganan,
+      tone: sudahBerobat ? 'success' : 'warning',
     });
   } else {
     items.push({
-      ok: false,
-      warn: true,
-      text: `${pelanggaran} catatan pelanggaran`,
+      emoji: '💚',
+      text: 'Sehat',
+      tone: 'success',
     });
   }
 
   const sahStatus = d.sahriyah_aktif?.status?.toLowerCase();
   if (!d.sahriyah_aktif || sahStatus === 'lunas') {
     items.push({
-      ok: true,
-      text: 'Sahriyah bulan ini lunas',
+      emoji: '✓',
+      text: 'Shahriyah lunas',
+      tone: 'success',
     });
   } else {
     items.push({
-      ok: false,
-      warn: true,
-      text: 'Sahriyah belum lunas',
+      emoji: '⚠',
+      text: 'Shahriyah belum lunas',
+      tone: 'warning',
     });
   }
 
   return items;
 }
 
-function StatusChip({ ok, warn, text }) {
-  const prefix = ok ? '✓ ' : warn ? '⚠ ' : '';
+const TONE_STYLES = {
+  success: { bg: colors.successSoft, text: colors.primaryHover },
+  warning: { bg: colors.warningSoft, text: colors.warning },
+  danger: { bg: colors.dangerSoft, text: colors.danger },
+};
+
+function StatusChip({ emoji, text, tone }) {
+  const palette = TONE_STYLES[tone] ?? TONE_STYLES.success;
 
   return (
-    <View style={styles.chip}>
-      <AppText variant="caption" numberOfLines={4} style={styles.chipText}>
-        {prefix}
+    <View style={[styles.chip, { backgroundColor: palette.bg }]}>
+      <AppText variant="caption" style={[styles.chipEmoji]}>
+        {emoji}
+      </AppText>
+      <AppText variant="caption" numberOfLines={3} style={[styles.chipText, { color: palette.text }]}>
         {text}
       </AppText>
     </View>
@@ -109,23 +139,31 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: spacing.lg,
     borderRadius: radius.lg,
-    shadowOpacity: 0,
-    elevation: 0,
+    backgroundColor: colors.surface,
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     gap: spacing.sm,
   },
   chip: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     minWidth: 0,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  chipEmoji: {
+    fontSize: 16,
+    lineHeight: 18,
   },
   chipText: {
     textAlign: 'center',
-    fontSize: 11,
-    lineHeight: 14,
-    color: colors.textSecondary,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '600',
   },
 });
