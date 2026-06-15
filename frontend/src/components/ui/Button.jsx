@@ -112,23 +112,37 @@ function Button({
       }}
       {...rest}
     >
-      {loading ? (
-        <span
-          style={{
-            width: s.iconSize,
-            height: s.iconSize,
-            border: "2px solid currentColor",
-            borderTopColor: "transparent",
-            borderRadius: "50%",
-            animation: "button-spin 0.6s linear infinite",
-            flexShrink: 0,
-          }}
-        />
-      ) : icon ? (
-        <span style={{ display: "inline-flex", alignItems: "center", fontSize: s.iconSize, lineHeight: 1 }}>
-          {icon}
-        </span>
-      ) : null}
+      <span
+        aria-hidden={!(loading || icon)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: loading || icon ? s.iconSize : 0,
+          minWidth: loading || icon ? s.iconSize : 0,
+          height: s.iconSize,
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        {loading ? (
+          <span
+            style={{
+              width: s.iconSize,
+              height: s.iconSize,
+              border: "2px solid currentColor",
+              borderTopColor: "transparent",
+              borderRadius: "50%",
+              animation: "button-spin 0.6s linear infinite",
+              flexShrink: 0,
+            }}
+          />
+        ) : icon ? (
+          <span style={{ display: "inline-flex", alignItems: "center", fontSize: s.iconSize, lineHeight: 1 }}>
+            {icon}
+          </span>
+        ) : null}
+      </span>
       {children}
     </button>
   );

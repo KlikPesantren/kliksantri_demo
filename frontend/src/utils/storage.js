@@ -1,4 +1,5 @@
 const USER_KEY = "user";
+export const PERMISSIONS_UPDATED_EVENT = "kliksantri:permissions-updated";
 
 export function getUser() {
   try {
@@ -10,6 +11,7 @@ export function getUser() {
 
 export function setUser(user) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  window.dispatchEvent(new CustomEvent(PERMISSIONS_UPDATED_EVENT));
 }
 
 export function clearUser() {

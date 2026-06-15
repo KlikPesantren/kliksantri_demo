@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getTenantInitial } from "../utils/tenantProfile";
+import { resolveDisplayMediaUrl } from "../utils/mediaUrl";
 
 function TenantBrand({
   logo,
@@ -9,26 +10,27 @@ function TenantBrand({
   size = "md",
 }) {
   const [logoError, setLogoError] = useState(false);
-  const showLogo = logo && !logoError;
+  const safeLogo = resolveDisplayMediaUrl(logo);
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [safeLogo]);
+
   const initial = getTenantInitial(name);
   const isSidebar = variant === "sidebar" || variant === "preview-sidebar";
   const logoSize = size === "lg" ? 56 : 44;
+  const showImage = Boolean(safeLogo) && !logoError;
 
   return (
     <div style={containerStyle}>
-      {showLogo ? (
-        <img
-          src={logo}
-          alt={name}
-          style={{
-            ...logoStyle,
-            width: logoSize,
-            height: logoSize,
-            ...(isSidebar ? sidebarLogoStyle : null),
-          }}
-          onError={() => setLogoError(true)}
-        />
-      ) : (
+      <div
+        style={{
+          width: logoSize,
+          height: logoSize,
+          flexShrink: 0,
+          position: "relative",
+        }}
+      >
         <div
           style={{
             ...avatarStyle,
@@ -40,7 +42,22 @@ function TenantBrand({
         >
           {initial}
         </div>
-      )}
+        {showImage ? (
+          <img
+            src={safeLogo}
+            alt={name}
+            style={{
+              ...logoStyle,
+              position: "absolute",
+              inset: 0,
+              width: logoSize,
+              height: logoSize,
+              ...(isSidebar ? sidebarLogoStyle : null),
+            }}
+            onError={() => setLogoError(true)}
+          />
+        ) : null}
+      </div>
 
       <div style={{ minWidth: 0 }} className="tenant-brand-text sidebar-brand-text">
         <div
@@ -77,7 +94,7 @@ const logoStyle = {
   borderRadius: "var(--radius-md)",
   objectFit: "cover",
   border: "1px solid var(--border)",
-  flexShrink: 0,
+  backgroundColor: "#fff",
 };
 
 const sidebarLogoStyle = {
@@ -92,7 +109,6 @@ const avatarStyle = {
   alignItems: "center",
   justifyContent: "center",
   fontWeight: 700,
-  flexShrink: 0,
 };
 
 const sidebarAvatarStyle = {

@@ -3,6 +3,7 @@ import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import { DashboardResponsiveStyles } from "../components/dashboard/DashboardResponsiveStyles";
 import DashboardMetrics from "../components/dashboard/DashboardMetrics";
+import DashboardHero from "../components/dashboard/DashboardHero";
 import DashboardAnnouncement from "../components/dashboard/DashboardAnnouncement";
 import DashboardViolations from "../components/dashboard/DashboardViolations";
 import DashboardFinanceChart from "../components/dashboard/DashboardFinanceChart";
@@ -10,6 +11,7 @@ import DashboardKeuangan from "../components/dashboard/DashboardKeuangan";
 import DashboardPendidikan from "../components/dashboard/DashboardPendidikan";
 import DashboardKeamanan from "../components/dashboard/DashboardKeamanan";
 import DashboardSekretaris from "../components/dashboard/DashboardSekretaris";
+import DashboardKesehatanHariIni from "../components/dashboard/DashboardKesehatanHariIni";
 import { getUser } from "../utils/storage";
 
 function DashboardPage() {
@@ -76,7 +78,9 @@ function DashboardPage() {
       <DashboardResponsiveStyles />
       {user?.role === "superadmin" && (
         <div className="dashboard-page dashboard-monitoring-v3">
+          <DashboardHero />
           <DashboardMetrics summary={summary} />
+          <DashboardKesehatanHariIni summary={summary} />
 
           <div className="dashboard-row-2">
             <DashboardAnnouncement

@@ -4,6 +4,7 @@ import KpiCard from "../ui/KpiCard";
 import KpiGrid from "../ui/KpiGrid";
 import Card from "../ui/Card";
 import DashboardViolations from "./DashboardViolations";
+import DashboardKesehatanHariIni from "./DashboardKesehatanHariIni";
 import {
   DASHBOARD_PANEL,
   ExecSectionTitle,
@@ -51,6 +52,7 @@ function DashboardKeamanan({ summary }) {
 
   return (
     <div className="dashboard-role-v3">
+      <DashboardKesehatanHariIni summary={summary} />
       <KpiGrid>
         <KpiCard
           label="Santri Belum Kembali"

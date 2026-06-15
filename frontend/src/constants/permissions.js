@@ -19,6 +19,7 @@ export const ROUTE_PERMISSIONS = {
   "/sahriyah":          "sahriyah.view",
   "/sahriyah-setting":  "sahriyah.manage",
   "/pelanggaran":       "pelanggaran.view",
+  "/kesehatan":         "kesehatan.view",
   "/perizinan":         "perizinan.view",
   "/tamu":              "tamu.view",
   "/pengumuman":        "pengumuman.view",

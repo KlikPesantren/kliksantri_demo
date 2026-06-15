@@ -192,7 +192,7 @@ function LoginPage() {
         name={display.name}
         location={display.address}
       />
-      <p className="login-tagline">Sistem Administrasi Pesantren Modern</p>
+      <p className="login-tagline">{display.tagline || "Sistem Administrasi Pesantren Modern"}</p>
       <p className="login-powered">Powered by KlikSantri</p>
     </>
   );

@@ -1,0 +1,98 @@
+import { useEffect, useMemo, useState } from "react";
+import { getUser } from "../../utils/storage";
+import { useTenantProfile } from "../../context/TenantProfileContext";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
+import "./DashboardHero.css";
+
+const DEFAULT_BANNER = "/uploads/default-banner.jpg";
+
+const HERO_QUOTE = {
+  open: "\u275D",
+  close: "\u275E",
+  text: "Kelola pesantren dengan amanah,\nlayani santri dengan penuh berkah.",
+};
+
+function formatRoleLabel(role = "") {
+  if (!role) return "Admin";
+  if (role === "superadmin") return "Super Admin";
+  return role
+    .split(/[_-]/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function resolveHeroBannerUrl(bannerUrl) {
+  if (bannerUrl?.trim()) {
+    return resolveMediaUrl(bannerUrl.trim());
+  }
+  return resolveMediaUrl(DEFAULT_BANNER);
+}
+
+export function DashboardHero() {
+  const user = getUser();
+  const { display } = useTenantProfile();
+  const roleLabel = formatRoleLabel(user?.role);
+
+  const primaryBannerSrc = useMemo(
+    () => resolveHeroBannerUrl(display?.banner_url),
+    [display?.banner_url],
+  );
+
+  const fallbackBannerSrc = useMemo(() => resolveMediaUrl(DEFAULT_BANNER), []);
+
+  const [bannerSrc, setBannerSrc] = useState(primaryBannerSrc);
+
+  useEffect(() => {
+    setBannerSrc(primaryBannerSrc);
+  }, [primaryBannerSrc]);
+
+  function handleBannerError() {
+    if (bannerSrc !== fallbackBannerSrc) {
+      setBannerSrc(fallbackBannerSrc);
+    }
+  }
+
+  return (
+    <section className="dashboard-hero" aria-label="Dashboard hero">
+      <img
+        className="dashboard-hero__bg"
+        src={bannerSrc}
+        alt=""
+        aria-hidden="true"
+        onError={handleBannerError}
+      />
+      <div className="dashboard-hero__white-overlay" aria-hidden="true" />
+      <div className="dashboard-hero__inner">
+        <div className="dashboard-hero__content">
+          <p className="dashboard-hero__greeting">
+            Assalamu&apos;alaikum, {roleLabel} 👋
+          </p>
+          <h1 className="dashboard-hero__title">Dashboard</h1>
+          <p className="dashboard-hero__subtext">
+            Ringkasan informasi kegiatan dan administrasi pesantren hari ini.
+          </p>
+        </div>
+
+        <aside className="dashboard-hero__quote" aria-label="Kutipan motivasi">
+          <span className="dashboard-hero__quote-mark dashboard-hero__quote-mark--open">
+            {HERO_QUOTE.open}
+          </span>
+          <p>
+            {HERO_QUOTE.text.split("\n").map((line, index) => (
+              <span key={`quote-line_${index}`}>
+                {line}
+                {index < HERO_QUOTE.text.split("\n").length - 1 ? <br /> : null}
+              </span>
+            ))}
+          </p>
+          <span className="dashboard-hero__quote-mark dashboard-hero__quote-mark--close">
+            {HERO_QUOTE.close}
+          </span>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+export default DashboardHero;

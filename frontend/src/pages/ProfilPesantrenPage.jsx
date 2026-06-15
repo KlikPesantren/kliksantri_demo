@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 
 import api from "../services/api";
 
@@ -28,7 +28,13 @@ import {
 
 import { useTenantProfile } from "../context/TenantProfileContext";
 
+import AppBrandingPreview from "../components/AppBrandingPreview";
+
+import ImageUploadField from "../components/ImageUploadField";
+
 import { isBannerVisible, resolveTenantDisplay } from "../utils/tenantProfile";
+
+import { resolveDisplayMediaUrl } from "../utils/mediaUrl";
 
 
 
@@ -50,6 +56,14 @@ const EMPTY_FORM = {
 
   banner_active: true,
 
+  splash_logo_url: "",
+
+  app_icon_url: "",
+
+  tagline: "",
+
+  tentang: "",
+
   visi: "",
 
   misi: "",
@@ -60,7 +74,8 @@ const EMPTY_FORM = {
 
 function BannerPreview({ bannerUrl, bannerActive, name, address }) {
 
-  const hasImage = Boolean(bannerUrl?.trim());
+  const resolvedBanner = resolveDisplayMediaUrl(bannerUrl);
+  const hasImage = Boolean(resolvedBanner?.trim());
 
 
 
@@ -76,7 +91,7 @@ function BannerPreview({ bannerUrl, bannerActive, name, address }) {
 
           {hasImage && bannerActive ? (
 
-            <img src={bannerUrl.trim()} alt="Preview banner desktop" style={desktopImageStyle} />
+            <img src={resolvedBanner} alt="Preview banner desktop" style={desktopImageStyle} />
 
           ) : (
 
@@ -110,7 +125,7 @@ function BannerPreview({ bannerUrl, bannerActive, name, address }) {
 
           {hasImage && bannerActive ? (
 
-            <img src={bannerUrl.trim()} alt="Preview banner mobile" style={mobileImageStyle} />
+            <img src={resolvedBanner} alt="Preview banner mobile" style={mobileImageStyle} />
 
           ) : (
 
@@ -164,6 +179,16 @@ function ProfilPesantrenPage() {
 
 
 
+  const setField = useCallback(
+
+    (field) => (url) => setForm((prev) => ({ ...prev, [field]: url })),
+
+    [],
+
+  );
+
+
+
   const load = async () => {
 
     setLoading(true);
@@ -195,6 +220,14 @@ function ProfilPesantrenPage() {
           banner_url: d.banner_url ?? "",
 
           banner_active: d.banner_active !== false,
+
+          splash_logo_url: d.splash_logo_url ?? "",
+
+          app_icon_url: d.app_icon_url ?? "",
+
+          tagline: d.tagline ?? "",
+
+          tentang: d.tentang ?? "",
 
           visi: d.visi ?? "",
 
@@ -258,6 +291,14 @@ function ProfilPesantrenPage() {
 
         banner_active: form.banner_active !== false,
 
+        splash_logo_url: form.splash_logo_url || null,
+
+        app_icon_url: form.app_icon_url || null,
+
+        tagline: form.tagline || null,
+
+        tentang: form.tentang || null,
+
         visi: form.visi || null,
 
         misi: form.misi || null,
@@ -316,9 +357,15 @@ function ProfilPesantrenPage() {
 
         banner_active: form.banner_active,
 
+        splash_logo_url: form.splash_logo_url,
+
+        app_icon_url: form.app_icon_url,
+
+        tagline: form.tagline,
+
       }),
 
-    [form.nama_pesantren, form.alamat, form.logo_url, form.banner_url, form.banner_active],
+    [form],
 
   );
 
@@ -512,11 +559,25 @@ function ProfilPesantrenPage() {
 
                 <SectionHeading variant="eyebrow" spacing="first">
 
-                  Branding
+                  Branding Aplikasi
 
                 </SectionHeading>
 
+                <p style={helperTextStyle}>
 
+                  Logo, splash, tagline, dan banner tampil di Admin Panel dan APK Wali Santri.
+
+                  Upload file PNG/JPG/WEBP (maks. 5MB). URL hasil upload otomatis tersimpan.
+
+                  Jika logo splash kosong, preview menggunakan logo pesantren.
+
+                </p>
+
+                <div style={{ marginTop: "var(--space-4)" }}>
+
+                  <AppBrandingPreview profile={form} />
+
+                </div>
 
                 <div
 
@@ -536,7 +597,7 @@ function ProfilPesantrenPage() {
 
                 >
 
-                  <div style={previewLabelStyle}>Preview Sidebar</div>
+                  <div style={previewLabelStyle}>Preview Sidebar Admin</div>
 
                   <TenantBrand
 
@@ -552,27 +613,167 @@ function ProfilPesantrenPage() {
 
                 </div>
 
-
-
                 <FormGrid style={{ marginTop: "var(--space-4)" }}>
 
-                  <FormField label="URL Logo (opsional)" htmlFor="profil-logo" fullWidth>
+                  <FormField label="Logo Pesantren" htmlFor="profil-logo" fullWidth>
 
-                    <Input
+                    <ImageUploadField
 
                       id="profil-logo"
 
+                      label="Logo Pesantren"
+
                       value={form.logo_url}
 
-                      onChange={set("logo_url")}
-
-                      placeholder="https://cdn.pesantren.ac.id/logo.png"
-
-                      maxLength={500}
+                      onChange={setField("logo_url")}
 
                     />
 
                   </FormField>
+
+                  <FormField label="Logo Splash Screen" htmlFor="profil-splash-logo" fullWidth>
+
+                    <ImageUploadField
+
+                      id="profil-splash-logo"
+
+                      label="Splash Logo"
+
+                      value={form.splash_logo_url}
+
+                      onChange={setField("splash_logo_url")}
+
+                    />
+
+                  </FormField>
+
+                  <FormField label="App Icon (persiapan build)" htmlFor="profil-app-icon" fullWidth>
+
+                    <ImageUploadField
+
+                      id="profil-app-icon"
+
+                      label="App Icon"
+
+                      value={form.app_icon_url}
+
+                      onChange={setField("app_icon_url")}
+
+                    />
+
+                  </FormField>
+
+                  <FormField label="Tagline Pesantren" htmlFor="profil-tagline" fullWidth>
+
+                    <Input
+
+                      id="profil-tagline"
+
+                      value={form.tagline}
+
+                      onChange={set("tagline")}
+
+                      placeholder="Portal Wali Santri"
+
+                      maxLength={200}
+
+                    />
+
+                  </FormField>
+
+                  <FormField label="Banner Pesantren" htmlFor="profil-banner" fullWidth>
+
+                    <ImageUploadField
+
+                      id="profil-banner"
+
+                      label="Banner Pesantren"
+
+                      value={form.banner_url}
+
+                      onChange={setField("banner_url")}
+
+                      previewHeight={140}
+
+                    />
+
+                  </FormField>
+
+                  <FormField label="Status Banner" htmlFor="profil-banner-active" fullWidth>
+
+                    <label style={toggleLabelStyle}>
+
+                      <input
+
+                        id="profil-banner-active"
+
+                        type="checkbox"
+
+                        checked={form.banner_active !== false}
+
+                        onChange={(e) =>
+
+                          setForm((prev) => ({
+
+                            ...prev,
+
+                            banner_active: e.target.checked,
+
+                          }))
+
+                        }
+
+                        style={{ width: 16, height: 16, accentColor: "var(--primary)" }}
+
+                      />
+
+                      <span>
+
+                        Banner aktif
+
+                        {bannerPreviewVisible ? " — akan tampil di APK Wali" : ""}
+
+                      </span>
+
+                    </label>
+
+                  </FormField>
+
+                </FormGrid>
+
+                <div style={{ marginTop: "var(--space-4)" }}>
+
+                  <BannerPreview
+
+                    bannerUrl={form.banner_url}
+
+                    bannerActive={form.banner_active}
+
+                    name={previewDisplay.name}
+
+                    address={previewDisplay.address}
+
+                  />
+
+                </div>
+
+              </Card>
+
+            </div>
+
+
+
+            <div style={{ marginTop: "var(--space-4)" }}>
+
+              <Card padding="md" shadow="card" border={false} radius="xl">
+
+                <SectionHeading variant="eyebrow" spacing="first">
+
+                  Visi & Misi
+
+                </SectionHeading>
+
+                <FormGrid style={{ marginTop: "var(--space-4)" }}>
 
                   <FormField label="Visi" htmlFor="profil-visi" fullWidth>
 
@@ -624,109 +825,33 @@ function ProfilPesantrenPage() {
 
                 <SectionHeading variant="eyebrow" spacing="first">
 
-                  Banner Pesantren
+                  Tentang Pesantren
 
                 </SectionHeading>
 
-                <p
+                <p style={helperTextStyle}>
 
-                  style={{
-
-                    marginTop: "var(--space-2)",
-
-                    marginBottom: 0,
-
-                    fontSize: "13px",
-
-                    color: "var(--text-secondary)",
-
-                    lineHeight: 1.5,
-
-                  }}
-
-                >
-
-                  Banner tampil di beranda APK Wali Santri. Rasio 16:9, disarankan min. 1280×720 px.
+                  Opsional. Tampil di halaman Profil Pesantren pada APK Wali jika diisi.
 
                 </p>
 
-
-
-                <div style={{ marginTop: "var(--space-4)" }}>
-
-                  <BannerPreview
-
-                    bannerUrl={form.banner_url}
-
-                    bannerActive={form.banner_active}
-
-                    name={previewDisplay.name}
-
-                    address={previewDisplay.address}
-
-                  />
-
-                </div>
-
-
-
                 <FormGrid style={{ marginTop: "var(--space-4)" }}>
 
-                  <FormField label="URL Banner" htmlFor="profil-banner" fullWidth>
+                  <FormField label="Tentang" htmlFor="profil-tentang" fullWidth>
 
-                    <Input
+                    <Textarea
 
-                      id="profil-banner"
+                      id="profil-tentang"
 
-                      value={form.banner_url}
+                      value={form.tentang}
 
-                      onChange={set("banner_url")}
+                      onChange={set("tentang")}
 
-                      placeholder="https://cdn.pesantren.ac.id/banner.jpg"
+                      placeholder="Cerita singkat tentang pesantren..."
 
-                      maxLength={500}
+                      rows={6}
 
                     />
-
-                  </FormField>
-
-                  <FormField label="Status Banner" htmlFor="profil-banner-active" fullWidth>
-
-                    <label style={toggleLabelStyle}>
-
-                      <input
-
-                        id="profil-banner-active"
-
-                        type="checkbox"
-
-                        checked={form.banner_active !== false}
-
-                        onChange={(e) =>
-
-                          setForm((prev) => ({
-
-                            ...prev,
-
-                            banner_active: e.target.checked,
-
-                          }))
-
-                        }
-
-                        style={{ width: 16, height: 16, accentColor: "var(--primary)" }}
-
-                      />
-
-                      <span>
-
-                        Banner aktif
-
-                        {bannerPreviewVisible ? " — akan tampil di APK Wali" : ""}
-
-                      </span>
-
-                    </label>
 
                   </FormField>
 
@@ -805,6 +930,20 @@ const previewLabelStyle = {
   color: "var(--neutral)",
 
   marginBottom: "var(--space-2)",
+
+};
+
+const helperTextStyle = {
+
+  marginTop: "var(--space-2)",
+
+  marginBottom: 0,
+
+  fontSize: "13px",
+
+  color: "var(--text-secondary)",
+
+  lineHeight: 1.5,
 
 };
 

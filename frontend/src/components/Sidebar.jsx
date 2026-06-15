@@ -10,9 +10,11 @@ import {
   FaWifi,
   FaUserShield,
   FaChevronRight,
+  FaHeartbeat,
 } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
 import { hasPermission } from "../utils/hasPermission";
+import { PERMISSIONS_UPDATED_EVENT } from "../utils/storage";
 import TenantBrand from "./TenantBrand";
 import { useTenantProfile } from "../context/TenantProfileContext";
 
@@ -56,6 +58,7 @@ const MENU = [
   { name: "RFID Merchant", path: "/rfid-merchant", perm: "rfid.view", icon: <FaWifi /> },
   { name: "RFID Device", path: "/rfid-devices", perm: "rfid.view", icon: <FaWifi /> },
   { name: "Perizinan", path: "/perizinan", perm: "perizinan.view", icon: <FaClipboardList /> },
+  { name: "Kesehatan Santri", path: "/kesehatan", perm: "kesehatan.view", icon: <FaHeartbeat /> },
   { name: "Pelanggaran", path: "/pelanggaran", perm: "pelanggaran.view", icon: <FaClipboardList /> },
   { name: "Tamu", path: "/tamu", perm: "tamu.view", icon: <FaClipboardList /> },
   { name: "Users", path: "/users", perm: "user.view", icon: <FaUserShield /> },
@@ -106,7 +109,7 @@ const MENU_GROUPS = [
     id: "kedisiplinan",
     title: "Kedisiplinan",
     collapsible: true,
-    items: ["Perizinan", "Pelanggaran", "Tamu"],
+    items: ["Perizinan", "Kesehatan Santri", "Pelanggaran", "Tamu"],
   },
   {
     id: "sistem",
@@ -184,8 +187,22 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
   const scrollRafRef = useRef(null);
 
   const [collapsed, setCollapsed] = useState(loadCollapsedState);
+  const [permissionsVersion, setPermissionsVersion] = useState(0);
 
-  const menus = useMemo(() => MENU.filter((m) => hasPermission(m.perm)), []);
+  useEffect(() => {
+    const syncPermissionsVersion = () => {
+      setPermissionsVersion((v) => v + 1);
+    };
+    window.addEventListener(PERMISSIONS_UPDATED_EVENT, syncPermissionsVersion);
+    return () => {
+      window.removeEventListener(PERMISSIONS_UPDATED_EVENT, syncPermissionsVersion);
+    };
+  }, []);
+
+  const menus = useMemo(
+    () => MENU.filter((m) => hasPermission(m.perm)),
+    [permissionsVersion],
+  );
 
   const menuByName = useMemo(
     () => new Map(menus.map((menu) => [menu.name, menu])),

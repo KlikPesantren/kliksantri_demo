@@ -1,0 +1,198 @@
+.dashboard-hero {
+  position: relative;
+  height: 240px;
+  border-radius: 24px;
+  overflow: hidden;
+  margin-bottom: var(--space-3);
+  animation: dashboardHeroFadeIn 300ms ease-out both;
+}
+
+.dashboard-hero__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.dashboard-hero__white-overlay {
+  position: absolute;
+  inset: 0;
+  width: 65%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(255, 255, 255, 0.88) 35%,
+    rgba(255, 255, 255, 0.55) 70%,
+    transparent 100%
+  );
+}
+
+.dashboard-hero__inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: var(--space-4) var(--space-5);
+  padding-right: calc(320px + 64px);
+  box-sizing: border-box;
+}
+
+.dashboard-hero__content {
+  flex: 1;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.dashboard-hero__greeting {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.dashboard-hero__title {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-hero__subtext {
+  margin: var(--space-2) 0 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  max-width: 500px;
+}
+
+.dashboard-hero__quote {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-shrink: 0;
+  width: 320px;
+  padding: var(--space-4);
+  background: rgba(22, 163, 74, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 500;
+  animation: dashboardHeroQuoteSlide 300ms ease-out 80ms both;
+}
+
+.dashboard-hero__quote p {
+  margin: 0;
+}
+
+.dashboard-hero__quote-mark {
+  display: block;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.dashboard-hero__quote-mark--open {
+  margin-bottom: var(--space-2);
+}
+
+.dashboard-hero__quote-mark--close {
+  margin-top: var(--space-2);
+  text-align: right;
+}
+
+@keyframes dashboardHeroFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dashboardHeroQuoteSlide {
+  from {
+    opacity: 0;
+    transform: translate(24px, -50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+}
+
+@media (max-width: 1023px) {
+  .dashboard-hero__inner {
+    padding-right: calc(260px + 64px);
+  }
+
+  .dashboard-hero__quote {
+    width: 260px;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-hero {
+    height: auto;
+    min-height: 240px;
+  }
+
+  .dashboard-hero__white-overlay {
+    width: 100%;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.94) 0%,
+      rgba(255, 255, 255, 0.82) 55%,
+      rgba(255, 255, 255, 0.45) 100%
+    );
+  }
+
+  .dashboard-hero__inner {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .dashboard-hero__content {
+    max-width: 100%;
+  }
+
+  .dashboard-hero__title {
+    font-size: 32px;
+  }
+
+  .dashboard-hero__quote {
+    position: static;
+    transform: none;
+    width: 100%;
+    max-width: 320px;
+    align-self: stretch;
+    margin-top: var(--space-3);
+    animation-name: dashboardHeroQuoteSlideMobile;
+  }
+}
+
+@keyframes dashboardHeroQuoteSlideMobile {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

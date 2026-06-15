@@ -25,6 +25,7 @@ import KelasPage from "./pages/KelasPage";
 import AbsensiPage from "./pages/AbsensiPage";
 import PerizinanPage from "./pages/PerizinanPage";
 import PelanggaranPage from "./pages/PelanggaranPage";
+import KesehatanPage from "./pages/KesehatanPage";
 import HafalanPage from "./pages/HafalanPage";
 import NilaiPage from "./pages/NilaiPage";
 import WaliPage from "./pages/WaliPage";
@@ -267,6 +268,15 @@ function App() {
           element={
             <ProtectedRoute>
               <PerizinanPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/kesehatan"
+          element={
+            <ProtectedRoute>
+              <KesehatanPage />
             </ProtectedRoute>
           }
         />

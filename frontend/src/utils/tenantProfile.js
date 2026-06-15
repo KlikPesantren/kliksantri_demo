@@ -3,6 +3,7 @@ export const TENANT_CACHE_KEY = "kliksantri_tenant_profile";
 export const TENANT_FALLBACKS = {
   name: "Pesantren",
   address: "Lengkapi profil pesantren",
+  tagline: "Portal Wali Santri",
 };
 
 export function normalizeTenantProfile(profile) {
@@ -13,6 +14,10 @@ export function normalizeTenantProfile(profile) {
     logo_url: profile.logo_url ?? null,
     banner_url: profile.banner_url ?? null,
     banner_active: profile.banner_active !== false,
+    splash_logo_url: profile.splash_logo_url ?? null,
+    app_icon_url: profile.app_icon_url ?? null,
+    tagline: profile.tagline ?? null,
+    tentang: profile.tentang ?? null,
   };
 }
 
@@ -36,18 +41,44 @@ export function setCachedTenantProfile(profile) {
   );
 }
 
+function trimUrl(value) {
+  const v = value?.trim();
+  return v || null;
+}
+
+export function resolveSplashLogoUrl(profile) {
+  const normalized = normalizeTenantProfile(profile);
+  return trimUrl(normalized?.splash_logo_url) || trimUrl(normalized?.logo_url);
+}
+
+export function resolveAppIconUrl(profile) {
+  const normalized = normalizeTenantProfile(profile);
+  return trimUrl(normalized?.app_icon_url) || trimUrl(normalized?.logo_url);
+}
+
+export function resolveTenantTagline(profile, fallback = TENANT_FALLBACKS.tagline) {
+  const normalized = normalizeTenantProfile(profile);
+  return normalized?.tagline?.trim() || fallback;
+}
+
 export function resolveTenantDisplay(profile) {
   const normalized = normalizeTenantProfile(profile);
   const name = normalized?.nama_pesantren?.trim() || TENANT_FALLBACKS.name;
   const address = normalized?.alamat?.trim() || TENANT_FALLBACKS.address;
-  const logo = normalized?.logo_url?.trim() || null;
-  const banner_url = normalized?.banner_url?.trim() || null;
+  const logo = trimUrl(normalized?.logo_url);
+  const splash_logo = resolveSplashLogoUrl(normalized);
+  const app_icon = resolveAppIconUrl(normalized);
+  const tagline = resolveTenantTagline(normalized);
+  const banner_url = trimUrl(normalized?.banner_url);
   const banner_active = normalized?.banner_active !== false;
 
   return {
     name,
     address,
     logo,
+    splash_logo,
+    app_icon,
+    tagline,
     banner_url,
     banner_active,
     hasCustomName: Boolean(normalized?.nama_pesantren?.trim()),
