@@ -6,14 +6,21 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#16A34A",
+    "backgroundColor": "#15803D",
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#16A34A",
+          "backgroundColor": "#15803D",
           "image": "./assets/splash-icon.png",
           "imageWidth": 200
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#15803D"
         }
       ]
     ],
@@ -27,17 +34,28 @@
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#16A34A",
+        "backgroundColor": "#15803D",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
+    "androidStatusBar": {
+      "backgroundColor": "#15803D",
+      "barStyle": "light-content",
+      "translucent": false
+    },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3ee670bd-7850-40eb-9799-1609db9a3341"
+      }
     }
   }
 }

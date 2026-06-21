@@ -1,12 +1,15 @@
 const express = require("express");
-
 const router = express.Router();
-
-const controller =
-require("../controllers/rfidMonitorController");
+const authMiddleware = require("../middleware/authMiddleware");
+const tenantMiddleware = require("../middleware/tenantMiddleware");
+const requirePermission = require("../middleware/requirePermission");
+const controller = require("../controllers/rfidMonitorController");
 
 router.get(
   "/",
+  authMiddleware,
+  tenantMiddleware,
+  requirePermission("rfid.view"),
   controller.getMonitor
 );
 

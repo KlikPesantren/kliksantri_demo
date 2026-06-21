@@ -1,0 +1,65 @@
+const pool = require("../db");
+
+const DEFAULT_TENANT_SLUG = "default";
+
+const TENANT_INACTIVE_MESSAGE =
+  "Layanan KlikSantri untuk pesantren ini sedang tidak aktif.";
+
+function buildInactiveTenantPayload() {
+  return {
+    success: false,
+    error: TENANT_INACTIVE_MESSAGE,
+    message: TENANT_INACTIVE_MESSAGE,
+  };
+}
+
+async function getTenantBySlug(slug) {
+  const { rows } = await pool.query(
+    `SELECT id, slug, nama, status, logo_url, tagline, alamat, telepon,
+            suspended_at, suspended_reason, onboarded_at, created_at
+     FROM tenants
+     WHERE slug = $1`,
+    [slug]
+  );
+  return rows[0] ?? null;
+}
+
+async function getDefaultTenant() {
+  return getTenantBySlug(DEFAULT_TENANT_SLUG);
+}
+
+async function getTenantById(id) {
+  const { rows } = await pool.query(
+    `SELECT id, slug, nama, status, logo_url, tagline, alamat, telepon,
+            suspended_at, suspended_reason, onboarded_at, created_at, created_by
+     FROM tenants
+     WHERE id = $1`,
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
+async function resolveTenantForLogin(tenantSlug) {
+  const slug = (tenantSlug || DEFAULT_TENANT_SLUG).trim().toLowerCase();
+  const tenant = await getTenantBySlug(slug);
+  if (!tenant) {
+    return { error: "Pesantren tidak ditemukan", status: 404 };
+  }
+  if (tenant.status !== "active") {
+    return {
+      error: TENANT_INACTIVE_MESSAGE,
+      status: 403,
+    };
+  }
+  return { tenant };
+}
+
+module.exports = {
+  DEFAULT_TENANT_SLUG,
+  TENANT_INACTIVE_MESSAGE,
+  buildInactiveTenantPayload,
+  getTenantBySlug,
+  getDefaultTenant,
+  getTenantById,
+  resolveTenantForLogin,
+};

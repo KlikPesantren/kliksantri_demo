@@ -1,9 +1,12 @@
-const express           = require("express");
-const router            = express.Router();
-const pool              = require("../db");
-const bcrypt            = require("bcryptjs");
-const authMiddleware    = require("../middleware/authMiddleware");
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const bcrypt = require("bcryptjs");
+const authMiddleware = require("../middleware/authMiddleware");
+const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
+
+const withTenant = [authMiddleware, tenantMiddleware];
 
 // ======================
 // GET /users/meta/roles — daftar role untuk dropdown form
@@ -11,7 +14,7 @@ const requirePermission = require("../middleware/requirePermission");
 
 router.get(
   "/meta/roles",
-  authMiddleware,
+  ...withTenant,
   requirePermission("user.view"),
   async (req, res) => {
     try {
@@ -32,16 +35,19 @@ router.get(
 
 router.get(
   "/",
-  authMiddleware,
+  ...withTenant,
   requirePermission("user.view"),
   async (req, res) => {
     try {
       const result = await pool.query(
         `SELECT u.id, u.nama, u.username, u.role, u.status, u.created_at,
+                u.tenant_id,
                 r.label AS role_label
          FROM users u
          LEFT JOIN roles r ON r.name = u.role
-         ORDER BY u.id ASC`
+         WHERE u.tenant_id = $1
+         ORDER BY u.id ASC`,
+        [req.tenantId]
       );
       res.json({ success: true, data: result.rows });
     } catch (err) {
@@ -57,7 +63,7 @@ router.get(
 
 router.post(
   "/",
-  authMiddleware,
+  ...withTenant,
   requirePermission("user.create"),
   async (req, res) => {
     try {
@@ -67,7 +73,10 @@ router.post(
         return res.status(400).json({ success: false, error: "Semua field wajib diisi" });
       }
 
-      const exists = await pool.query("SELECT id FROM users WHERE username = $1", [username]);
+      const exists = await pool.query(
+        "SELECT id FROM users WHERE username = $1 AND tenant_id = $2",
+        [username, req.tenantId]
+      );
       if (exists.rows.length > 0) {
         return res.status(400).json({ success: false, error: "Username sudah digunakan" });
       }
@@ -75,10 +84,10 @@ router.post(
       const hash = await bcrypt.hash(password, 10);
 
       const result = await pool.query(
-        `INSERT INTO users (nama, username, password, role, status)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, nama, username, role, status, created_at`,
-        [nama, username, hash, role, status || "Aktif"]
+        `INSERT INTO users (nama, username, password, role, status, tenant_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, nama, username, role, status, tenant_id, created_at`,
+        [nama, username, hash, role, status || "Aktif", req.tenantId]
       );
 
       res.json({ success: true, data: result.rows[0] });
@@ -95,7 +104,7 @@ router.post(
 
 router.put(
   "/:id",
-  authMiddleware,
+  ...withTenant,
   requirePermission("user.update"),
   async (req, res) => {
     try {
@@ -112,17 +121,17 @@ router.put(
         result = await pool.query(
           `UPDATE users
            SET nama = $1, username = $2, password = $3, role = $4, status = $5
-           WHERE id = $6
-           RETURNING id, nama, username, role, status, created_at`,
-          [nama, username, hash, role, status || "Aktif", id]
+           WHERE id = $6 AND tenant_id = $7
+           RETURNING id, nama, username, role, status, tenant_id, created_at`,
+          [nama, username, hash, role, status || "Aktif", id, req.tenantId]
         );
       } else {
         result = await pool.query(
           `UPDATE users
            SET nama = $1, username = $2, role = $3, status = $4
-           WHERE id = $5
-           RETURNING id, nama, username, role, status, created_at`,
-          [nama, username, role, status || "Aktif", id]
+           WHERE id = $5 AND tenant_id = $6
+           RETURNING id, nama, username, role, status, tenant_id, created_at`,
+          [nama, username, role, status || "Aktif", id, req.tenantId]
         );
       }
 
@@ -144,7 +153,7 @@ router.put(
 
 router.put(
   "/:id/reset-password",
-  authMiddleware,
+  ...withTenant,
   requirePermission("user.update"),
   async (req, res) => {
     try {
@@ -158,8 +167,8 @@ router.put(
       const hash = await bcrypt.hash(password, 10);
 
       const result = await pool.query(
-        `UPDATE users SET password = $1 WHERE id = $2 RETURNING id, username`,
-        [hash, id]
+        `UPDATE users SET password = $1 WHERE id = $2 AND tenant_id = $3 RETURNING id, username`,
+        [hash, id, req.tenantId]
       );
 
       if (result.rows.length === 0) {
@@ -180,7 +189,7 @@ router.put(
 
 router.delete(
   "/:id",
-  authMiddleware,
+  ...withTenant,
   requirePermission("user.delete"),
   async (req, res) => {
     try {
@@ -190,12 +199,15 @@ router.delete(
         return res.status(400).json({ success: false, error: "Tidak dapat menghapus akun sendiri" });
       }
 
-      const check = await pool.query("SELECT id FROM users WHERE id = $1", [id]);
+      const check = await pool.query(
+        "SELECT id FROM users WHERE id = $1 AND tenant_id = $2",
+        [id, req.tenantId]
+      );
       if (check.rows.length === 0) {
         return res.status(404).json({ success: false, error: "User tidak ditemukan" });
       }
 
-      await pool.query("DELETE FROM users WHERE id = $1", [id]);
+      await pool.query("DELETE FROM users WHERE id = $1 AND tenant_id = $2", [id, req.tenantId]);
       res.json({ success: true, message: "User berhasil dihapus" });
     } catch (err) {
       console.error(err);

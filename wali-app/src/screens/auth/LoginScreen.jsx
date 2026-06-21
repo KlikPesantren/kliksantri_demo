@@ -23,6 +23,7 @@ import { colors } from '../../constants/colors';
 import { interaction, radius, spacing } from '../../constants/theme';
 import { storage } from '../../utils/storage';
 import { API_BASE_URL } from '../../api/client';
+import { TENANT_INACTIVE_MESSAGE } from '../../constants/tenant';
 import {
   resolveBrandingName,
   resolveBrandingTagline,
@@ -53,6 +54,7 @@ export function LoginScreen() {
   const { setActiveSantri } = useActiveChild();
 
   const [nomorHp, setNomorHp] = useState('');
+  const [tenantSlug, setTenantSlug] = useState('default');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +65,9 @@ export function LoginScreen() {
 
   useEffect(() => {
     storage.getPesantrenBranding().then(setBranding).catch(() => {});
+    storage.getTenantSlug().then((slug) => {
+      if (slug) setTenantSlug(slug);
+    }).catch(() => {});
   }, []);
 
   const namaPesantren = resolveBrandingName(branding);
@@ -91,9 +96,16 @@ export function LoginScreen() {
       return;
     }
 
+    if (!tenantSlug || tenantSlug.trim().length < 2) {
+      setError('Masukkan kode pesantren yang valid.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const { anak } = await login(nomorHp, pin);
+      const slug = tenantSlug.trim().toLowerCase();
+      await storage.setTenantSlug(slug);
+      const { anak } = await login(nomorHp, pin, slug);
 
       if (anak.length === 0) {
         setError('Tidak ada santri yang terdaftar untuk akun ini.');
@@ -114,7 +126,14 @@ export function LoginScreen() {
       if (status === 423) {
         setError('Akun terkunci sementara. Hubungi admin pesantren.');
       } else if (status === 403) {
-        setError('Akun Anda ditangguhkan. Hubungi admin pesantren.');
+        const suspendMsg = msg ?? TENANT_INACTIVE_MESSAGE;
+        if (suspendMsg === TENANT_INACTIVE_MESSAGE) {
+          setError(suspendMsg);
+        } else {
+          setError('Akun Anda ditangguhkan. Hubungi admin pesantren.');
+        }
+      } else if (status === 404) {
+        setError(msg ?? 'Kode pesantren tidak ditemukan.');
       } else if (status === 401 || status === 400) {
         setError(msg ?? 'Nomor HP atau PIN salah.');
       } else if (status >= 500) {
@@ -168,6 +187,21 @@ export function LoginScreen() {
                 </AppText>
               </View>
             ) : null}
+
+            <LoginField label="Kode Pesantren">
+              <TextInput
+                style={styles.input}
+                placeholder="Contoh: default"
+                placeholderTextColor={colors.textMuted}
+                value={tenantSlug}
+                onChangeText={(text) => {
+                  setTenantSlug(text.replace(/\s/g, '').toLowerCase());
+                  setError('');
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </LoginField>
 
             <LoginField label="Nomor HP">
               <TextInput

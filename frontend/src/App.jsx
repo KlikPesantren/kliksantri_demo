@@ -32,12 +32,22 @@ import WaliPage from "./pages/WaliPage";
 import AbsensiGuruPage from "./pages/AbsensiGuruPage";
 import GuruPage from "./pages/GuruPage";
 import BukuKasPage from "./pages/BukuKasPage";
+import KasInstansiPage from "./pages/KasInstansiPage";
+import KasInstansiKonsolidasiPage from "./pages/KasInstansiKonsolidasiPage";
+import ProgramUnitPage from "./pages/ProgramUnitPage";
 import SahriyahPage from "./pages/SahriyahPage";
 import SahriyahSettingPage from "./pages/SahriyahSettingPage";
 import TamuPage from "./pages/TamuPage";
 import ProfilPesantrenPage from "./pages/ProfilPesantrenPage";
 import UsersPage from "./pages/UsersPage";
 import RolesPage from "./pages/RolesPage";
+
+import PlatformLoginPage from "./pages/platform/PlatformLoginPage";
+import PlatformProtectedRoute from "./components/platform/PlatformProtectedRoute";
+import PlatformLayout from "./components/platform/PlatformLayout";
+import PlatformTenantsPage from "./pages/platform/PlatformTenantsPage";
+import PlatformTenantDetailPage from "./pages/platform/PlatformTenantDetailPage";
+import PlatformDashboardPage from "./pages/platform/PlatformDashboardPage";
 
 function RouteFallback() {
   return null;
@@ -49,10 +59,26 @@ function LazyPage({ children }) {
 
 function App() {
   return (
-    <TenantProfileProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <TenantProfileProvider>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+
+        {/* Platform Console — auth terpisah dari tenant admin */}
+        <Route path="/platform/login" element={<PlatformLoginPage />} />
+        <Route
+          path="/platform"
+          element={
+            <PlatformProtectedRoute>
+              <PlatformLayout />
+            </PlatformProtectedRoute>
+          }
+        >
+          <Route index element={<PlatformDashboardPage />} />
+          <Route path="dashboard" element={<PlatformDashboardPage />} />
+          <Route path="tenants" element={<PlatformTenantsPage />} />
+          <Route path="tenants/:id" element={<PlatformTenantDetailPage />} />
+        </Route>
 
         <Route
           path="/dashboard"
@@ -108,6 +134,33 @@ function App() {
           element={
             <ProtectedRoute>
               <BukuKasPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/kas-instansi/konsolidasi"
+          element={
+            <ProtectedRoute>
+              <KasInstansiKonsolidasiPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/kas-instansi"
+          element={
+            <ProtectedRoute>
+              <KasInstansiPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/program-unit"
+          element={
+            <ProtectedRoute>
+              <ProgramUnitPage />
             </ProtectedRoute>
           }
         />
@@ -355,8 +408,8 @@ function App() {
           }
         />
       </Routes>
+      </TenantProfileProvider>
       </BrowserRouter>
-    </TenantProfileProvider>
   );
 }
 

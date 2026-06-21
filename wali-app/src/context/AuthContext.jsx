@@ -7,6 +7,7 @@ import React, {
 import { authApi } from '../api/auth.api';
 import { storage } from '../utils/storage';
 import { setLogoutCallback } from '../api/client';
+import { registerPushTokenBackground } from '../services/pushNotificationService';
 
 const AuthContext = createContext(null);
 
@@ -87,22 +88,33 @@ export function AuthProvider({ children }) {
         anak,
         santriIds,
       });
+
+      registerPushTokenBackground();
     } catch {
       await storage.clearSession();
       dispatch({ type: 'SET_LOADING', value: false });
     }
   }, []);
 
-  const login = useCallback(async (nomor_hp, pin) => {
-    const res = await authApi.login(nomor_hp, pin);
+  const login = useCallback(async (nomor_hp, pin, tenant_slug) => {
+    const res = await authApi.login(nomor_hp, pin, tenant_slug);
 
-    const { token, wali, anak = [], santri_ids: santriIds = [] } = res;
+    const {
+      token,
+      wali,
+      anak = [],
+      santri_ids: santriIds = [],
+      tenant,
+    } = res;
 
-    await storage.saveSession(token, wali, anak, santriIds);
+    const slug = tenant?.slug || tenant_slug || 'default';
+    await storage.saveSession(token, wali, anak, santriIds, slug);
 
     dispatch({ type: 'LOGIN', token, wali, anak, santriIds });
 
-    return { anak, santriIds };
+    registerPushTokenBackground();
+
+    return { anak, santriIds, tenant };
   }, []);
 
   return (

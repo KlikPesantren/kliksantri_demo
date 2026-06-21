@@ -5,8 +5,12 @@ console.log('API_BASE_URL =', API_BASE_URL);
 console.log('LOGIN URL =', `${API_BASE_URL}/wali-app/login`);
 
 export const authApi = {
-  async login(nomor_hp, pin) {
-    const payload = { nomor_hp, pin };
+  async login(nomor_hp, pin, tenant_slug) {
+    const payload = {
+      nomor_hp,
+      pin,
+      tenant_slug: tenant_slug || 'default',
+    };
     console.log('LOGIN REQUEST payload', payload);
     console.log('LOGIN REQUEST url', `${API_BASE_URL}${ENDPOINTS.LOGIN}`);
     try {

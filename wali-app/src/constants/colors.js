@@ -4,8 +4,9 @@
  */
 export const colors = {
   // Brand core
-  primary: '#16A34A',
-  primaryHover: '#15803D',
+  primary: '#15803D',
+  primaryHover: '#166534',
+  primaryDark: '#166534',
   primarySoft: '#DCFCE7',
 
   navy: '#0F172A',
@@ -15,7 +16,7 @@ export const colors = {
   danger: '#EF4444',
   warning: '#F59E0B',
   info: '#3B82F6',
-  success: '#22C55E',
+  success: '#15803D',
 
   // Semantic subtle backgrounds
   dangerSoft: '#FEE2E2',
@@ -36,7 +37,6 @@ export const colors = {
 
   // ── Legacy aliases (existing screens — migrate in later sprints) ──
   primaryLight: '#DCFCE7',
-  primaryDark: '#0F172A',
   secondary: '#F59E0B',
   secondaryLight: '#FEF3C7',
   dangerLight: '#FEE2E2',

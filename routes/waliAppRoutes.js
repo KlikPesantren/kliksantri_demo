@@ -20,6 +20,13 @@ const waliAppAuthMiddleware =
 const waliSantriGuard =
   require("../middleware/waliSantriGuard");
 
+const notificationService =
+  require("../services/notificationService");
+
+const {
+  resolveTenantForLogin,
+} = require("../services/tenantService");
+
 // =====================
 // POST /wali-app/login
 // =====================
@@ -37,10 +44,35 @@ router.post(
 
       const {
 
+        tenant_slug,
         nomor_hp,
         pin
 
       } = req.body;
+
+      const tenantResult =
+        await resolveTenantForLogin(
+          tenant_slug
+        );
+
+      if (tenantResult.error) {
+
+        return res.status(
+          tenantResult.status || 400
+        ).json({
+
+          success: false,
+
+          error: tenantResult.error,
+
+          message: tenantResult.error,
+
+        });
+
+      }
+
+      const tenant =
+        tenantResult.tenant;
 
       const normalized =
         waliAppService.normalizePhone(
@@ -65,7 +97,8 @@ router.post(
 
       const akun =
         await waliAppService.findAkunByPhone(
-          normalized
+          normalized,
+          tenant.id
         );
 
       if (!akun) {
@@ -168,12 +201,14 @@ router.post(
 
       const freshAkun =
         await waliAppService.findAkunByPhone(
-          normalized
+          normalized,
+          tenant.id
         );
 
       const loginData =
         await waliAppService.buildLoginResponse(
-          freshAkun
+          freshAkun,
+          tenant
         );
 
       await waliAppService.writeAudit({
@@ -233,7 +268,8 @@ router.get(
 
       const anak =
         await waliAppService.getAnakList(
-          req.wali.nomor_hp
+          req.wali.nomor_hp,
+          req.tenantId
         );
 
       res.json({
@@ -297,7 +333,8 @@ router.get(
 
       const anak =
         await waliAppService.getAnakList(
-          req.wali.nomor_hp
+          req.wali.nomor_hp,
+          req.tenantId
         );
 
       res.json({
@@ -345,6 +382,7 @@ router.get(
   async (req, res) => {
 
     const santriId = req.santriId;
+    const tenantId = req.tenantId;
 
     try {
 
@@ -362,11 +400,13 @@ router.get(
           FROM santri s
           LEFT JOIN kelas k
             ON k.id = s.kelas_id
+           AND k.tenant_id = s.tenant_id
           WHERE s.id = $1
+            AND s.tenant_id = $2
           LIMIT 1
           `,
 
-          [santriId]
+          [santriId, tenantId]
 
         );
 
@@ -426,12 +466,13 @@ router.get(
             status
           FROM tagihan_sahriyah
           WHERE santri_id = $1
-            AND bulan = $2
-            AND tahun = $3
+            AND tenant_id = $2
+            AND bulan = $3
+            AND tahun = $4
           LIMIT 1
           `,
 
-          [santriId, bulan, tahun]
+          [santriId, tenantId, bulan, tahun]
 
         );
 
@@ -519,6 +560,9 @@ router.get(
 
         );
 
+      const statistikPesantren =
+        await waliAppService.getStatistikPesantren(tenantId);
+
       const kHadir =
         Number(
           kehadiran.rows[0]?.hadir || 0
@@ -592,7 +636,9 @@ router.get(
           rata_nilai_bulan_ini:
             Number(
               rataNilai.rows[0]?.rata || 0
-            )
+            ),
+
+          statistik_pesantren: statistikPesantren,
 
         }
 
@@ -633,6 +679,7 @@ router.get(
   async (req, res) => {
 
     const santriId = req.santriId;
+    const tenantId = req.tenantId;
 
     try {
 
@@ -657,13 +704,17 @@ router.get(
           FROM santri s
           LEFT JOIN kelas k
             ON k.id = s.kelas_id
+           AND k.tenant_id = s.tenant_id
           LEFT JOIN wali_santri ws
             ON ws.santri_id = s.id
+           AND ws.tenant_id = s.tenant_id
+           AND ws.nomor_hp = $2
           WHERE s.id = $1
+            AND s.tenant_id = $3
           LIMIT 1
           `,
 
-          [santriId]
+          [santriId, req.wali.nomor_hp, tenantId]
 
         );
 
@@ -724,6 +775,7 @@ router.get(
   async (req, res) => {
 
     const santriId = req.santriId;
+    const tenantId = req.tenantId;
 
     const bulan =
       req.query.bulan
@@ -754,9 +806,10 @@ router.get(
           t.keterangan
         FROM tagihan_sahriyah t
         WHERE t.santri_id = $1
+          AND t.tenant_id = $2
       `;
 
-      const params = [santriId];
+      const params = [santriId, tenantId];
 
       if (
         bulan &&
@@ -836,6 +889,7 @@ router.get(
   async (req, res) => {
 
     const santriId = req.santriId;
+    const tenantId = req.tenantId;
 
     const tagihanId =
       Number(req.params.tagihan_id);
@@ -865,10 +919,11 @@ router.get(
           FROM tagihan_sahriyah
           WHERE id = $1
             AND santri_id = $2
+            AND tenant_id = $3
           LIMIT 1
           `,
 
-          [tagihanId, santriId]
+          [tagihanId, santriId, tenantId]
 
         );
 
@@ -896,10 +951,11 @@ router.get(
             tanggal
           FROM pembayaran_sahriyah
           WHERE tagihan_id = $1
+            AND tenant_id = $2
           ORDER BY tanggal DESC
           `,
 
-          [tagihanId]
+          [tagihanId, tenantId]
 
         );
 
@@ -2079,10 +2135,11 @@ router.put(
           SELECT id, nomor_hp, pin_hash, status
           FROM wali_akun
           WHERE id = $1
+            AND tenant_id = $2
           LIMIT 1
           `,
 
-          [akunId]
+          [akunId, req.tenantId]
 
         );
 
@@ -2151,9 +2208,10 @@ router.put(
           must_change_pin = false,
           updated_at      = NOW()
         WHERE id = $2
+          AND tenant_id = $3
         `,
 
-        [newHash, akunId]
+        [newHash, akunId, req.tenantId]
 
       );
 
@@ -2238,19 +2296,27 @@ router.get(
             tentang,
             visi,
             misi,
+            tahun_berdiri,
             updated_at
           FROM profil_pesantren
-          ORDER BY id
+          WHERE tenant_id = $1
           LIMIT 1
-          `
+          `,
+
+          [req.tenantId]
 
         );
+
+      const row = result.rows[0] ?? null;
+      console.log("[WALI PROFIL RESPONSE tenant]", req.tenantId);
+      console.log("[WALI PROFIL RESPONSE banner_url]", row?.banner_url ?? null);
+      console.log("[WALI PROFIL RESPONSE updated_at]", row?.updated_at ?? null);
 
       res.json({
 
         success: true,
 
-        data: result.rows[0] ?? null
+        data: row
 
       });
 
@@ -2304,11 +2370,14 @@ router.get(
           SELECT COUNT(*) AS total
           FROM pengumuman
           WHERE is_active = true
+            AND tenant_id = $1
             AND (
               expires_at IS NULL
               OR expires_at > NOW()
             )
-          `
+          `,
+
+          [req.tenantId]
 
         );
 
@@ -2327,6 +2396,7 @@ router.get(
             created_at
           FROM pengumuman
           WHERE is_active = true
+            AND tenant_id = $1
             AND (
               expires_at IS NULL
               OR expires_at > NOW()
@@ -2338,10 +2408,10 @@ router.get(
               ELSE 3
             END,
             published_at DESC
-          LIMIT $1 OFFSET $2
+          LIMIT $2 OFFSET $3
           `,
 
-          [limit, offset]
+          [req.tenantId, limit, offset]
 
         );
 
@@ -2372,6 +2442,195 @@ router.get(
         success: false,
 
         error: err.message
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
+// POST /wali-app/push-token
+// ================================
+
+router.post(
+
+  "/push-token",
+
+  waliAppAuthMiddleware,
+
+  async (req, res) => {
+
+    try {
+
+      const {
+        expo_push_token,
+        device_id,
+        platform,
+      } = req.body;
+
+      if (!expo_push_token) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error: "expo_push_token wajib diisi",
+
+        });
+
+      }
+
+      const row =
+        await notificationService.registerPushToken({
+
+          tenantId: req.tenantId,
+
+          waliAkunId: req.wali.wali_akun_id,
+
+          expoPushToken: expo_push_token,
+
+          deviceId: device_id,
+
+          platform,
+
+        });
+
+      res.json({
+
+        success: true,
+
+        data: {
+
+          id: row.id,
+
+          platform: row.platform,
+
+          is_active: row.is_active,
+
+          last_seen_at: row.last_seen_at,
+
+        },
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      const status =
+        err.statusCode || 500;
+
+      res.status(status).json({
+
+        success: false,
+
+        error: err.message,
+
+      });
+
+    }
+
+  }
+
+);
+
+// ===================================
+// POST /wali-app/test-notification
+// QA only — disabled in production unless ALLOW_WALI_TEST_NOTIFICATION=true
+// ===================================
+
+router.post(
+
+  "/test-notification",
+
+  waliAppAuthMiddleware,
+
+  async (req, res) => {
+
+    if (
+      !notificationService.isTestNotificationAllowed()
+    ) {
+
+      return res.status(404).json({
+
+        success: false,
+
+        error: "Endpoint tidak tersedia",
+
+      });
+
+    }
+
+    try {
+
+      const title =
+        String(req.body?.title || "Test").trim();
+
+      const body =
+        String(
+          req.body?.body ||
+            "Push notification berhasil"
+        ).trim();
+
+      const result =
+        await notificationService.sendPushNotification({
+
+          tenantId: req.tenantId,
+
+          waliAkunId: req.wali.wali_akun_id,
+
+          title,
+
+          body,
+
+          type: "test",
+
+          data: {
+            screen: "Beranda",
+          },
+
+        });
+
+      res.json({
+
+        success: result.success,
+
+        data: {
+
+          log_id: result.log_id,
+
+          sent: result.sent,
+
+          errors: result.errors ?? [],
+
+        },
+
+        message: result.success
+          ? "Notifikasi test dikirim"
+          : result.error ||
+            "Gagal mengirim notifikasi test",
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      const status =
+        err.statusCode || 500;
+
+      res.status(status).json({
+
+        success: false,
+
+        error: err.message,
 
       });
 

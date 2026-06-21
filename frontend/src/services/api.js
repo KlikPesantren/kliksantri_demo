@@ -1,4 +1,10 @@
 import axios from "axios";
+import {
+  TENANT_INACTIVE_MESSAGE,
+  TENANT_SUSPEND_SESSION_KEY,
+  isTenantSuspendedResponse,
+} from "../constants/tenant";
+import { clearSession } from "../utils/storage";
 
 const DEV_API_FALLBACK = "http://localhost:3000";
 
@@ -24,5 +30,27 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const data = error.response?.data;
+
+    if (isTenantSuspendedResponse(status, data)) {
+      clearSession();
+      sessionStorage.setItem(
+        TENANT_SUSPEND_SESSION_KEY,
+        data?.message || data?.error || TENANT_INACTIVE_MESSAGE
+      );
+
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

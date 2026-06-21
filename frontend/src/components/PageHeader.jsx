@@ -57,7 +57,7 @@ function PageHeader({ title, description, breadcrumb, onMenuClick }) {
         </div>
       </div>
 
-      <div className="page-header-user">
+      <div className="page-header-user" style={userCardStyle}>
         <div style={avatarStyle}>{getInitials(userName)}</div>
         <div style={{ minWidth: 0 }}>
           <div style={userNameStyle}>{userName}</div>
@@ -69,41 +69,55 @@ function PageHeader({ title, description, breadcrumb, onMenuClick }) {
 }
 
 const tenantNameStyle = {
-  color: "var(--text-muted)",
-  fontSize: "12px",
-  fontWeight: 600,
+  color: "var(--primary)",
+  fontSize: "11px",
+  fontWeight: 700,
   marginBottom: "var(--space-1)",
   lineHeight: 1.35,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
 };
 
 const breadcrumbStyle = {
-  color: "var(--text-secondary)",
+  color: "var(--text-muted)",
   fontSize: "12px",
-  fontWeight: 600,
+  fontWeight: 500,
   marginBottom: "var(--space-2)",
+  letterSpacing: "0.01em",
 };
 
 const titleStyle = {
   margin: 0,
   color: "var(--text-primary)",
-  fontSize: "24px",
-  fontWeight: 700,
-  lineHeight: 1.25,
+  fontSize: "26px",
+  fontWeight: 800,
+  lineHeight: 1.2,
+  letterSpacing: "-0.025em",
 };
 
 const descriptionStyle = {
   margin: "var(--space-2) 0 0",
   color: "var(--text-secondary)",
   fontSize: "14px",
-  lineHeight: 1.5,
+  lineHeight: 1.55,
+  maxWidth: "640px",
+};
+
+const userCardStyle = {
+  padding: "var(--space-2) var(--space-3)",
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)",
+  boxShadow: "var(--shadow-sm)",
 };
 
 const avatarStyle = {
-  width: "40px",
-  height: "40px",
+  width: "42px",
+  height: "42px",
   borderRadius: "999px",
   background: "var(--primary-subtle)",
   color: "var(--primary)",
+  border: "2px solid rgba(21, 128, 61, 0.18)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -123,7 +137,7 @@ const userNameStyle = {
 };
 
 const roleStyle = {
-  color: "var(--text-secondary)",
+  color: "var(--text-muted)",
   fontSize: "12px",
   fontWeight: 500,
   lineHeight: 1.35,

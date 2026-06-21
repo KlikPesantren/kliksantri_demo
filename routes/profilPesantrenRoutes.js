@@ -1,30 +1,33 @@
-const express =
-  require("express");
+const express = require("express");
 
-const router =
-  express.Router();
+const router = express.Router();
 
-const pool =
-  require("../db");
+const pool = require("../db");
+
+function parseTahunBerdiri(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  const maxYear = new Date().getFullYear();
+  if (!Number.isInteger(n) || n < 1800 || n > maxYear) {
+    return { error: "tahun_berdiri harus 4 digit antara 1800 dan tahun berjalan" };
+  }
+  return n;
+}
 
 // ======================
 // GET /profil-pesantren
+// Tenant-scoped via req.tenantId (tenantMiddleware on mount)
 // ======================
 
-router.get(
+router.get("/", async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
 
-  "/",
-
-  async (req, res) => {
-
-    try {
-
-      const result =
-        await pool.query(
-
-          `
+    const result = await pool.query(
+      `
           SELECT
             id,
+            tenant_id,
             nama_pesantren,
             alamat,
             telepon,
@@ -39,90 +42,124 @@ router.get(
             tentang,
             visi,
             misi,
+            tahun_berdiri,
             updated_at
           FROM profil_pesantren
-          ORDER BY id
+          WHERE tenant_id = $1
           LIMIT 1
-          `
+          `,
+      [tenantId]
+    );
 
-        );
-
-      res.json({
-
-        success: true,
-
-        data: result.rows[0] ?? null
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error: err.message
-
-      });
-
-    }
-
+    res.json({
+      success: true,
+      data: result.rows[0] ?? null,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
-
-);
+});
 
 // ======================
 // PUT /profil-pesantren
-// Singleton upsert — selalu id = 1
+// Upsert per tenant — tidak lagi singleton id = 1
 // ======================
 
-router.put(
+router.put("/", async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
 
-  "/",
+    const {
+      nama_pesantren,
+      alamat,
+      telepon,
+      email,
+      website,
+      logo_url,
+      banner_url,
+      banner_active,
+      splash_logo_url,
+      app_icon_url,
+      tagline,
+      tentang,
+      visi,
+      misi,
+      tahun_berdiri,
+    } = req.body;
 
-  async (req, res) => {
+    if (!nama_pesantren) {
+      return res.status(400).json({
+        success: false,
+        error: "nama_pesantren wajib diisi",
+      });
+    }
 
-    try {
+    console.log("[BACKEND PROFIL UPDATE tenant]", tenantId);
+    console.log("[BACKEND PROFIL UPDATE banner_url]", banner_url);
 
-      const {
-        nama_pesantren,
-        alamat,
-        telepon,
-        email,
-        website,
-        logo_url,
-        banner_url,
-        banner_active,
-        splash_logo_url,
-        app_icon_url,
-        tagline,
-        tentang,
-        visi,
-        misi
-      } = req.body;
+    const parsedTahun = parseTahunBerdiri(tahun_berdiri);
+    if (parsedTahun && typeof parsedTahun === "object" && parsedTahun.error) {
+      return res.status(400).json({ success: false, error: parsedTahun.error });
+    }
 
-      if (!nama_pesantren) {
+    const existing = await pool.query(
+      `SELECT id FROM profil_pesantren WHERE tenant_id = $1 LIMIT 1`,
+      [tenantId]
+    );
 
-        return res.status(400).json({
+    let result;
 
-          success: false,
-
-          error: "nama_pesantren wajib diisi"
-
-        });
-
-      }
-
-      const result =
-        await pool.query(
-
-          `
+    if (existing.rows.length > 0) {
+      result = await pool.query(
+        `
+          UPDATE profil_pesantren SET
+            nama_pesantren = $1,
+            alamat         = $2,
+            telepon        = $3,
+            email          = $4,
+            website        = $5,
+            logo_url       = $6,
+            banner_url     = $7,
+            banner_active  = $8,
+            splash_logo_url = $9,
+            app_icon_url   = $10,
+            tagline        = $11,
+            tentang        = $12,
+            visi           = $13,
+            misi           = $14,
+            tahun_berdiri  = $15,
+            updated_at     = NOW()
+          WHERE tenant_id = $16
+          RETURNING *
+          `,
+        [
+          nama_pesantren,
+          alamat ?? null,
+          telepon ?? null,
+          email ?? null,
+          website ?? null,
+          logo_url ?? null,
+          banner_url ?? null,
+          banner_active !== false,
+          splash_logo_url ?? null,
+          app_icon_url ?? null,
+          tagline ?? null,
+          tentang ?? null,
+          visi ?? null,
+          misi ?? null,
+          parsedTahun,
+          tenantId,
+        ]
+      );
+    } else {
+      result = await pool.query(
+        `
           INSERT INTO profil_pesantren (
-            id,
+            tenant_id,
             nama_pesantren,
             alamat,
             telepon,
@@ -137,74 +174,48 @@ router.put(
             tentang,
             visi,
             misi,
+            tahun_berdiri,
             updated_at
           )
-          VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
-          ON CONFLICT (id) DO UPDATE SET
-            nama_pesantren = EXCLUDED.nama_pesantren,
-            alamat         = EXCLUDED.alamat,
-            telepon        = EXCLUDED.telepon,
-            email          = EXCLUDED.email,
-            website        = EXCLUDED.website,
-            logo_url       = EXCLUDED.logo_url,
-            banner_url     = EXCLUDED.banner_url,
-            banner_active  = EXCLUDED.banner_active,
-            splash_logo_url = EXCLUDED.splash_logo_url,
-            app_icon_url   = EXCLUDED.app_icon_url,
-            tagline        = EXCLUDED.tagline,
-            tentang        = EXCLUDED.tentang,
-            visi           = EXCLUDED.visi,
-            misi           = EXCLUDED.misi,
-            updated_at     = NOW()
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
           RETURNING *
           `,
-
-          [
-            nama_pesantren,
-            alamat   ?? null,
-            telepon  ?? null,
-            email    ?? null,
-            website  ?? null,
-            logo_url ?? null,
-            banner_url ?? null,
-            banner_active !== false,
-            splash_logo_url ?? null,
-            app_icon_url ?? null,
-            tagline ?? null,
-            tentang ?? null,
-            visi     ?? null,
-            misi     ?? null
-          ]
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data: result.rows[0]
-
-      });
-
+        [
+          tenantId,
+          nama_pesantren,
+          alamat ?? null,
+          telepon ?? null,
+          email ?? null,
+          website ?? null,
+          logo_url ?? null,
+          banner_url ?? null,
+          banner_active !== false,
+          splash_logo_url ?? null,
+          app_icon_url ?? null,
+          tagline ?? null,
+          tentang ?? null,
+          visi ?? null,
+          misi ?? null,
+          parsedTahun,
+        ]
+      );
     }
 
-    catch (err) {
+    const row = result.rows[0];
+    console.log("[BACKEND PROFIL UPDATED ROW banner_url]", row?.banner_url ?? null);
+    console.log("[BACKEND PROFIL UPDATED ROW updated_at]", row?.updated_at ?? null);
 
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error: err.message
-
-      });
-
-    }
-
+    res.json({
+      success: true,
+      data: row,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
+});
 
-);
-
-module.exports =
-  router;
+module.exports = router;

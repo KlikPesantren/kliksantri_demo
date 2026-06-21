@@ -38,6 +38,18 @@ const { runStartupSchemaAudit } =
 const authRoutes =
   require("./routes/authRoutes");
 
+const platformAuthRoutes =
+  require("./routes/platformAuthRoutes");
+
+const platformTenantRoutes =
+  require("./routes/platformTenantRoutes");
+
+const platformStatsRoutes =
+  require("./routes/platformStatsRoutes");
+
+const publicTenantRoutes =
+  require("./routes/publicTenantRoutes");
+
 const santriRoutes =
   require("./routes/santriRoutes");
 
@@ -85,6 +97,12 @@ require("./routes/nilaiRoutes");
 
 const bukuKasRoutes =
 require( "./routes/bukuKasRoutes" );
+
+const kasInstansiRoutes =
+require("./routes/kasInstansiRoutes");
+
+const programUnitRoutes =
+require("./routes/programUnitRoutes");
 
 const sahriyahRoutes =
 require( "./routes/sahriyahRoutes" );
@@ -152,15 +170,14 @@ require("./routes/guruRoutes");
 const authMiddleware =
   require("./middleware/authMiddleware");
 
+const tenantMiddleware =
+  require("./middleware/tenantMiddleware");
+
 const requirePermission =
-  require("./middleware/requirePermission");
+require("./middleware/requirePermission");
 
-// =====================
-// DB
-// =====================
-
-const pool =
-  require("./db");
+const blockWriteUnlessPermission =
+require("./middleware/blockWriteUnlessPermission");
 
 // =====================
 // APP
@@ -251,6 +268,26 @@ app.use(
 );
 
 app.use(
+  "/platform/auth",
+  platformAuthRoutes
+);
+
+app.use(
+  "/platform/tenants",
+  platformTenantRoutes
+);
+
+app.use(
+  "/platform/stats",
+  platformStatsRoutes
+);
+
+app.use(
+  "/public/tenants",
+  publicTenantRoutes
+);
+
+app.use(
 
   "/santri",
 
@@ -296,6 +333,7 @@ app.use(
 app.use(
   "/dashboard",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("dashboard.view"),
   dashboardRoutes
 );
@@ -310,6 +348,7 @@ app.use(
 app.use(
   "/pembayaran",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("pembayaran.view"),
   pembayaranRoutes
 );
@@ -317,6 +356,7 @@ app.use(
 app.use(
   "/jenis-tagihan",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("tagihan.view"),
   jenisTagihanRoutes
 );
@@ -324,6 +364,7 @@ app.use(
 app.use(
   "/absensi",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("absensi.view"),
   absensiRoutes
 );
@@ -331,6 +372,7 @@ app.use(
 app.use(
   "/perizinan",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("perizinan.view"),
   perizinanRoutes
 );
@@ -338,6 +380,7 @@ app.use(
 app.use(
   "/kesehatan",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("kesehatan.view"),
   kesehatanRoutes
 );
@@ -345,6 +388,7 @@ app.use(
 app.use(
   "/pelanggaran",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("pelanggaran.view"),
   pelanggaranRoutes
 );
@@ -352,6 +396,7 @@ app.use(
 app.use(
   "/hafalan",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("hafalan.view"),
   hafalanRoutes
 );
@@ -359,6 +404,7 @@ app.use(
 app.use(
   "/nilai",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("nilai.view"),
   nilaiRoutes
 );
@@ -366,6 +412,7 @@ app.use(
 app.use(
   "/pengumuman",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("pengumuman.view"),
   pengumumanRoutes
 );
@@ -373,6 +420,7 @@ app.use(
 app.use(
   "/profil-pesantren",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("profil.view"),
   profilPesantrenRoutes
 );
@@ -380,6 +428,7 @@ app.use(
 app.use(
   "/upload",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("profil.view"),
   uploadRoutes
 );
@@ -404,6 +453,7 @@ app.use(
   "/absensi-guru",
 
   authMiddleware,
+  tenantMiddleware,
   requirePermission("absensi_guru.view"),
 
   require(
@@ -419,15 +469,32 @@ app.use(
   "/buku-kas",
 
   authMiddleware,
+  tenantMiddleware,
   requirePermission("bukukas.view"),
+  blockWriteUnlessPermission("bukukas.manage"),
 
   bukuKasRoutes
 
 );
 
 app.use(
+  "/kas-instansi",
+  authMiddleware,
+  tenantMiddleware,
+  kasInstansiRoutes
+);
+
+app.use(
+  "/program-unit",
+  authMiddleware,
+  tenantMiddleware,
+  programUnitRoutes
+);
+
+app.use(
 "/sahriyah",
 authMiddleware,
+tenantMiddleware,
 requirePermission("sahriyah.view"),
 sahriyahRoutes
 );
@@ -435,6 +502,7 @@ sahriyahRoutes
 app.use(
 "/sahriyah-setting",
 authMiddleware,
+tenantMiddleware,
 requirePermission("sahriyah.manage"),
 sahriyahSettingRoutes
 );
@@ -442,6 +510,7 @@ sahriyahSettingRoutes
 app.use(
   "/tamu",
   authMiddleware,
+  tenantMiddleware,
   requirePermission("tamu.view"),
   tamuRoutes
 );
@@ -479,149 +548,6 @@ app.use(
 app.use(
   "/wali-app",
   waliAppRoutes
-);
-
-// =====================
-// UPDATE SANTRI
-// =====================
-
-app.put(
-
-  "/santri/:id",
-
-  async (req, res) => {
-
-    try {
-
-      const {
-
-        id
-
-      } = req.params;
-
-      const {
-
-        nama,
-        kelas,
-        kamar,
-        limit_harian
-
-      } = req.body;
-
-      const result =
-        await pool.query(
-
-          `
-
-          UPDATE santri
-
-          SET
-
-            nama = $1,
-            kelas = $2,
-            kamar = $3,
-            limit_harian = $4
-
-          WHERE id = $5
-
-          RETURNING *
-
-          `,
-
-          [
-
-            nama,
-            kelas,
-            kamar,
-            limit_harian,
-            id
-
-          ]
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows[0]
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          "Update Failed"
-
-      });
-
-    }
-  }
-
-);
-
-// =====================
-// DELETE SANTRI
-// =====================
-
-app.delete(
-
-  "/santri/:id",
-
-  async (req, res) => {
-
-    try {
-
-      const {
-
-        id
-
-      } = req.params;
-
-      await pool.query(
-
-        "DELETE FROM santri WHERE id = $1",
-
-        [id]
-
-      );
-
-      res.json({
-
-        success: true,
-
-        message:
-          "Santri deleted"
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          "Delete Failed"
-
-      });
-
-    }
-  }
-
 );
 
 // =====================

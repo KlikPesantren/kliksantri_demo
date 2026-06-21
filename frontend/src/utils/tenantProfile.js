@@ -1,9 +1,17 @@
 export const TENANT_CACHE_KEY = "kliksantri_tenant_profile";
+export const LAST_TENANT_SLUG_KEY = "last_tenant_slug";
 
 export const TENANT_FALLBACKS = {
   name: "Pesantren",
   address: "Lengkapi profil pesantren",
   tagline: "Portal Wali Santri",
+};
+
+export const KLIKSANTRI_LOGIN_BRANDING = {
+  name: "KlikSantri",
+  address: "Administrasi Pesantren Digital",
+  tagline: "Sistem Administrasi Pesantren Modern",
+  logo: null,
 };
 
 export function normalizeTenantProfile(profile) {
@@ -83,6 +91,38 @@ export function resolveTenantDisplay(profile) {
     banner_active,
     hasCustomName: Boolean(normalized?.nama_pesantren?.trim()),
   };
+}
+
+/** Map GET /public/tenants/:slug/profile → login / preview display */
+export function resolvePublicTenantDisplay(publicProfile) {
+  if (!publicProfile) {
+    return { ...KLIKSANTRI_LOGIN_BRANDING, hasCustomName: false };
+  }
+
+  const address =
+    publicProfile.alamat?.trim() ||
+    publicProfile.telepon?.trim() ||
+    "";
+
+  return {
+    name: publicProfile.nama?.trim() || TENANT_FALLBACKS.name,
+    address: address || TENANT_FALLBACKS.address,
+    logo: trimUrl(publicProfile.logo_url),
+    tagline:
+      publicProfile.tagline?.trim() ||
+      "Sistem Administrasi Pesantren Modern",
+    hasCustomName: Boolean(publicProfile.nama?.trim()),
+    service_available: publicProfile.service_available !== false,
+    status: publicProfile.status,
+    message: publicProfile.message,
+  };
+}
+
+export function normalizeTenantSlugInput(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
 }
 
 export function getTenantInitial(name = "") {

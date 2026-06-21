@@ -1,6 +1,11 @@
 const express = require("express");
 const pool = require("../db");
-const requirePermission = require("../middleware/requirePermission");
+const {
+  assertSantriInTenant,
+  assertRecordInTenant,
+} = require("../services/tenantScope");
+
+const notificationService = require("../services/notificationService");
 
 const router = express.Router();
 
@@ -61,30 +66,34 @@ function validatePayload(body, { partial = false } = {}) {
   return null;
 }
 
-// GET /kesehatan/stats/hari-ini
 router.get("/stats/hari-ini", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       WITH latest AS (
         SELECT DISTINCT ON (ks.santri_id)
           ks.santri_id,
           ks.status_kesehatan,
           ks.status_penanganan
         FROM kesehatan_santri ks
+        INNER JOIN santri s ON s.id = ks.santri_id AND s.tenant_id = ks.tenant_id
+        WHERE ks.tenant_id = $1
         ORDER BY ks.santri_id, ks.created_at DESC
       ),
       santri_aktif AS (
-        SELECT COUNT(*)::int AS total FROM santri
+        SELECT COUNT(*)::int AS total FROM santri WHERE tenant_id = $1
       )
       SELECT
         (SELECT total FROM santri_aktif) AS total_santri,
         COUNT(*) FILTER (WHERE l.status_kesehatan = 'sakit')::int AS sakit,
         COUNT(*) FILTER (
           WHERE l.status_kesehatan = 'sakit'
-            AND l.status_penanganan = ANY($1::text[])
+            AND l.status_penanganan = ANY($2::text[])
         )::int AS perlu_tindak_lanjut
       FROM latest l
-    `, [[...PENANGANAN_FOLLOW_UP]]);
+      `,
+      [req.tenantId, [...PENANGANAN_FOLLOW_UP]]
+    );
 
     const row = result.rows[0] || {};
     const total = Number(row.total_santri || 0);
@@ -107,7 +116,6 @@ router.get("/stats/hari-ini", async (req, res) => {
   }
 });
 
-// GET /kesehatan
 router.get("/", async (req, res) => {
   try {
     const page = Math.max(Number(req.query.page) || 1, 1);
@@ -116,9 +124,9 @@ router.get("/", async (req, res) => {
     const search = String(req.query.search || "").trim();
     const statusFilter = String(req.query.status_kesehatan || "").trim();
 
-    const conditions = [];
-    const params = [];
-    let i = 1;
+    const conditions = ["k.tenant_id = $1"];
+    const params = [req.tenantId];
+    let i = 2;
 
     if (search) {
       conditions.push(`s.nama ILIKE $${i}`);
@@ -132,13 +140,13 @@ router.get("/", async (req, res) => {
       i += 1;
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const where = `WHERE ${conditions.join(" AND ")}`;
 
     const countResult = await pool.query(
       `
       SELECT COUNT(*)::int AS total
       FROM kesehatan_santri k
-      LEFT JOIN santri s ON s.id = k.santri_id
+      LEFT JOIN santri s ON s.id = k.santri_id AND s.tenant_id = k.tenant_id
       ${where}
       `,
       params
@@ -146,11 +154,9 @@ router.get("/", async (req, res) => {
 
     const dataResult = await pool.query(
       `
-      SELECT
-        k.*,
-        s.nama AS nama_santri
+      SELECT k.*, s.nama AS nama_santri
       FROM kesehatan_santri k
-      LEFT JOIN santri s ON s.id = k.santri_id
+      LEFT JOIN santri s ON s.id = k.santri_id AND s.tenant_id = k.tenant_id
       ${where}
       ORDER BY k.created_at DESC
       LIMIT $${i} OFFSET $${i + 1}
@@ -173,7 +179,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /kesehatan/:id
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -181,10 +186,10 @@ router.get("/:id", async (req, res) => {
       `
       SELECT k.*, s.nama AS nama_santri
       FROM kesehatan_santri k
-      LEFT JOIN santri s ON s.id = k.santri_id
-      WHERE k.id = $1
+      LEFT JOIN santri s ON s.id = k.santri_id AND s.tenant_id = k.tenant_id
+      WHERE k.id = $1 AND k.tenant_id = $2
       `,
-      [id]
+      [id, req.tenantId]
     );
 
     if (result.rows.length === 0) {
@@ -201,13 +206,9 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /kesehatan
 router.post("/", async (req, res) => {
   if (!canManage(req)) {
-    return res.status(403).json({
-      success: false,
-      error: "Akses ditolak",
-    });
+    return res.status(403).json({ success: false, error: "Akses ditolak" });
   }
 
   try {
@@ -224,17 +225,18 @@ router.post("/", async (req, res) => {
       status_penanganan = "observasi",
     } = req.body;
 
+    const santriCheck = await assertSantriInTenant(req.tenantId, santri_id);
+    if (!santriCheck.ok) {
+      return res.status(400).json({ success: false, error: santriCheck.error });
+    }
+
     const result = await pool.query(
       `
       INSERT INTO kesehatan_santri (
-        santri_id,
-        status_kesehatan,
-        keluhan,
-        tindakan_pertama,
-        status_penanganan,
-        created_by
+        santri_id, status_kesehatan, keluhan, tindakan_pertama,
+        status_penanganan, created_by, tenant_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
       `,
       [
@@ -244,30 +246,46 @@ router.post("/", async (req, res) => {
         tindakan_pertama?.trim() || null,
         status_penanganan,
         req.user?.id ?? null,
+        req.tenantId,
       ]
     );
 
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const kesehatanRow = result.rows[0];
+
+    if (kesehatanRow.status_kesehatan === "sakit") {
+      try {
+        await notificationService.sendPushToWaliBySantriId({
+          tenantId: req.tenantId,
+          santriId: kesehatanRow.santri_id,
+          title: "Kesehatan Santri",
+          type: "kesehatan",
+          data: {
+            type: "kesehatan",
+            santri_id: Number(kesehatanRow.santri_id),
+          },
+        });
+      } catch (pushErr) {
+        console.log("KESEHATAN PUSH ERROR:", pushErr.message);
+      }
+    }
+
+    res.status(201).json({ success: true, data: kesehatanRow });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PUT /kesehatan/:id
 router.put("/:id", async (req, res) => {
   if (!canManage(req)) {
-    return res.status(403).json({
-      success: false,
-      error: "Akses ditolak",
-    });
+    return res.status(403).json({ success: false, error: "Akses ditolak" });
   }
 
   try {
     const { id } = req.params;
     const existing = await pool.query(
-      "SELECT * FROM kesehatan_santri WHERE id = $1",
-      [id]
+      "SELECT * FROM kesehatan_santri WHERE id = $1 AND tenant_id = $2",
+      [id, req.tenantId]
     );
 
     if (existing.rows.length === 0) {
@@ -291,6 +309,13 @@ router.put("/:id", async (req, res) => {
       status_penanganan,
     } = req.body;
 
+    if (santri_id !== undefined && santri_id !== null) {
+      const santriCheck = await assertSantriInTenant(req.tenantId, santri_id);
+      if (!santriCheck.ok) {
+        return res.status(400).json({ success: false, error: santriCheck.error });
+      }
+    }
+
     const result = await pool.query(
       `
       UPDATE kesehatan_santri
@@ -301,7 +326,7 @@ router.put("/:id", async (req, res) => {
         tindakan_pertama = COALESCE($4, tindakan_pertama),
         status_penanganan = COALESCE($5, status_penanganan),
         updated_at = NOW()
-      WHERE id = $6
+      WHERE id = $6 AND tenant_id = $7
       RETURNING *
       `,
       [
@@ -313,6 +338,7 @@ router.put("/:id", async (req, res) => {
           : null,
         status_penanganan ?? null,
         id,
+        req.tenantId,
       ]
     );
 
@@ -323,20 +349,16 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /kesehatan/:id
 router.delete("/:id", async (req, res) => {
   if (!canManage(req)) {
-    return res.status(403).json({
-      success: false,
-      error: "Akses ditolak",
-    });
+    return res.status(403).json({ success: false, error: "Akses ditolak" });
   }
 
   try {
     const { id } = req.params;
     const result = await pool.query(
-      "DELETE FROM kesehatan_santri WHERE id = $1 RETURNING id",
-      [id]
+      "DELETE FROM kesehatan_santri WHERE id = $1 AND tenant_id = $2 RETURNING id",
+      [id, req.tenantId]
     );
 
     if (result.rows.length === 0) {

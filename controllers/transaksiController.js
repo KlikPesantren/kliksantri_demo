@@ -628,70 +628,12 @@ exports.getAuditLogs =
 
 };
 
-exports.getDashboardStats =
-  async (req, res) => {
-
-    try {
-
-      const santriResult =
-        await pool.query(
-
-          "SELECT COUNT(*) FROM santri"
-
-        );
-
-      const saldoResult =
-        await pool.query(
-
-          "SELECT COALESCE(SUM(saldo),0) FROM santri"
-
-        );
-
-      const transaksiResult =
-        await pool.query(
-
-          "SELECT COUNT(*) FROM transaksi"
-
-        );
-
-      const deviceResult =
-        await pool.query(
-
-          "SELECT COUNT(*) FROM devices"
-
-        );
-
-      res.json({
-
-        total_santri:
-          santriResult.rows[0].count,
-
-        total_saldo:
-          saldoResult.rows[0].coalesce,
-
-        total_transaksi:
-          transaksiResult.rows[0].count,
-
-        total_device:
-          deviceResult.rows[0].count
-
-      });
-
-    } catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          "Gagal ambil statistik"
-
-      });
-
-    }
-
+exports.getDashboardStats = async (_req, res) => {
+  res.status(410).json({
+    success: false,
+    error:
+      "Endpoint deprecated. Gunakan GET /dashboard/summary atau GET /rfid/dashboard.",
+  });
 };
 
 exports.exportExcel =

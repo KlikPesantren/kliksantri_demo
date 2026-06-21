@@ -1,416 +1,191 @@
-const express =
-require("express");
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const {
+  assertSantriInTenant,
+  assertRecordInTenant,
+} = require("../services/tenantScope");
 
-const router =
-express.Router();
+const notificationService =
+  require("../services/notificationService");
 
-const pool =
-require("../db");
+console.log("PERIZINAN ROUTES LOADED");
 
-console.log(
-  "PERIZINAN ROUTES LOADED"
-);
+router.get("/", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT perizinan.*, santri.nama
+       FROM perizinan
+       LEFT JOIN santri
+         ON perizinan.santri_id = santri.id
+        AND santri.tenant_id = perizinan.tenant_id
+       WHERE perizinan.tenant_id = $1
+       ORDER BY perizinan.id DESC`,
+      [req.tenantId]
+    );
 
-// ======================
-// GET ALL PERIZINAN
-// ======================
-
-router.get(
-
-  "/",
-
-  async (req, res) => {
-
-    try {
-
-      const result =
-
-        await pool.query(
-
-          `
-
-          SELECT
-
-            perizinan.*,
-
-            santri.nama
-
-          FROM perizinan
-
-          LEFT JOIN santri
-
-          ON perizinan.santri_id =
-          santri.id
-
-          ORDER BY perizinan.id DESC
-
-          `
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
-
-// ======================
-// CREATE PERIZINAN
-// ======================
-
-router.post(
-
-  "/",
-
-  async (req, res) => {
-
-    try {
-
+router.post("/", async (req, res) => {
+  try {
     const {
+      santri_id,
+      tanggal,
+      alasan,
+      tujuan,
+      tanggal_kembali,
+      jam_keluar,
+      status,
+      catatan,
+    } = req.body;
 
-  santri_id,
-  tanggal,
-  alasan,
-  tujuan,
-  tanggal_kembali,
-  jam_keluar,
-  status,
-  catatan
-
-} = req.body;
-
-      const result =
-
-        await pool.query(
-
-          `
-
-         INSERT INTO perizinan (
-
-  santri_id,
-  tanggal,
-  alasan,
-  tujuan,
-  tanggal_kembali,
-  jam_keluar,
-  status,
-  catatan
-
-)
-
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-
-          RETURNING *
-
-          `,
-
-          [
-
-  santri_id,
-  tanggal,
-  alasan,
-  tujuan,
-  tanggal_kembali,
-  jam_keluar,
-  status,
-  catatan
-
-]
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows[0]
-
-      });
-
+    const santriCheck = await assertSantriInTenant(req.tenantId, santri_id);
+    if (!santriCheck.ok) {
+      return res.status(400).json({ success: false, error: santriCheck.error });
     }
 
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
-  }
-
-);
-
-// ======================
-// UPDATE KEMBALI
-// ======================
-
-router.put(
-
-  "/kembali/:id",
-
-  async (req, res) => {
-
-    try {
-
-      const {
-
-        id
-
-      } = req.params;
-
-      const result =
-
-        await pool.query(
-
-          `
-
-          UPDATE perizinan
-
-          SET
-
-            status = 'kembali',
-
-            jam_kembali =
-            CURRENT_TIME
-
-          WHERE id = $1
-
-          RETURNING *
-
-          `,
-
-          [id]
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows[0]
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
-  }
-
-);
-
-// ======================
-// UPDATE PERIZINAN
-// ======================
-
-router.put(
-
-  "/:id",
-
-  async (req, res) => {
-
-    try {
-
-      const { id } =
-        req.params;
-
-      const {
-
+    const result = await pool.query(
+      `INSERT INTO perizinan (
+         santri_id, tanggal, alasan, tujuan, tanggal_kembali,
+         jam_keluar, status, catatan, tenant_id
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        santri_id,
         tanggal,
         alasan,
         tujuan,
         tanggal_kembali,
         jam_keluar,
         status,
-        catatan
+        catatan,
+        req.tenantId,
+      ]
+    );
 
-      } = req.body;
+    const perizinanRow = result.rows[0];
+    const perizinanStatus = String(
+      perizinanRow.status || status || ""
+    ).toLowerCase();
 
-      const result =
-
-        await pool.query(
-
-          `
-
-          UPDATE perizinan
-
-          SET
-
-            tanggal = $1,
-
-            alasan = $2,
-
-            tujuan = $3,
-
-            tanggal_kembali = $4,
-
-            jam_keluar = $5,
-
-            status = $6,
-
-            catatan = $7
-
-          WHERE id = $8
-
-          RETURNING *
-
-          `,
-
-          [
-
-            tanggal,
-
-            alasan,
-
-            tujuan,
-
-            tanggal_kembali,
-
-            jam_keluar,
-
-            status,
-
-            catatan,
-
-            id
-
-          ]
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows[0]
-
-      });
-
+    if (perizinanStatus === "keluar") {
+      try {
+        await notificationService.sendPushToWaliBySantriId({
+          tenantId: req.tenantId,
+          santriId: perizinanRow.santri_id,
+          title: "Izin Keluar",
+          type: "perizinan",
+          data: {
+            type: "perizinan",
+            santri_id: Number(perizinanRow.santri_id),
+          },
+        });
+      } catch (pushErr) {
+        console.log("PERIZINAN PUSH ERROR:", pushErr.message);
+      }
     }
 
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
+    res.json({ success: true, data: perizinanRow });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
-
-// ======================
-// DELETE PERIZINAN
-// ======================
-
-router.delete(
-
-  "/:id",
-
-  async (req, res) => {
-
-    try {
-
-      await pool.query(
-
-        `
-
-        DELETE FROM perizinan
-
-        WHERE id = $1
-
-        `,
-
-        [
-
-          req.params.id
-
-        ]
-
-      );
-
-      res.json({
-
-        success: true
-
-      });
-
+router.put("/kembali/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const owned = await assertRecordInTenant("perizinan", req.tenantId, id);
+    if (!owned.ok) {
+      return res.status(404).json({ success: false, error: owned.error });
     }
 
-    catch (err) {
+    const result = await pool.query(
+      `UPDATE perizinan
+       SET status = 'kembali', jam_kembali = CURRENT_TIME
+       WHERE id = $1 AND tenant_id = $2
+       RETURNING *`,
+      [id, req.tenantId]
+    );
 
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
+router.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const owned = await assertRecordInTenant("perizinan", req.tenantId, id);
+    if (!owned.ok) {
+      return res.status(404).json({ success: false, error: owned.error });
+    }
 
-module.exports =
-router;
+    const {
+      tanggal,
+      alasan,
+      tujuan,
+      tanggal_kembali,
+      jam_keluar,
+      status,
+      catatan,
+    } = req.body;
+
+    const result = await pool.query(
+      `UPDATE perizinan
+       SET tanggal = $1, alasan = $2, tujuan = $3, tanggal_kembali = $4,
+           jam_keluar = $5, status = $6, catatan = $7
+       WHERE id = $8 AND tenant_id = $9
+       RETURNING *`,
+      [
+        tanggal,
+        alasan,
+        tujuan,
+        tanggal_kembali,
+        jam_keluar,
+        status,
+        catatan,
+        id,
+        req.tenantId,
+      ]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM perizinan
+       WHERE id = $1 AND tenant_id = $2
+       RETURNING id`,
+      [req.params.id, req.tenantId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Perizinan tidak ditemukan di tenant ini",
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+module.exports = router;

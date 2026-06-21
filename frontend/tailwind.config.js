@@ -16,11 +16,11 @@ export default {
 
       colors: {
         primary: {
-          DEFAULT: "#16A34A",
-          hover: "#15803D",
+          DEFAULT: "#15803D",
+          hover: "#166534",
         },
         dark: "#0F172A",
-        background: "#F8FAFC",
+        background: "#F3F4F6",
         surface: "#FFFFFF",
         border: "#E5E7EB",
         success: "#22C55E",

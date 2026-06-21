@@ -17,3 +17,8 @@ export function setUser(user) {
 export function clearUser() {
   localStorage.removeItem(USER_KEY);
 }
+
+export function clearSession() {
+  localStorage.removeItem("token");
+  clearUser();
+}

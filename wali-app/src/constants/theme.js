@@ -106,14 +106,41 @@ export const tabBarOptions = {
   tabBarInactiveTintColor: colors.textMuted,
   tabBarStyle: {
     backgroundColor: colors.surface,
-    borderTopColor: colors.border,
+    borderTopColor: 'rgba(226, 232, 240, 0.65)',
     borderTopWidth: 1,
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 4,
+    height: 68,
+    paddingBottom: 10,
+    paddingTop: 8,
+    marginHorizontal: 14,
+    marginBottom: 10,
+    borderRadius: radius['2xl'],
+    position: 'absolute',
+    shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 18,
+    elevation: 10,
   },
   tabBarLabelStyle: typography.tab,
 };
 
-/** Legacy inset — no longer needed for standard tab bar */
-export const tabBarScrollInset = spacing.lg;
+/** Tab bar options with safe-area bottom inset (APK / gesture nav). */
+export function buildTabBarScreenOptions(insets) {
+  const safeBottom = Math.max(insets?.bottom ?? 0, 0);
+  return {
+    ...tabBarOptions,
+    tabBarStyle: {
+      ...tabBarOptions.tabBarStyle,
+      marginBottom: 10 + safeBottom,
+    },
+  };
+}
+
+/** Scroll content inset below floating tab bar + safe area. */
+export function getTabBarScrollInset(insets) {
+  const safeBottom = Math.max(insets?.bottom ?? 0, 0);
+  return 68 + 10 + safeBottom + 24;
+}
+
+/** @deprecated use getTabBarScrollInset(insets) */
+export const tabBarScrollInset = 96;

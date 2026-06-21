@@ -78,22 +78,34 @@ function DashboardPage() {
       <DashboardResponsiveStyles />
       {user?.role === "superadmin" && (
         <div className="dashboard-page dashboard-monitoring-v3">
-          <DashboardHero />
-          <DashboardMetrics summary={summary} />
-          <DashboardKesehatanHariIni summary={summary} />
+          <section className="dashboard-section dashboard-section--hero">
+            <DashboardHero />
+          </section>
 
-          <div className="dashboard-row-2">
-            <DashboardAnnouncement
-              pembayaranTerbaru={pembayaranTerbaru}
-              totalPembayaran={summary.total_pembayaran}
-              totalTunggakan={summary.total_tunggakan}
-            />
-            <DashboardViolations
-              topPelanggar={(summary.santri_poin_tertinggi || []).slice(0, 5)}
-            />
-          </div>
+          <section className="dashboard-section dashboard-section--metrics">
+            <DashboardMetrics summary={summary} />
+          </section>
 
-          <DashboardFinanceChart grafikKas={grafikKas} />
+          <section className="dashboard-section dashboard-section--kesehatan">
+            <DashboardKesehatanHariIni summary={summary} />
+          </section>
+
+          <section className="dashboard-section dashboard-section--panels">
+            <div className="dashboard-row-2">
+              <DashboardAnnouncement
+                pembayaranTerbaru={pembayaranTerbaru}
+                totalPembayaran={summary.total_pembayaran}
+                totalTunggakan={summary.total_tunggakan}
+              />
+              <DashboardViolations
+                topPelanggar={(summary.santri_poin_tertinggi || []).slice(0, 5)}
+              />
+            </div>
+          </section>
+
+          <section className="dashboard-section dashboard-section--chart">
+            <DashboardFinanceChart grafikKas={grafikKas} />
+          </section>
         </div>
       )}
 

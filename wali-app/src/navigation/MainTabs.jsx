@@ -2,7 +2,8 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { stackHeaderOptions, tabBarOptions } from '../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { buildTabBarScreenOptions, stackHeaderOptions } from '../constants/theme';
 
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { PengumumanStack } from './PengumumanStack';
@@ -51,8 +52,11 @@ function MainStack() {
 }
 
 function MainTabsInner() {
+  const insets = useSafeAreaInsets();
+  const tabOptions = buildTabBarScreenOptions(insets);
+
   return (
-    <Tab.Navigator screenOptions={tabBarOptions}>
+    <Tab.Navigator screenOptions={tabOptions}>
       <Tab.Screen
         name="Beranda"
         component={DashboardScreen}

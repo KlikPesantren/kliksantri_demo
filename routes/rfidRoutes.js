@@ -1,66 +1,33 @@
-const express =
-require("express");
+const express = require("express");
+const router = express.Router();
+const authMiddleware = require("../middleware/authMiddleware");
+const tenantMiddleware = require("../middleware/tenantMiddleware");
+const requirePermission = require("../middleware/requirePermission");
+const deviceAuthMiddleware = require("../middleware/deviceAuthMiddleware");
+const rfidController = require("../controllers/rfidController");
 
-const router =
-express.Router();
+const adminRfidView = [
+  authMiddleware,
+  tenantMiddleware,
+  requirePermission("rfid.view"),
+];
 
-const rfidController =
-require("../controllers/rfidController");
+const adminRfidManage = [
+  authMiddleware,
+  tenantMiddleware,
+  requirePermission("rfid.manage"),
+];
 
-// ======================
-// DASHBOARD
-// ======================
+router.get("/dashboard", ...adminRfidView, rfidController.getDashboard);
 
-router.get(
-  "/dashboard",
-  rfidController.getDashboard
-);
+router.post("/payment", deviceAuthMiddleware, rfidController.rfidPayment);
 
-// ======================
-// RFID PAYMENT
-// ======================
+router.get("/transactions", ...adminRfidView, rfidController.getTransactions);
+router.get("/transactions/export", ...adminRfidView, rfidController.exportTransactions);
 
-router.post(
-  "/payment",
-  rfidController.rfidPayment
-);
+router.post("/topup", ...adminRfidManage, rfidController.topupSaldo);
+router.get("/topup/export", ...adminRfidView, rfidController.exportTopup);
+router.post("/refund", ...adminRfidManage, rfidController.refundTransaction);
+router.get("/mutasi", ...adminRfidView, rfidController.getMutasi);
 
-// ======================
-// TRANSAKSI RFID
-// ======================
-
-router.get(
-  "/transactions",
-  rfidController.getTransactions
-);
-
-router.get(
-  "/transactions/export",
-  rfidController.exportTransactions
-);
-
-// ======================
-// TOPUP
-// ======================
-router.post(
-  "/topup",
-  rfidController.topupSaldo
-);
-
-router.get(
-  "/topup/export",
-  rfidController.exportTopup
-);
-
-router.post(
-  "/refund",
-  rfidController.refundTransaction
-);
-
-router.get(
-  "/mutasi",
-  rfidController.getMutasi
-);
-
-module.exports =
-router;
+module.exports = router;

@@ -33,6 +33,14 @@ export function useProfilPesantren() {
       }
     } catch (err) {
       if (reqId !== reqRef.current) return;
+      try {
+        const cached = await storage.getPesantrenBranding();
+        if (cached?.nama_pesantren) {
+          setData(cached);
+        }
+      } catch {
+        // ignore cache read errors
+      }
       setError(
         err.response?.data?.error ??
           'Gagal memuat profil pesantren. Periksa koneksi Anda.'

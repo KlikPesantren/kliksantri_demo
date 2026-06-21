@@ -1,229 +1,66 @@
-const express =
-require("express");
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const { assertSantriInTenant } = require("../services/tenantScope");
 
-const router =
-express.Router();
+router.get("/", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT s.id, s.nama, ss.nominal_uang, ss.nominal_beras, ss.keterangan
+       FROM santri s
+       LEFT JOIN sahriyah_setting ss
+         ON s.id = ss.santri_id
+        AND ss.tenant_id = s.tenant_id
+       WHERE s.tenant_id = $1
+       ORDER BY s.nama`,
+      [req.tenantId]
+    );
 
-const pool =
-require("../db");
-
-router.get(
-
-  "/",
-
-  async (req,res) => {
-
-    try {
-
-      const result =
-
-        await pool.query(
-
-          `
-
-          SELECT
-
-            s.id,
-
-            s.nama,
-
-            ss.nominal_uang,
-
-            ss.nominal_beras,
-
-            ss.keterangan
-
-          FROM santri s
-
-          LEFT JOIN
-          sahriyah_setting ss
-
-          ON s.id = ss.santri_id
-
-          ORDER BY s.nama
-
-          `
-
-        );
-
-      console.log(result.rows);
-
-      res.json({
-
-        success:true,
-
-        data:
-        result.rows
-
-      });
-
-    }
-
-    catch(err){
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success:false
-
-      });
-
-    }
-
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
-
-);
-
-router.put(
-
-  "/:id",
-
-  async (req,res) => {
-
-    try {
-
-      const {
-
-        nominal_uang,
-
-        nominal_beras,
-
-        keterangan
-
-      } = req.body;
-
-      const cek =
-
-        await pool.query(
-
-          `
-
-          SELECT *
-
-          FROM sahriyah_setting
-
-          WHERE santri_id = $1
-
-          `,
-
-          [
-
-            req.params.id
-
-          ]
-
-        );
-
-      if (
-
-        cek.rows.length === 0
-
-      ) {
-
-        await pool.query(
-
-          `
-
-          INSERT INTO
-
-          sahriyah_setting(
-
-            santri_id,
-
-            nominal_uang,
-
-            nominal_beras,
-
-            keterangan
-
-          )
-
-          VALUES(
-
-            $1,$2,$3,$4
-
-          )
-
-          `,
-
-          [
-
-            req.params.id,
-
-            nominal_uang,
-
-            nominal_beras,
-
-            keterangan
-
-          ]
-
-        );
-
-      }
-
-      else {
-
-        await pool.query(
-
-          `
-
-          UPDATE
-
-          sahriyah_setting
-
-          SET
-
-            nominal_uang = $1,
-
-            nominal_beras = $2,
-
-            keterangan = $3
-
-          WHERE santri_id = $4
-
-          `,
-
-          [
-
-            nominal_uang,
-
-            nominal_beras,
-
-            keterangan,
-
-            req.params.id
-
-          ]
-
-        );
-
-      }
-
-      res.json({
-
-        success:true
-
-      });
-
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const { nominal_uang, nominal_beras, keterangan } = req.body;
+    const santriId = req.params.id;
+
+    const santriCheck = await assertSantriInTenant(req.tenantId, santriId);
+    if (!santriCheck.ok) {
+      return res.status(400).json({ success: false, error: santriCheck.error });
     }
 
-    catch(err){
+    const cek = await pool.query(
+      `SELECT id FROM sahriyah_setting
+       WHERE santri_id = $1 AND tenant_id = $2`,
+      [santriId, req.tenantId]
+    );
 
-      console.log(err);
-
-      res.status(500).json({
-
-        success:false
-
-      });
-
+    if (cek.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO sahriyah_setting (
+           santri_id, nominal_uang, nominal_beras, keterangan, tenant_id
+         )
+         VALUES ($1, $2, $3, $4, $5)`,
+        [santriId, nominal_uang, nominal_beras, keterangan, req.tenantId]
+      );
+    } else {
+      await pool.query(
+        `UPDATE sahriyah_setting
+         SET nominal_uang = $1, nominal_beras = $2, keterangan = $3
+         WHERE santri_id = $4 AND tenant_id = $5`,
+        [nominal_uang, nominal_beras, keterangan, santriId, req.tenantId]
+      );
     }
 
+    res.json({ success: true });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
-
-module.exports =
-router;
+module.exports = router;

@@ -1,13 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "../services/api";
 import api from "../services/api";
 import Button from "../components/ui/Button";
 import TenantBrand from "../components/TenantBrand";
 import { setUser } from "../utils/storage";
+import { TENANT_SUSPEND_SESSION_KEY } from "../constants/tenant";
 import {
-  getCachedTenantProfile,
-  resolveTenantDisplay,
-  setCachedTenantProfile,
+  KLIKSANTRI_LOGIN_BRANDING,
+  LAST_TENANT_SLUG_KEY,
+  normalizeTenantSlugInput,
+  resolvePublicTenantDisplay,
 } from "../utils/tenantProfile";
+
+const SLUG_DEBOUNCE_MS = 500;
 
 function LoginPageStyles() {
   return (
@@ -95,6 +101,13 @@ function LoginPageStyles() {
         margin-bottom: 6px;
       }
 
+      .login-helper {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
       .login-input {
         width: 100%;
         padding: 11px 12px;
@@ -110,6 +123,30 @@ function LoginPageStyles() {
       .login-input:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px var(--focus-ring);
+      }
+
+      .login-preview-hint {
+        margin-bottom: var(--space-4);
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.5;
+      }
+
+      .login-preview-hint--info {
+        background: var(--info-subtle);
+        color: var(--info);
+      }
+
+      .login-preview-hint--warn {
+        background: var(--warning-subtle);
+        color: var(--warning);
+      }
+
+      .login-preview-hint--error {
+        background: var(--danger-subtle);
+        color: var(--danger);
       }
 
       .login-mobile-brand {
@@ -141,11 +178,89 @@ function LoginPageStyles() {
 }
 
 function LoginPage() {
+  const [tenantSlug, setTenantSlug] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [display, setDisplay] = useState(() =>
-    resolveTenantDisplay(getCachedTenantProfile()),
-  );
+  const [loginError, setLoginError] = useState("");
+  const [slugStatus, setSlugStatus] = useState("idle");
+  const [slugMessage, setSlugMessage] = useState("");
+  const [publicProfile, setPublicProfile] = useState(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const display = useMemo(() => {
+    const normalized = normalizeTenantSlugInput(tenantSlug);
+    if (!normalized) {
+      return { ...KLIKSANTRI_LOGIN_BRANDING, hasCustomName: false };
+    }
+    if (slugStatus === "found" && publicProfile) {
+      return resolvePublicTenantDisplay(publicProfile);
+    }
+    if (slugStatus === "loading") {
+      return resolvePublicTenantDisplay(publicProfile) || {
+        ...KLIKSANTRI_LOGIN_BRANDING,
+        name: "Memuat...",
+        hasCustomName: false,
+      };
+    }
+    return { ...KLIKSANTRI_LOGIN_BRANDING, hasCustomName: false };
+  }, [tenantSlug, slugStatus, publicProfile]);
+
+  const loginDisabled =
+    !normalizeTenantSlugInput(tenantSlug) ||
+    slugStatus === "loading" ||
+    slugStatus === "not_found" ||
+    slugStatus === "suspended" ||
+    loginLoading;
+
+  const fetchPublicProfile = useCallback(async (slug) => {
+    const normalized = normalizeTenantSlugInput(slug);
+    if (!normalized) {
+      setSlugStatus("idle");
+      setSlugMessage("");
+      setPublicProfile(null);
+      return;
+    }
+
+    setSlugStatus("loading");
+    setSlugMessage("");
+
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/public/tenants/${encodeURIComponent(normalized)}/profile`
+      );
+      const data = res.data?.data;
+
+      if (!data) {
+        setSlugStatus("not_found");
+        setSlugMessage("Kode pesantren tidak ditemukan");
+        setPublicProfile(null);
+        return;
+      }
+
+      setPublicProfile(data);
+
+      if (data.service_available === false) {
+        setSlugStatus("suspended");
+        setSlugMessage(
+          data.message ||
+            "Layanan KlikSantri untuk pesantren ini sedang tidak aktif."
+        );
+        return;
+      }
+
+      setSlugStatus("found");
+      setSlugMessage("");
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setSlugStatus("not_found");
+        setSlugMessage("Kode pesantren tidak ditemukan");
+      } else {
+        setSlugStatus("not_found");
+        setSlugMessage("Gagal memuat profil pesantren");
+      }
+      setPublicProfile(null);
+    }
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -154,34 +269,74 @@ function LoginPage() {
       return;
     }
 
-    const cached = getCachedTenantProfile();
-    if (cached) {
-      setDisplay(resolveTenantDisplay(cached));
+    const suspendMsg = sessionStorage.getItem(TENANT_SUSPEND_SESSION_KEY);
+    if (suspendMsg) {
+      setLoginError(suspendMsg);
+      sessionStorage.removeItem(TENANT_SUSPEND_SESSION_KEY);
     }
 
-    api
-      .get("/profil-pesantren")
-      .then((res) => {
-        const data = res.data?.data ?? null;
-        setCachedTenantProfile(data);
-        setDisplay(resolveTenantDisplay(data));
-      })
-      .catch(() => {
-        // Unauthenticated login uses cache + fallbacks.
-      });
+    const savedSlug = localStorage.getItem(LAST_TENANT_SLUG_KEY);
+    if (savedSlug) {
+      setTenantSlug(savedSlug);
+    }
   }, []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchPublicProfile(tenantSlug);
+    }, SLUG_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [tenantSlug, fetchPublicProfile]);
+
+  const handleSlugChange = (value) => {
+    setTenantSlug(normalizeTenantSlugInput(value));
+    setLoginError("");
+  };
+
   const login = async () => {
+    if (loginDisabled) return;
+
+    setLoginError("");
+    setLoginLoading(true);
+
+    const slug = normalizeTenantSlugInput(tenantSlug);
+
     try {
-      const response = await api.post("/auth/login", { username, password });
+      const response = await api.post("/auth/login", {
+        tenant_slug: slug,
+        username,
+        password,
+      });
 
       localStorage.setItem("token", response.data.token);
+      localStorage.setItem(LAST_TENANT_SLUG_KEY, slug);
       setUser(response.data.user);
       window.location.href = "/dashboard";
-    } catch {
-      alert("Login gagal");
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Login gagal";
+      setLoginError(msg);
+    } finally {
+      setLoginLoading(false);
     }
   };
+
+  const previewHint = slugMessage ? (
+    <div
+      className={`login-preview-hint login-preview-hint--${
+        slugStatus === "suspended" ? "warn" : "error"
+      }`}
+    >
+      {slugMessage}
+    </div>
+  ) : slugStatus === "found" ? (
+    <div className="login-preview-hint login-preview-hint--info">
+      Pesantren ditemukan — layanan aktif
+    </div>
+  ) : null;
 
   const brandingBlock = (
     <>
@@ -192,7 +347,9 @@ function LoginPage() {
         name={display.name}
         location={display.address}
       />
-      <p className="login-tagline">{display.tagline || "Sistem Administrasi Pesantren Modern"}</p>
+      <p className="login-tagline">
+        {display.tagline || KLIKSANTRI_LOGIN_BRANDING.tagline}
+      </p>
       <p className="login-powered">Powered by KlikSantri</p>
     </>
   );
@@ -214,6 +371,37 @@ function LoginPage() {
               Masuk ke panel administrasi pesantren Anda.
             </p>
 
+            {loginError ? (
+              <div
+                className="login-preview-hint login-preview-hint--error"
+                style={{ marginBottom: "var(--space-4)" }}
+              >
+                {loginError}
+              </div>
+            ) : null}
+
+            {previewHint}
+
+            <div className="login-field">
+              <label className="login-label" htmlFor="login-tenant-slug">
+                Kode Pesantren
+              </label>
+              <input
+                id="login-tenant-slug"
+                className="login-input"
+                type="text"
+                placeholder="contoh: al-hikmah"
+                value={tenantSlug}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                autoComplete="organization"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <p className="login-helper">
+                Masukkan kode pesantren yang diberikan admin KlikSantri
+              </p>
+            </div>
+
             <div className="login-field">
               <label className="login-label" htmlFor="login-username">
                 Username
@@ -226,6 +414,7 @@ function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
+                disabled={loginDisabled}
               />
             </div>
 
@@ -241,11 +430,18 @@ function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                onKeyDown={(e) => e.key === "Enter" && login()}
+                disabled={loginDisabled}
+                onKeyDown={(e) => e.key === "Enter" && !loginDisabled && login()}
               />
             </div>
 
-            <Button variant="primary" onClick={login} style={{ width: "100%" }}>
+            <Button
+              variant="primary"
+              onClick={login}
+              loading={loginLoading}
+              disabled={loginDisabled}
+              style={{ width: "100%" }}
+            >
               Login
             </Button>
           </div>

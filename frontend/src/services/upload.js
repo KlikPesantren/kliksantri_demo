@@ -6,5 +6,7 @@ export async function uploadImage(file) {
 
   const res = await api.post("/upload/image", formData);
 
-  return res.data?.url ?? null;
+  const url = res.data?.url ?? null;
+  console.log("[ADMIN BANNER UPLOAD RESPONSE]", url);
+  return url;
 }

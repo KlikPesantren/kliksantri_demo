@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import api from "../services/api";
 import {
   getCachedTenantProfile,
@@ -9,13 +10,19 @@ import {
 
 const TenantProfileContext = createContext(null);
 
+function isPublicOnlyRoute(pathname) {
+  return pathname === "/" || pathname.startsWith("/platform");
+}
+
 export function TenantProfileProvider({ children }) {
+  const location = useLocation();
   const [profile, setProfile] = useState(() => getCachedTenantProfile());
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
+    if (isPublicOnlyRoute(location.pathname)) return;
 
     setLoading(true);
     try {
@@ -28,7 +35,7 @@ export function TenantProfileProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [location.pathname]);
 
   const updateLocal = useCallback((nextProfile) => {
     const normalized = normalizeTenantProfile(nextProfile);

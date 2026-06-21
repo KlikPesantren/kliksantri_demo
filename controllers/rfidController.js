@@ -10,6 +10,7 @@ const XLSX = require("xlsx");
 
 exports.rfidPayment = async (req, res) => {
   try {
+    const tenantId = req.tenantId;
     const {
       uid_rfid,
       nominal,
@@ -18,17 +19,14 @@ exports.rfidPayment = async (req, res) => {
       override_limit = false
     } = req.body;
 
-    // ==========================
-    // VALIDASI SANTRI
-    // ==========================
-
     const santriResult = await pool.query(
       `
       SELECT *
       FROM santri
       WHERE uid_rfid = $1
+        AND tenant_id = $2
       `,
-      [uid_rfid]
+      [uid_rfid, tenantId]
     );
 
     if (santriResult.rows.length === 0) {
@@ -40,17 +38,14 @@ exports.rfidPayment = async (req, res) => {
 
     const santri = santriResult.rows[0];
 
-    // ==========================
-    // DUPLICATE CHECK
-    // ==========================
-
     const duplicate = await pool.query(
       `
       SELECT id
       FROM transaksi_rfid
       WHERE trx_id = $1
+        AND tenant_id = $2
       `,
-      [trx_id]
+      [trx_id, tenantId]
     );
 
     if (duplicate.rows.length > 0) {
@@ -61,27 +56,13 @@ exports.rfidPayment = async (req, res) => {
       });
     }
 
-    // ==========================
-    // DEVICE
-    // ==========================
-
-    const deviceResult = await pool.query(
-      `
-      SELECT *
-      FROM devices
-      WHERE device_id = $1
-      `,
-      [device_id]
-    );
-
-    if (deviceResult.rows.length === 0) {
+    const device = req.device;
+    if (!device || String(device.device_id) !== String(device_id)) {
       return res.json({
         success: false,
         error: "Device tidak terdaftar"
       });
     }
-
-    const device = deviceResult.rows[0];
    // ==========================
     // SALDO
     // ==========================
@@ -150,10 +131,12 @@ exports.rfidPayment = async (req, res) => {
         UPDATE santri
         SET saldo = $1
         WHERE id = $2
+          AND tenant_id = $3
         `,
         [
           saldoAkhir,
-          santri.id
+          santri.id,
+          tenantId
         ]
       );
 
@@ -181,11 +164,12 @@ console.log({
           saldo_awal,
           saldo_akhir,
           is_override,
-          sync_status
+          sync_status,
+          tenant_id
         )
         VALUES
         (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,'synced'
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,'synced',$10
         )
         `,
         [
@@ -197,7 +181,8 @@ console.log({
           nominal,
           saldoAwal,
           saldoAkhir,
-          override_limit
+          override_limit,
+          tenantId
         ]
       );
 
@@ -213,7 +198,8 @@ console.log({
           jenis,
           nominal,
           keterangan,
-          trx_id
+          trx_id,
+          tenant_id
         )
         VALUES
         (
@@ -221,13 +207,15 @@ console.log({
           'RFID',
           $2,
           'Pembayaran RFID',
-          $3
+          $3,
+          $4
         )
         `,
         [
           santri.id,
           nominal,
-          trx_id
+          trx_id,
+          tenantId
         ]
       );
 
@@ -277,77 +265,72 @@ exports.getDashboard =
 async (req,res)=>{
 
   try{
+    const tenantId = req.tenantId;
 
     const totalSaldo =
       await pool.query(`
-        SELECT
-        COALESCE(
-          SUM(saldo),
-          0
-        ) total
+        SELECT COALESCE(SUM(saldo), 0) total
         FROM santri
-      `);
+        WHERE tenant_id = $1
+      `, [tenantId]);
 
     const totalMerchant =
       await pool.query(`
         SELECT COUNT(*)
         FROM merchant_rfid
-        WHERE status=true
-      `);
+        WHERE status=true AND tenant_id = $1
+      `, [tenantId]);
 
     const totalDevice =
       await pool.query(`
         SELECT COUNT(*)
         FROM devices
-      `);
+        WHERE tenant_id = $1
+      `, [tenantId]);
 
     const online =
       await pool.query(`
         SELECT COUNT(*)
         FROM devices
-        WHERE status='online'
-      `);
+        WHERE status='online' AND tenant_id = $1
+      `, [tenantId]);
 
     const offline =
       await pool.query(`
         SELECT COUNT(*)
         FROM devices
-        WHERE status!='online'
-      `);
+        WHERE status!='online' AND tenant_id = $1
+      `, [tenantId]);
 
     const transaksiHariIni =
       await pool.query(`
-        SELECT
-        COALESCE(
-          SUM(nominal),
-          0
-        ) total
+        SELECT COALESCE(SUM(nominal), 0) total
         FROM transaksi_rfid
-        WHERE DATE(created_at)
-        = CURRENT_DATE
-      `);
+        WHERE DATE(created_at) = CURRENT_DATE
+          AND tenant_id = $1
+      `, [tenantId]);
 
     const pending =
       await pool.query(`
         SELECT COUNT(*)
         FROM rfid_sync_queue
-        WHERE sync_status='pending'
-      `);
+        WHERE sync_status='pending' AND tenant_id = $1
+      `, [tenantId]);
 
     const failed =
       await pool.query(`
         SELECT COUNT(*)
         FROM rfid_sync_queue
-        WHERE sync_status='failed'
-      `);
+        WHERE sync_status='failed' AND tenant_id = $1
+      `, [tenantId]);
 
     const kartuAktif =
       await pool.query(`
         SELECT COUNT(*)
         FROM santri
-        WHERE uid_rfid
-        IS NOT NULL
-      `);
+        WHERE uid_rfid IS NOT NULL
+          AND tenant_id = $1
+      `, [tenantId]);
 
     res.json({
 
@@ -398,82 +381,31 @@ async (req,res)=>{
 // ==========================
 
 exports.getTransactions =
-  async (req, res) => {
-
-    try {
-
-      const result =
-        await pool.query(`
-        SELECT
-          t.*,
-          s.nama,
-          m.nama_merchant
-        FROM transaksi_rfid t
-
-        LEFT JOIN santri s
-        ON t.santri_id=s.id
-
-        LEFT JOIN merchant_rfid m
-        ON t.merchant_id=m.id
-
-        ORDER BY t.id DESC
-      `);
-
-      res.json({
-        success: true,
-        data: result.rows
-      });
-
-    } catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-        success: false
-      });
-
-    }
-
-};
-
-exports.getTransactions =
 async(req,res)=>{
 
   try{
+    const tenantId = req.tenantId;
 
     const result =
       await pool.query(
         `
         SELECT
-
           tr.*,
-
-          s.nama
-          AS nama_santri,
-
+          s.nama AS nama_santri,
           m.nama_merchant,
-
           d.device_id
-
         FROM transaksi_rfid tr
-
         LEFT JOIN santri s
-        ON s.id =
-        tr.santri_id
-
+          ON s.id = tr.santri_id AND s.tenant_id = tr.tenant_id
         LEFT JOIN merchant_rfid m
-        ON m.id =
-        tr.merchant_id
-
+          ON m.id = tr.merchant_id AND m.tenant_id = tr.tenant_id
         LEFT JOIN devices d
-        ON d.id =
-        tr.device_id
-
-        ORDER BY
-        tr.created_at DESC
-
+          ON d.id = tr.device_id AND d.tenant_id = tr.tenant_id
+        WHERE tr.tenant_id = $1
+        ORDER BY tr.created_at DESC
         LIMIT 500
-        `
+        `,
+        [tenantId]
       );
 
     res.json({
@@ -506,6 +438,8 @@ async(req,res)=>{
   const client =
     await pool.connect();
 
+  const tenantId = req.tenantId;
+
   try{
 
     const {
@@ -524,8 +458,9 @@ async(req,res)=>{
         SELECT *
         FROM santri
         WHERE id=$1
+          AND tenant_id=$2
         `,
-        [santri_id]
+        [santri_id, tenantId]
       );
 
     if(
@@ -553,10 +488,12 @@ async(req,res)=>{
       UPDATE santri
       SET saldo=$1
       WHERE id=$2
+        AND tenant_id=$3
       `,
       [
         saldoAkhir,
-        santri_id
+        santri_id,
+        tenantId
       ]
     );
 
@@ -571,7 +508,8 @@ INSERT INTO transaksi_rfid
   saldo_awal,
   saldo_akhir,
   trx_type,
-  sync_status
+  sync_status,
+  tenant_id
 )
 VALUES
 (
@@ -582,7 +520,8 @@ VALUES
   $4,
   $5,
   'topup',
-  'synced'
+  'synced',
+  $6
 )
 `,
 [
@@ -590,11 +529,12 @@ VALUES
   santri_id,
   nominal,
   saldoAwal,
-  saldoAkhir
+  saldoAkhir,
+  tenantId
 ]
 );
 
-    await client.query(
+     await client.query(
       `
       INSERT INTO transaksi
       (
@@ -603,7 +543,8 @@ VALUES
         nominal,
         keterangan,
         created_by,
-        trx_id
+        trx_id,
+        tenant_id
       )
       VALUES
       (
@@ -612,14 +553,16 @@ VALUES
         $2,
         'Topup Saldo RFID',
         $3,
-        $4
+        $4,
+        $5
       )
       `,
       [
         santri_id,
         nominal,
         user_id,
-        trxId
+        trxId,
+        tenantId
       ]
     );
 
@@ -631,7 +574,8 @@ VALUES
         jenis,
         kategori,
         keterangan,
-        nominal
+        nominal,
+        tenant_id
       )
       VALUES
       (
@@ -639,12 +583,14 @@ VALUES
         'Masuk',
         'RFID Topup',
         $1,
-        $2
+        $2,
+        $3
       )
       `,
       [
         santri.rows[0].nama,
-        nominal
+        nominal,
+        tenantId
       ]
     );
 
@@ -711,11 +657,11 @@ exports.exportTransactions =
 async(req,res)=>{
 
   try{
+    const tenantId = req.tenantId;
 
     const result =
       await pool.query(`
         SELECT
-
           tr.created_at,
           s.nama AS nama_santri,
           m.nama_merchant,
@@ -724,20 +670,13 @@ async(req,res)=>{
           tr.saldo_awal,
           tr.saldo_akhir,
           tr.sync_status
-
         FROM transaksi_rfid tr
-
-        LEFT JOIN santri s
-        ON s.id = tr.santri_id
-
-        LEFT JOIN merchant_rfid m
-        ON m.id = tr.merchant_id
-
-        LEFT JOIN devices d
-        ON d.id = tr.device_id
-
+        LEFT JOIN santri s ON s.id = tr.santri_id AND s.tenant_id = tr.tenant_id
+        LEFT JOIN merchant_rfid m ON m.id = tr.merchant_id AND m.tenant_id = tr.tenant_id
+        LEFT JOIN devices d ON d.id = tr.device_id AND d.tenant_id = tr.tenant_id
+        WHERE tr.tenant_id = $1
         ORDER BY tr.created_at DESC
-      `);
+      `, [tenantId]);
 
     const worksheet =
       XLSX.utils.json_to_sheet(
@@ -792,28 +731,22 @@ exports.exportTopup =
 async(req,res)=>{
 
   try{
+    const tenantId = req.tenantId;
 
     const result =
       await pool.query(`
         SELECT
-
           t.created_at,
           s.nama,
           t.nominal,
           t.created_by,
           t.trx_id
-
         FROM transaksi t
-
-        LEFT JOIN santri s
-        ON s.id = t.santri_id
-
-        WHERE t.jenis =
-        'TOPUP RFID'
-
-        ORDER BY
-        t.created_at DESC
-      `);
+        LEFT JOIN santri s ON s.id = t.santri_id AND s.tenant_id = t.tenant_id
+        WHERE t.jenis = 'TOPUP RFID'
+          AND t.tenant_id = $1
+        ORDER BY t.created_at DESC
+      `, [tenantId]);
 
     const worksheet =
       XLSX.utils.json_to_sheet(
@@ -870,6 +803,8 @@ async(req,res)=>{
   const client =
     await pool.connect();
 
+  const tenantId = req.tenantId;
+
   try{
 
     const {
@@ -886,8 +821,9 @@ async(req,res)=>{
         SELECT *
         FROM transaksi_rfid
         WHERE id=$1
+          AND tenant_id=$2
         `,
-        [transaksi_id]
+        [transaksi_id, tenantId]
       );
 
     if(
@@ -907,8 +843,9 @@ async(req,res)=>{
         SELECT *
         FROM santri
         WHERE id=$1
+          AND tenant_id=$2
         `,
-        [data.santri_id]
+        [data.santri_id, tenantId]
       );
 
     const saldoAwal =
@@ -925,10 +862,12 @@ async(req,res)=>{
       UPDATE santri
       SET saldo=$1
       WHERE id=$2
+        AND tenant_id=$3
       `,
       [
         saldoAkhir,
-        data.santri_id
+        data.santri_id,
+        tenantId
       ]
     );
 
@@ -945,7 +884,8 @@ async(req,res)=>{
         saldo_awal,
         saldo_akhir,
         trx_type,
-        sync_status
+        sync_status,
+        tenant_id
       )
       VALUES
       (
@@ -958,7 +898,8 @@ async(req,res)=>{
         $6,
         $7,
         'refund',
-        'synced'
+        'synced',
+        $8
       )
       `,
       [
@@ -968,7 +909,8 @@ async(req,res)=>{
         data.device_id,
         data.nominal,
         saldoAwal,
-        saldoAkhir
+        saldoAkhir,
+        tenantId
       ]
     );
 
@@ -1027,37 +969,40 @@ exports.getMutasi =
 async(req,res)=>{
 
   try{
+    const tenantId = req.tenantId;
 
     const {
       santri_id
     } = req.query;
 
+    const santriCheck = await pool.query(
+      `SELECT id FROM santri WHERE id = $1 AND tenant_id = $2`,
+      [santri_id, tenantId]
+    );
+    if (santriCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Santri tidak ditemukan" });
+    }
+
     const result =
       await pool.query(
         `
         SELECT
-
-  tr.created_at,
-  tr.trx_type,
-  tr.nominal,
-  tr.saldo_awal,
-  tr.saldo_akhir,
-  tr.trx_id,
-
-  s.nama,
-  s.uid_rfid,
-  s.saldo
-
-FROM transaksi_rfid tr
-
-LEFT JOIN santri s
-ON s.id = tr.santri_id
-
-WHERE tr.santri_id = $1
-
-ORDER BY tr.created_at DESC
+          tr.created_at,
+          tr.trx_type,
+          tr.nominal,
+          tr.saldo_awal,
+          tr.saldo_akhir,
+          tr.trx_id,
+          s.nama,
+          s.uid_rfid,
+          s.saldo
+        FROM transaksi_rfid tr
+        LEFT JOIN santri s ON s.id = tr.santri_id AND s.tenant_id = tr.tenant_id
+        WHERE tr.santri_id = $1
+          AND tr.tenant_id = $2
+        ORDER BY tr.created_at DESC
         `,
-        [santri_id]
+        [santri_id, tenantId]
       );
 
     res.json({

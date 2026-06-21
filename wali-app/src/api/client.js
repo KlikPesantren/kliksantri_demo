@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
+import {
+  isTenantSuspendedResponse,
+} from '../constants/tenant';
 
-const DEV_API_FALLBACK = 'http://localhost:3000';
+const DEV_API_FALLBACK = 'http://10.25.150.36:3000';
 
 const API_BASE_URL = (ENV_API_BASE_URL || (__DEV__ ? DEV_API_FALLBACK : '')).replace(
   /\/$/,
@@ -67,7 +70,7 @@ api.interceptors.response.use(
     logAxiosError(error, error.config?.url);
     const status = error.response?.status;
 
-    if (status === 401) {
+    if (status === 401 || isTenantSuspendedResponse(status, error.response?.data)) {
       await storage.clearSession();
       if (_logoutCallback) {
         _logoutCallback();

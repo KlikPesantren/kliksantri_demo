@@ -1,18 +1,11 @@
-const express =
-require("express");
+const express = require("express");
+const router = express.Router();
+const authMiddleware = require("../middleware/authMiddleware");
+const tenantMiddleware = require("../middleware/tenantMiddleware");
+const requirePermission = require("../middleware/requirePermission");
+const deviceAuthMiddleware = require("../middleware/deviceAuthMiddleware");
+const syncController = require("../controllers/rfidSyncController");
 
-const router =
-express.Router();
+router.post("/", deviceAuthMiddleware, syncController.syncTransactions);
 
-const syncController =
-require(
-"../controllers/rfidSyncController"
-);
-
-router.post(
-  "/",
-  syncController.syncTransactions
-);
-
-module.exports =
-router;
+module.exports = router;

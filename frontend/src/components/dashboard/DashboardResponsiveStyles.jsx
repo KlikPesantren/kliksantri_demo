@@ -4,12 +4,32 @@ export function DashboardResponsiveStyles() {
       .dashboard-page {
         min-width: 0;
         max-width: 100%;
+        overflow-x: hidden;
       }
 
       .dashboard-monitoring-v3 {
         display: flex;
         flex-direction: column;
-        gap: var(--space-3);
+        gap: var(--space-5);
+      }
+
+      .dashboard-section {
+        min-width: 0;
+        max-width: 100%;
+      }
+
+      .dashboard-section--kesehatan > * {
+        border: 1px solid #E5E7EB;
+        border-radius: 22px;
+        box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05);
+      }
+
+      .dashboard-section--panels .dashboard-row-2 {
+        gap: var(--space-5);
+      }
+
+      .dashboard-section--chart > * {
+        border-radius: 22px;
       }
 
       .dashboard-role-v3 {
@@ -104,7 +124,7 @@ export function DashboardResponsiveStyles() {
 
       .dashboard-row-2 {
         display: grid;
-        gap: var(--space-3);
+        gap: var(--space-5);
         grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
         align-items: stretch;
       }
@@ -335,6 +355,14 @@ export function DashboardResponsiveStyles() {
       }
 
       @media (max-width: 767px) {
+        .dashboard-monitoring-v3 {
+          gap: var(--space-4);
+        }
+
+        .dashboard-section--panels .dashboard-row-2 {
+          gap: var(--space-4);
+        }
+
         .dashboard-donut-layout {
           flex-direction: column;
           align-items: stretch;

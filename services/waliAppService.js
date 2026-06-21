@@ -1,217 +1,103 @@
 require("dotenv").config();
 
-const bcrypt =
-  require("bcryptjs");
-
-const jwt =
-  require("jsonwebtoken");
-
-const pool =
-  require("../db");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const pool = require("../db");
 
 const WALI_JWT_SECRET =
-  process.env.WALI_JWT_SECRET ||
-  "WALI_DEV_SECRET_CHANGE_IN_PRODUCTION";
+  process.env.WALI_JWT_SECRET || "WALI_DEV_SECRET_CHANGE_IN_PRODUCTION";
 
-const WALI_JWT_EXPIRES =
-  process.env.WALI_JWT_EXPIRES ||
-  "30d";
+const WALI_JWT_EXPIRES = process.env.WALI_JWT_EXPIRES || "30d";
 
 const MAX_FAILED_ATTEMPTS = 5;
-
 const LOCKOUT_MINUTES = 15;
 
-const BLOCKED_PINS = [
-  "000000",
-  "123456",
-  "111111",
-  "654321"
-];
-
-// =====================
-// PHONE
-// =====================
+const BLOCKED_PINS = ["000000", "123456", "111111", "654321"];
 
 const normalizePhone = (raw) => {
-
-  if (
-    raw === undefined ||
-    raw === null ||
-    raw === ""
-  ) {
-
+  if (raw === undefined || raw === null || raw === "") {
     return null;
-
   }
 
-  let digits =
-    String(raw).replace(/\D/g, "");
-
+  let digits = String(raw).replace(/\D/g, "");
   if (digits.length === 0) {
-
     return null;
-
   }
 
-  // Normalisasi ke format 08xxx (bukan 628xxx)
   if (digits.startsWith("62")) {
-
-    // 628xxx → 08xxx
     digits = "0" + digits.slice(2);
-
   } else if (!digits.startsWith("0")) {
-
-    // nomor tanpa prefix → tambah 0
     digits = "0" + digits;
-
   }
 
   return digits;
-
 };
 
-// =====================
-// PIN
-// =====================
-
 const isValidPin = (pin) => {
-
-  if (
-    typeof pin !== "string" &&
-    typeof pin !== "number"
-  ) {
-
+  if (typeof pin !== "string" && typeof pin !== "number") {
     return false;
-
   }
 
-  const value =
-    String(pin);
-
-  if (
-    !/^\d{6}$/.test(value)
-  ) {
-
+  const value = String(pin);
+  if (!/^\d{6}$/.test(value)) {
     return false;
-
   }
 
-  if (
-    BLOCKED_PINS.includes(value)
-  ) {
-
+  if (BLOCKED_PINS.includes(value)) {
     return false;
-
   }
 
   return true;
-
 };
 
-const hashPin = async (pin) => {
+const hashPin = async (pin) => bcrypt.hash(String(pin), 10);
 
-  return bcrypt.hash(
-    String(pin),
-    10
+const verifyPin = async (plainPin, pinHash) =>
+  bcrypt.compare(String(plainPin), pinHash);
+
+const findAkunByPhone = async (nomorHp, tenantId) => {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM wali_akun
+    WHERE nomor_hp = $1
+      AND tenant_id = $2
+    LIMIT 1
+    `,
+    [nomorHp, tenantId]
   );
-
-};
-
-const verifyPin = async (
-  plainPin,
-  pinHash
-) => {
-
-  return bcrypt.compare(
-    String(plainPin),
-    pinHash
-  );
-
-};
-
-// =====================
-// ACCOUNT
-// =====================
-
-const findAkunByPhone = async (
-  nomorHp
-) => {
-
-  const result =
-    await pool.query(
-
-      `
-      SELECT *
-      FROM wali_akun
-      WHERE nomor_hp = $1
-      LIMIT 1
-      `,
-
-      [nomorHp]
-
-    );
-
   return result.rows[0] || null;
-
 };
 
 const isAccountLocked = (akun) => {
-
-  if (
-    !akun ||
-    !akun.locked_until
-  ) {
-
+  if (!akun || !akun.locked_until) {
     return false;
-
   }
+  return new Date(akun.locked_until) > new Date();
+};
 
-  return (
-    new Date(akun.locked_until) >
-    new Date()
+const registerFailedLogin = async (akunId) => {
+  const result = await pool.query(
+    `
+    UPDATE wali_akun
+    SET
+      failed_attempts = failed_attempts + 1,
+      locked_until = CASE
+        WHEN failed_attempts + 1 >= $2
+        THEN NOW() + ($3 || ' minutes')::INTERVAL
+        ELSE locked_until
+      END,
+      updated_at = NOW()
+    WHERE id = $1
+    RETURNING failed_attempts, locked_until
+    `,
+    [akunId, MAX_FAILED_ATTEMPTS, String(LOCKOUT_MINUTES)]
   );
-
-};
-
-const registerFailedLogin = async (
-  akunId
-) => {
-
-  const result =
-    await pool.query(
-
-      `
-      UPDATE wali_akun
-      SET
-        failed_attempts = failed_attempts + 1,
-        locked_until = CASE
-          WHEN failed_attempts + 1 >= $2
-          THEN NOW() + ($3 || ' minutes')::INTERVAL
-          ELSE locked_until
-        END,
-        updated_at = NOW()
-      WHERE id = $1
-      RETURNING failed_attempts, locked_until
-      `,
-
-      [
-        akunId,
-        MAX_FAILED_ATTEMPTS,
-        String(LOCKOUT_MINUTES)
-      ]
-
-    );
-
   return result.rows[0];
-
 };
 
-const registerSuccessfulLogin = async (
-  akunId
-) => {
-
+const registerSuccessfulLogin = async (akunId) => {
   await pool.query(
-
     `
     UPDATE wali_akun
     SET
@@ -221,283 +107,188 @@ const registerSuccessfulLogin = async (
       updated_at = NOW()
     WHERE id = $1
     `,
-
     [akunId]
-
   );
-
 };
 
-const getAkunStatus = async (
-  waliAkunId
-) => {
-
-  const result =
-    await pool.query(
-
-      `
-      SELECT
-        id,
-        nomor_hp,
-        nama,
-        status,
-        must_change_pin
-      FROM wali_akun
-      WHERE id = $1
-      LIMIT 1
-      `,
-
-      [waliAkunId]
-
-    );
-
+const getAkunStatus = async (waliAkunId) => {
+  const result = await pool.query(
+    `
+    SELECT
+      id,
+      nomor_hp,
+      nama,
+      status,
+      must_change_pin,
+      tenant_id
+    FROM wali_akun
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [waliAkunId]
+  );
   return result.rows[0] || null;
-
 };
 
-// =====================
-// ANAK / SANTRI
-// =====================
-
-const getSantriIdsForPhone = async (
-  nomorHp
-) => {
-
-  const result =
-    await pool.query(
-
-      `
-      SELECT DISTINCT ws.santri_id
-      FROM wali_santri ws
-      INNER JOIN santri s
-        ON s.id = ws.santri_id
-      WHERE ws.nomor_hp = $1
-      ORDER BY ws.santri_id ASC
-      `,
-
-      [nomorHp]
-
-    );
-
-  return result.rows.map(
-    (row) => row.santri_id
+const getSantriIdsForPhone = async (nomorHp, tenantId) => {
+  const result = await pool.query(
+    `
+    SELECT DISTINCT ws.santri_id
+    FROM wali_santri ws
+    INNER JOIN santri s
+      ON s.id = ws.santri_id
+     AND s.tenant_id = $2
+    WHERE ws.nomor_hp = $1
+      AND ws.tenant_id = $2
+    ORDER BY ws.santri_id ASC
+    `,
+    [nomorHp, tenantId]
   );
-
+  return result.rows.map((row) => row.santri_id);
 };
 
-const getAnakList = async (
-  nomorHp
-) => {
-
-  const result =
-    await pool.query(
-
-      `
-      SELECT DISTINCT ON (s.id)
-        s.id AS santri_id,
-        s.nis,
-        s.nama,
-        s.foto,
-        k.nama_kelas
-      FROM wali_santri ws
-      INNER JOIN santri s
-        ON s.id = ws.santri_id
-      LEFT JOIN kelas k
-        ON k.id = s.kelas_id
-      WHERE ws.nomor_hp = $1
-      ORDER BY s.id ASC, ws.id DESC
-      `,
-
-      [nomorHp]
-
-    );
-
+const getAnakList = async (nomorHp, tenantId) => {
+  const result = await pool.query(
+    `
+    SELECT DISTINCT ON (s.id)
+      s.id AS santri_id,
+      s.nis,
+      s.nama,
+      s.foto,
+      k.nama_kelas
+    FROM wali_santri ws
+    INNER JOIN santri s
+      ON s.id = ws.santri_id
+     AND s.tenant_id = $2
+    LEFT JOIN kelas k
+      ON k.id = s.kelas_id
+     AND k.tenant_id = s.tenant_id
+    WHERE ws.nomor_hp = $1
+      AND ws.tenant_id = $2
+    ORDER BY s.id ASC, ws.id DESC
+    `,
+    [nomorHp, tenantId]
+  );
   return result.rows;
-
 };
 
-const ownsSantri = async (
-  nomorHp,
-  santriId
-) => {
-
-  const ids =
-    await getSantriIdsForPhone(
-      nomorHp
-    );
-
-  return ids.includes(
-    Number(santriId)
+const ownsSantri = async (nomorHp, santriId, tenantId) => {
+  const result = await pool.query(
+    `
+    SELECT 1
+    FROM wali_santri ws
+    INNER JOIN santri s
+      ON s.id = ws.santri_id
+     AND s.tenant_id = $3
+    WHERE ws.nomor_hp = $1
+      AND ws.santri_id = $2
+      AND ws.tenant_id = $3
+    LIMIT 1
+    `,
+    [nomorHp, santriId, tenantId]
   );
-
+  return result.rows.length > 0;
 };
 
-// =====================
-// JWT
-// =====================
-
-const signWaliToken = (
-  akun,
-  santriIds
-) => {
-
+const signWaliToken = (akun, santriIds, tenant) => {
   const payload = {
-
     typ: "wali",
-
     iss: "kliksantri-wali",
-
     sub: akun.nomor_hp,
-
     wali_akun_id: akun.id,
-
-    santri_ids: santriIds
-
+    nomor_hp: akun.nomor_hp,
+    tenant_id: tenant.id,
+    tenant_slug: tenant.slug,
+    santri_ids: santriIds,
   };
 
-  const token =
-    jwt.sign(
-      payload,
-      WALI_JWT_SECRET,
-      {
-        expiresIn: WALI_JWT_EXPIRES
-      }
-    );
-
-  return token;
-
+  return jwt.sign(payload, WALI_JWT_SECRET, {
+    expiresIn: WALI_JWT_EXPIRES,
+  });
 };
 
 const verifyWaliToken = (token) => {
-
-  const decoded =
-    jwt.verify(
-      token,
-      WALI_JWT_SECRET
-    );
-
-  if (
-    decoded.typ !== "wali"
-  ) {
-
-    throw new Error(
-      "Invalid token type"
-    );
-
+  const decoded = jwt.verify(token, WALI_JWT_SECRET);
+  if (decoded.typ !== "wali") {
+    throw new Error("Invalid token type");
   }
-
   return decoded;
-
 };
 
-// =====================
-// AUDIT
-// =====================
-
-const writeAudit = async ({
-  nomorHp,
-  event,
-  ipAddress,
-  userAgent
-}) => {
-
+const writeAudit = async ({ nomorHp, event, ipAddress, userAgent }) => {
   try {
-
     await pool.query(
-
       `
-      INSERT INTO wali_app_audit (
-        nomor_hp,
-        event,
-        ip_address,
-        user_agent
-      )
+      INSERT INTO wali_app_audit (nomor_hp, event, ip_address, user_agent)
       VALUES ($1, $2, $3, $4)
       `,
-
-      [
-        nomorHp || null,
-        event,
-        ipAddress || null,
-        userAgent || null
-      ]
-
+      [nomorHp || null, event, ipAddress || null, userAgent || null]
     );
-
+  } catch (err) {
+    console.log("WALI AUDIT ERROR:", err.message);
   }
-
-  catch (err) {
-
-    console.log(
-      "WALI AUDIT ERROR:",
-      err.message
-    );
-
-  }
-
 };
 
-// =====================
-// PROFILE BUILDERS
-// =====================
+const buildWaliProfile = (akun) => ({
+  nomor_hp: akun.nomor_hp,
+  nama: akun.nama || null,
+  must_change_pin: akun.must_change_pin === true,
+});
 
-const buildWaliProfile = (
-  akun
-) => {
-
-  return {
-
-    nomor_hp: akun.nomor_hp,
-
-    nama: akun.nama || null,
-
-    must_change_pin:
-      akun.must_change_pin === true
-
-  };
-
-};
-
-const buildLoginResponse = async (
-  akun
-) => {
-
-  const anak =
-    await getAnakList(
-      akun.nomor_hp
-    );
-
-  const santriIds =
-    anak.map(
-      (item) => item.santri_id
-    );
-
-  const token =
-    signWaliToken(
-      akun,
-      santriIds
-    );
+const buildLoginResponse = async (akun, tenant) => {
+  const anak = await getAnakList(akun.nomor_hp, tenant.id);
+  const santriIds = anak.map((item) => item.santri_id);
+  const token = signWaliToken(akun, santriIds, tenant);
 
   return {
-
     token,
-
     expires_in: WALI_JWT_EXPIRES,
-
-    wali:
-      buildWaliProfile(akun),
-
+    tenant: {
+      id: tenant.id,
+      slug: tenant.slug,
+      nama: tenant.nama,
+    },
+    wali: buildWaliProfile(akun),
     anak,
-
-    must_change_pin:
-      akun.must_change_pin === true
-
+    must_change_pin: akun.must_change_pin === true,
   };
-
 };
+
+/** Tenant-wide pesantren stats for wali dashboard hero strip. */
+async function getStatistikPesantren(tenantId) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      (
+        SELECT COUNT(*)::int
+        FROM santri
+        WHERE tenant_id = $1
+          AND LOWER(TRIM(COALESCE(status, 'aktif'))) = 'aktif'
+      ) AS total_santri_aktif,
+      (
+        SELECT COUNT(*)::int
+        FROM guru
+        WHERE tenant_id = $1
+      ) AS total_guru,
+      (
+        SELECT COUNT(*)::int
+        FROM kelas
+        WHERE tenant_id = $1
+      ) AS total_kelas
+    `,
+    [tenantId]
+  );
+
+  const row = rows[0] || {};
+
+  return {
+    total_santri_aktif: Number(row.total_santri_aktif) || 0,
+    total_guru: Number(row.total_guru) || 0,
+    total_kelas: Number(row.total_kelas) || 0,
+  };
+}
 
 module.exports = {
-
   normalizePhone,
   isValidPin,
   hashPin,
@@ -515,6 +306,6 @@ module.exports = {
   writeAudit,
   buildWaliProfile,
   buildLoginResponse,
-  WALI_JWT_SECRET
-
+  getStatistikPesantren,
+  WALI_JWT_SECRET,
 };

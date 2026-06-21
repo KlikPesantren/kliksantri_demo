@@ -2,8 +2,36 @@ const DEFAULT_TAGLINE = 'Portal Wali Santri';
 const DEFAULT_NAME = 'Pesantren';
 
 function trimUrl(value) {
-  const v = value?.trim();
+  const v = typeof value === 'string' ? value.trim() : value?.toString?.()?.trim?.();
   return v || null;
+}
+
+/** Raw logo path from profil pesantren — hero / branding priority order. */
+export function pickPesantrenLogoPath(pesantren) {
+  if (!pesantren) return null;
+  return (
+    trimUrl(pesantren.logo_url) ||
+    trimUrl(pesantren.logo) ||
+    trimUrl(pesantren.icon_url) ||
+    trimUrl(pesantren.splash_logo_url) ||
+    trimUrl(pesantren.app_icon_url) ||
+    null
+  );
+}
+
+/** Raw banner path — Admin preview & Wali hero both use banner_url. */
+export function pickPesantrenBannerPath(pesantren) {
+  if (!pesantren) return null;
+  if (pesantren.banner_active === false) return null;
+  return trimUrl(pesantren.banner_url);
+}
+
+/** Cache-bust token for media URLs — production uses updated_at; dev falls back to now. */
+export function resolveProfilCacheBust(pesantren) {
+  const updatedAt = pesantren?.updated_at;
+  if (updatedAt != null && updatedAt !== '') return updatedAt;
+  if (__DEV__) return Date.now();
+  return undefined;
 }
 
 export function resolveSplashLogoUrl(branding) {
@@ -45,5 +73,6 @@ export function normalizeBrandingCache(profil) {
     banner_url: profil.banner_url ?? null,
     banner_active: profil.banner_active !== false,
     tentang: profil.tentang ?? null,
+    updated_at: profil.updated_at ?? null,
   };
 }

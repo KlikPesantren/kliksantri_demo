@@ -1,82 +1,73 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   ScrollView,
   RefreshControl,
   View,
   StyleSheet,
-  Text,
 } from 'react-native';
 import { useActiveChild } from '../../context/ActiveChildContext';
+import { useAuth } from '../../context/AuthContext';
 import { useDashboard } from '../../hooks/useDashboard';
 import { usePengumuman } from '../../hooks/usePengumuman';
 import { useProfilPesantren } from '../../hooks/useProfilPesantren';
-import { TabPesantrenHeader } from '../../components/home/TabPesantrenHeader';
-import { HomeCarousel } from '../../components/home/HomeCarousel';
+import { SantriHeroCard } from '../../components/home/SantriHeroCard';
+import { PesantrenImageCard } from '../../components/home/PesantrenImageCard';
 import { QuickAccessGrid } from '../../components/home/QuickAccessGrid';
 import { StatusHariIni } from '../../components/home/StatusHariIni';
 import { PengumumanTerbaruList } from '../../components/home/PengumumanTerbaruList';
-import { PengumumanHomeEmpty } from '../../components/home/PengumumanHomeEmpty';
 import {
   ScreenContainer,
-  AppText,
   SectionHeading,
   EmptyState,
 } from '../../components/ui';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ErrorView } from '../../components/common/ErrorView';
-import { PengumumanDetailModal } from '../../components/pengumuman/PengumumanDetailModal';
 import { colors } from '../../constants/colors';
-import { spacing, tabBarScrollInset } from '../../constants/theme';
-
-function santriFirstName(nama) {
-  if (!nama) return '';
-  return nama.trim().split(/\s+/)[0] ?? nama;
-}
-
-function HomeGreeting({ activeChild }) {
-  const firstName = santriFirstName(activeChild?.nama);
-
-  return (
-    <View style={styles.greeting}>
-      <AppText variant="caption" color="secondary">
-        Assalamu&apos;alaikum
-      </AppText>
-      <Text style={styles.greetingLine}>
-        <Text style={styles.greetingPrefix}>Bapak/Ibu, </Text>
-        <Text style={styles.greetingName}>{firstName || '—'}</Text>
-      </Text>
-    </View>
-  );
-}
+import { getTabBarScrollInset, spacing } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function DashboardScreen({ navigation: tabNavigation }) {
+  const insets = useSafeAreaInsets();
   const { activeSantriId, activeChild } = useActiveChild();
+  const { wali, anak } = useAuth();
   const { data, isLoading, error, refresh } = useDashboard(activeSantriId);
   const { data: pengumuman, refresh: refreshPengumuman } = usePengumuman();
   const { data: pesantren, refresh: refreshPesantren } = useProfilPesantren();
-  const [detailItem, setDetailItem] = React.useState(null);
 
   const hasPengumuman = (pengumuman?.length ?? 0) > 0;
-
-  function renderPengumumanSection() {
-    if (hasPengumuman) {
-      return (
-        <PengumumanTerbaruList
-          items={pengumuman}
-          onItemPress={setDetailItem}
-          onLihatSemua={() => tabNavigation.navigate('Pengumuman')}
-        />
-      );
+  const showGanti = anak.length > 1;
+  const handleGantiAnak = () => {
+    const parent = tabNavigation.getParent?.();
+    if (parent) {
+      parent.navigate('AnakPilih');
+      return;
     }
-    return <PengumumanHomeEmpty />;
-  }
+    tabNavigation.navigate('AnakPilih');
+  };
 
-  const header = <TabPesantrenHeader />;
+  const statistikPesantren = data?.statistik_pesantren;
+
+  useEffect(() => {
+    console.log('[DashboardScreen] dashboard loaded:', Boolean(data));
+    console.log('[DashboardScreen] statistik_pesantren prop:', JSON.stringify(statistikPesantren));
+    if (data && statistikPesantren == null) {
+      console.log('[DashboardScreen] dashboard keys:', Object.keys(data));
+    }
+  }, [data, statistikPesantren]);
+
+  const heroHeader = (
+    <SantriHeroCard
+      activeChild={activeChild}
+      dashboardProfil={data?.profil}
+      wali={wali}
+      onGantiPress={showGanti ? handleGantiAnak : undefined}
+    />
+  );
 
   if (!activeSantriId) {
     return (
       <ScreenContainer style={styles.screen} edges={false}>
-        {header}
+        {heroHeader}
         <EmptyState title="Pilih Anak" description="Tidak ada santri yang dipilih." />
       </ScreenContainer>
     );
@@ -85,7 +76,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
   if (isLoading && !data) {
     return (
       <ScreenContainer style={styles.screen} edges={false}>
-        {header}
+        {heroHeader}
         <LoadingSpinner message="Memuat beranda..." />
       </ScreenContainer>
     );
@@ -94,7 +85,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
   if (error && !data) {
     return (
       <ScreenContainer style={styles.screen} edges={false}>
-        {header}
+        {heroHeader}
         <ErrorView message={error} onRetry={refresh} />
       </ScreenContainer>
     );
@@ -102,11 +93,9 @@ export function DashboardScreen({ navigation: tabNavigation }) {
 
   return (
     <ScreenContainer style={styles.screen} edges={false}>
-      {header}
-
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: getTabBarScrollInset(insets) }]}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -120,12 +109,16 @@ export function DashboardScreen({ navigation: tabNavigation }) {
           />
         }
       >
-        <HomeGreeting activeChild={activeChild} />
+        <SantriHeroCard
+          activeChild={activeChild}
+          dashboardProfil={data?.profil}
+          wali={wali}
+          onGantiPress={showGanti ? handleGantiAnak : undefined}
+        />
 
-        <HomeCarousel
+        <PesantrenImageCard
           pesantren={pesantren}
-          pengumuman={pengumuman}
-          onPengumumanPress={setDetailItem}
+          statistik={statistikPesantren}
         />
 
         <StatusHariIni
@@ -133,53 +126,33 @@ export function DashboardScreen({ navigation: tabNavigation }) {
           onLihatSemua={() => tabNavigation.navigate('Monitoring')}
         />
 
-        <SectionHeading title="Menu Utama" />
+        <SectionHeading
+          title="Menu Utama"
+          actionLabel="Lihat Semua Menu"
+          onAction={() => tabNavigation.navigate('Monitoring')}
+        />
         <QuickAccessGrid navigation={tabNavigation} />
 
-        {renderPengumumanSection()}
+        {hasPengumuman ? (
+          <PengumumanTerbaruList
+            items={pengumuman}
+            onItemPress={() => tabNavigation.navigate('Pengumuman')}
+            onLihatSemua={() => tabNavigation.navigate('Pengumuman')}
+          />
+        ) : null}
 
         <View style={styles.bottomPad} />
       </ScrollView>
-
-      <PengumumanDetailModal
-        visible={!!detailItem}
-        item={detailItem}
-        onClose={() => setDetailItem(null)}
-      />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: '#F3F4F6',
   },
   scroll: {
-    paddingTop: spacing.sm,
-    paddingBottom: tabBarScrollInset,
-  },
-  greeting: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    gap: 2,
-  },
-  greetingLine: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  greetingPrefix: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  greetingName: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: colors.primary,
+    overflow: 'visible',
   },
   bottomPad: {
     height: spacing.lg,

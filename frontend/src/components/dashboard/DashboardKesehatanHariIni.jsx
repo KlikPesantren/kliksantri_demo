@@ -10,7 +10,7 @@ export default function DashboardKesehatanHariIni({ summary }) {
   const perlu = summary?.kesehatan_perlu_tindak_lanjut ?? 0;
 
   return (
-    <Card padding="md" shadow="card" border={false} radius="xl" style={{ marginBottom: "var(--space-6)" }}>
+    <Card padding="md" shadow="card" border={false} radius="xl" style={{ marginBottom: 0 }}>
       <SectionHeading variant="eyebrow" spacing="first">
         Kesehatan Hari Ini
       </SectionHeading>

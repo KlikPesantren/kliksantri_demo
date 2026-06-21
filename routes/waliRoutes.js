@@ -1,559 +1,268 @@
-console.log(
-  "WALI ROUTES LOADED"
-);
+console.log("WALI ROUTES LOADED");
 
-const express =
-require("express");
-
-const router =
-express.Router();
-
-const pool =
-require("../db");
-
-const bcrypt =
-require("bcryptjs");
-
-const waliAppService =
-require("../services/waliAppService");
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const bcrypt = require("bcryptjs");
+const tenantMiddleware = require("../middleware/tenantMiddleware");
+const waliAppService = require("../services/waliAppService");
+const { assertSantriInTenant } = require("../services/tenantScope");
 
 const DEFAULT_PIN = "456789";
+const withTenant = [tenantMiddleware];
 
-// ======================
-// GET ALL WALI
-// ======================
+router.get("/", ...withTenant, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         wali_santri.*,
+         santri.nama AS nama_santri
+       FROM wali_santri
+       LEFT JOIN santri
+         ON wali_santri.santri_id = santri.id
+        AND santri.tenant_id = wali_santri.tenant_id
+       WHERE wali_santri.tenant_id = $1
+       ORDER BY wali_santri.id DESC`,
+      [req.tenantId]
+    );
 
-router.get(
-
-  "/",
-
-  async (req, res) => {
-
-    try {
-
-      const result =
-
-        await pool.query(
-
-          `
-
-          SELECT
-
-            wali_santri.*,
-
-            santri.nama
-            AS nama_santri
-
-          FROM wali_santri
-
-          LEFT JOIN santri
-
-          ON wali_santri.santri_id =
-          santri.id
-
-          ORDER BY wali_santri.id DESC
-
-          `
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
+router.post("/", ...withTenant, async (req, res) => {
+  const client = await pool.connect();
 
-// ======================
-// CREATE WALI
-// ======================
+  try {
+    const { nama, nomor_hp, alamat, santri_id } = req.body;
 
-router.post(
-
-  "/",
-
-  async (req, res) => {
-
-    const client =
-      await pool.connect();
-
-    try {
-
-      const {
-
-        nama,
-        nomor_hp,
-        alamat,
-        santri_id
-
-      } = req.body;
-
-      // Normalisasi ke format 08xxx sebelum disimpan
-      const normalizedHp =
-        waliAppService.normalizePhone(nomor_hp);
-
-      if (!normalizedHp) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error: "Nomor HP tidak valid"
-
-        });
-
-      }
-
-      await client.query("BEGIN");
-
-      // 1. Insert ke wali_santri (relasi data santri)
-      const result =
-
-        await client.query(
-
-          `
-          INSERT INTO wali_santri (
-            nama,
-            nomor_hp,
-            alamat,
-            santri_id
-          )
-          VALUES ($1,$2,$3,$4)
-          RETURNING *
-          `,
-
-          [
-            nama,
-            normalizedHp,
-            alamat,
-            santri_id
-          ]
-
-        );
-
-      // 2. Upsert ke wali_akun dengan PIN default
-      // ON CONFLICT DO UPDATE: jika nomor sudah ada, nama ikut diperbarui
-      // PIN lama dipertahankan (tidak ditimpa) dengan EXCLUDED.pin_hash hanya jika baru
-      const pinHash =
-        await bcrypt.hash(
-          DEFAULT_PIN,
-          10
-        );
-
-      await client.query(
-
-        `
-        INSERT INTO wali_akun (
-          nomor_hp,
-          nama,
-          pin_hash,
-          status,
-          must_change_pin
-        )
-        VALUES ($1, $2, $3, 'active', true)
-        ON CONFLICT (nomor_hp) DO UPDATE SET
-          nama       = EXCLUDED.nama,
-          updated_at = NOW()
-        `,
-
-        [
-          normalizedHp,
-          nama,
-          pinHash
-        ]
-
-      );
-
-      await client.query("COMMIT");
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows[0]
-
-      });
-
+    const normalizedHp = waliAppService.normalizePhone(nomor_hp);
+    if (!normalizedHp) {
+      return res.status(400).json({ success: false, error: "Nomor HP tidak valid" });
     }
 
-    catch (err) {
+    const santriCheck = await assertSantriInTenant(req.tenantId, santri_id, client);
+    if (!santriCheck.ok) {
+      return res.status(400).json({ success: false, error: santriCheck.error });
+    }
 
+    await client.query("BEGIN");
+
+    const result = await client.query(
+      `INSERT INTO wali_santri (nama, nomor_hp, alamat, santri_id, tenant_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [nama, normalizedHp, alamat, santri_id, req.tenantId]
+    );
+
+    const pinHash = await bcrypt.hash(DEFAULT_PIN, 10);
+
+    await client.query(
+      `INSERT INTO wali_akun (tenant_id, nomor_hp, nama, pin_hash, status, must_change_pin)
+       VALUES ($1, $2, $3, $4, 'active', true)
+       ON CONFLICT (tenant_id, nomor_hp) DO UPDATE SET
+         nama       = EXCLUDED.nama,
+         updated_at = NOW()`,
+      [req.tenantId, normalizedHp, nama, pinHash]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+router.put("/:id", ...withTenant, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { id } = req.params;
+    const { nama, nomor_hp, alamat, santri_id } = req.body;
+
+    const normalizedHp = waliAppService.normalizePhone(nomor_hp);
+    if (!normalizedHp) {
+      return res.status(400).json({ success: false, error: "Nomor HP tidak valid" });
+    }
+
+    const santriCheck = await assertSantriInTenant(req.tenantId, santri_id, client);
+    if (!santriCheck.ok) {
+      return res.status(400).json({ success: false, error: santriCheck.error });
+    }
+
+    await client.query("BEGIN");
+
+    const oldResult = await client.query(
+      `SELECT nomor_hp FROM wali_santri WHERE id = $1 AND tenant_id = $2`,
+      [id, req.tenantId]
+    );
+
+    if (oldResult.rows.length === 0) {
       await client.query("ROLLBACK");
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
+      return res.status(404).json({ success: false, error: "Wali tidak ditemukan" });
     }
 
-    finally {
+    const oldHp = oldResult.rows[0].nomor_hp;
 
-      client.release();
+    const result = await client.query(
+      `UPDATE wali_santri
+       SET nama = $1, nomor_hp = $2, alamat = $3, santri_id = $4
+       WHERE id = $5 AND tenant_id = $6
+       RETURNING *`,
+      [nama, normalizedHp, alamat, santri_id, id, req.tenantId]
+    );
 
+    if (oldHp && oldHp !== normalizedHp) {
+      await client.query(
+        `UPDATE wali_akun
+         SET nomor_hp = $1, nama = $2, updated_at = NOW()
+         WHERE nomor_hp = $3 AND tenant_id = $4`,
+        [normalizedHp, nama, oldHp, req.tenantId]
+      );
     }
 
+    const pinHash = await bcrypt.hash(DEFAULT_PIN, 10);
+
+    await client.query(
+      `INSERT INTO wali_akun (tenant_id, nomor_hp, nama, pin_hash, status, must_change_pin)
+       VALUES ($1, $2, $3, $4, 'active', true)
+       ON CONFLICT (tenant_id, nomor_hp) DO UPDATE SET
+         nama       = EXCLUDED.nama,
+         updated_at = NOW()`,
+      [req.tenantId, normalizedHp, nama, pinHash]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
   }
+});
 
-);
+router.post("/sync-akun", ...withTenant, async (req, res) => {
+  try {
+    const waliList = await pool.query(
+      `SELECT id, nomor_hp, nama
+       FROM wali_santri
+       WHERE tenant_id = $1
+         AND nomor_hp IS NOT NULL
+         AND TRIM(nomor_hp) <> ''
+       ORDER BY id ASC`,
+      [req.tenantId]
+    );
 
-// ======================
-// UPDATE WALI
-// ======================
+    let created = 0;
+    let updated = 0;
 
-router.put(
-
-  "/:id",
-
-  async (req, res) => {
-
-    const client = await pool.connect();
-
-    try {
-
-      const { id } = req.params;
-
-      const {
-        nama,
-        nomor_hp,
-        alamat,
-        santri_id
-      } = req.body;
-
-      const normalizedHp =
-        waliAppService.normalizePhone(nomor_hp);
-
-      if (!normalizedHp) {
-        return res.status(400).json({
-          success: false,
-          error: "Nomor HP tidak valid"
-        });
-      }
-
-      await client.query("BEGIN");
-
-      // Ambil nomor HP lama sebelum diubah
-      const oldResult = await client.query(
-        "SELECT nomor_hp FROM wali_santri WHERE id = $1",
-        [id]
-      );
-      const oldHp = oldResult.rows[0]?.nomor_hp || null;
-
-      // Update wali_santri
-      const result = await client.query(
-        `UPDATE wali_santri
-         SET nama = $1, nomor_hp = $2, alamat = $3, santri_id = $4
-         WHERE id = $5
-         RETURNING *`,
-        [nama, normalizedHp, alamat, santri_id, id]
-      );
-
-      // Jika nomor HP berubah, rename di wali_akun
-      if (oldHp && oldHp !== normalizedHp) {
-        await client.query(
-          `UPDATE wali_akun
-           SET nomor_hp = $1, nama = $2, updated_at = NOW()
-           WHERE nomor_hp = $3`,
-          [normalizedHp, nama, oldHp]
-        );
-      }
-
-      // UPSERT wali_akun dengan nomor HP baru
-      // - Jika belum ada akun → buat akun dengan PIN default
-      // - Jika sudah ada → update nama saja (PIN tidak ditimpa)
+    for (const wali of waliList.rows) {
       const pinHash = await bcrypt.hash(DEFAULT_PIN, 10);
 
-      await client.query(
-        `INSERT INTO wali_akun (nomor_hp, nama, pin_hash, status, must_change_pin)
-         VALUES ($1, $2, $3, 'active', true)
-         ON CONFLICT (nomor_hp) DO UPDATE SET
+      const result = await pool.query(
+        `INSERT INTO wali_akun (tenant_id, nomor_hp, nama, pin_hash, status, must_change_pin)
+         VALUES ($1, $2, $3, $4, 'active', true)
+         ON CONFLICT (tenant_id, nomor_hp) DO UPDATE SET
            nama       = EXCLUDED.nama,
-           updated_at = NOW()`,
-        [normalizedHp, nama, pinHash]
+           updated_at = NOW()
+         RETURNING (xmax = 0) AS is_insert`,
+        [req.tenantId, wali.nomor_hp, wali.nama, pinHash]
       );
 
-      await client.query("COMMIT");
-
-      res.json({
-        success: true,
-        data: result.rows[0]
-      });
-
-    }
-
-    catch (err) {
-
-      await client.query("ROLLBACK");
-
-      console.log(err);
-
-      res.status(500).json({
-        success: false,
-        error: err.message
-      });
-
-    }
-
-    finally {
-      client.release();
-    }
-
-  }
-
-);
-
-// ======================
-// SYNC AKUN
-// POST /wali/sync-akun
-// Sinkronisasi seluruh wali_santri → wali_akun
-// ======================
-
-router.post(
-
-  "/sync-akun",
-
-  async (req, res) => {
-
-    try {
-
-      // Ambil semua wali_santri dengan nomor HP valid
-      const waliList = await pool.query(
-        `SELECT id, nomor_hp, nama
-         FROM wali_santri
-         WHERE nomor_hp IS NOT NULL
-           AND TRIM(nomor_hp) <> ''
-         ORDER BY id ASC`
-      );
-
-      let created = 0;
-      let updated = 0;
-
-      for (const wali of waliList.rows) {
-
-        const pinHash = await bcrypt.hash(DEFAULT_PIN, 10);
-
-        const result = await pool.query(
-          `INSERT INTO wali_akun (nomor_hp, nama, pin_hash, status, must_change_pin)
-           VALUES ($1, $2, $3, 'active', true)
-           ON CONFLICT (nomor_hp) DO UPDATE SET
-             nama       = EXCLUDED.nama,
-             updated_at = NOW()
-           RETURNING (xmax = 0) AS is_insert`,
-          [wali.nomor_hp, wali.nama, pinHash]
-        );
-
-        // xmax = 0 → baris baru (INSERT), xmax != 0 → update
-        if (result.rows[0]?.is_insert) {
-          created++;
-        } else {
-          updated++;
-        }
-
+      if (result.rows[0]?.is_insert) {
+        created++;
+      } else {
+        updated++;
       }
-
-      res.json({
-        success: true,
-        total:   waliList.rows.length,
-        created,
-        updated
-      });
-
     }
 
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-        success: false,
-        error: err.message
-      });
-
-    }
-
+    res.json({
+      success: true,
+      total: waliList.rows.length,
+      created,
+      updated,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
+router.delete("/:id", ...withTenant, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM wali_santri
+       WHERE id = $1 AND tenant_id = $2
+       RETURNING id`,
+      [req.params.id, req.tenantId]
+    );
 
-// ======================
-// DELETE WALI
-// ======================
-
-router.delete(
-
-  "/:id",
-
-  async (req, res) => {
-
-    try {
-
-      const {
-
-        id
-
-      } = req.params;
-
-      await pool.query(
-
-        `
-
-        DELETE FROM wali_santri
-
-        WHERE id = $1
-
-        `,
-
-        [id]
-
-      );
-
-      res.json({
-
-        success: true,
-
-        message:
-          "Wali deleted"
-
-      });
-
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Wali tidak ditemukan" });
     }
 
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
+    res.json({ success: true, message: "Wali deleted" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
+router.put("/:id/reset-pin", ...withTenant, async (req, res) => {
+  try {
+    const { id } = req.params;
 
-// ======================
-// RESET PIN WALI
-// PUT /wali/:id/reset-pin
-// ======================
+    const waliResult = await pool.query(
+      `SELECT nomor_hp FROM wali_santri WHERE id = $1 AND tenant_id = $2`,
+      [id, req.tenantId]
+    );
 
-router.put(
-
-  "/:id/reset-pin",
-
-  async (req, res) => {
-
-    try {
-
-      const { id } = req.params;
-
-      // Ambil nomor_hp dari wali_santri
-      const waliResult =
-        await pool.query(
-          `SELECT nomor_hp FROM wali_santri WHERE id = $1`,
-          [id]
-        );
-
-      if (waliResult.rows.length === 0) {
-
-        return res.status(404).json({
-          success: false,
-          error: "Data wali tidak ditemukan"
-        });
-
-      }
-
-      const nomor_hp =
-        waliResult.rows[0].nomor_hp;
-
-      const newHash =
-        await bcrypt.hash(DEFAULT_PIN, 10);
-
-      const updated =
-        await pool.query(
-
-          `
-          UPDATE wali_akun
-          SET
-            pin_hash = $1,
-            must_change_pin = true,
-            failed_attempts = 0,
-            locked_until = NULL,
-            updated_at = NOW()
-          WHERE nomor_hp = $2
-          RETURNING id, nomor_hp, must_change_pin
-          `,
-
-          [newHash, nomor_hp]
-
-        );
-
-      if (updated.rows.length === 0) {
-
-        return res.status(404).json({
-          success: false,
-          error: "Akun wali tidak ditemukan. Wali belum punya akun login."
-        });
-
-      }
-
-      res.json({
-        success: true,
-        message: `PIN berhasil direset ke ${DEFAULT_PIN}`,
-        data: updated.rows[0]
-      });
-
+    if (waliResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Data wali tidak ditemukan" });
     }
 
-    catch (err) {
+    const nomor_hp = waliResult.rows[0].nomor_hp;
+    const newHash = await bcrypt.hash(DEFAULT_PIN, 10);
 
-      console.log(err);
+    const updated = await pool.query(
+      `UPDATE wali_akun
+       SET pin_hash = $1,
+           must_change_pin = true,
+           failed_attempts = 0,
+           locked_until = NULL,
+           updated_at = NOW()
+       WHERE nomor_hp = $2 AND tenant_id = $3
+       RETURNING id, nomor_hp, must_change_pin`,
+      [newHash, nomor_hp, req.tenantId]
+    );
 
-      res.status(500).json({
+    if (updated.rows.length === 0) {
+      return res.status(404).json({
         success: false,
-        error: err.message
+        error: "Akun wali tidak ditemukan. Wali belum punya akun login.",
       });
-
     }
 
+    res.json({
+      success: true,
+      message: `PIN berhasil direset ke ${DEFAULT_PIN}`,
+      data: updated.rows[0],
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-);
-
-module.exports =
-router;
+module.exports = router;

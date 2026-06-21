@@ -6,17 +6,22 @@ const KEYS = {
   ANAK: 'wali_anak',
   SANTRI_IDS: 'wali_santri_ids',
   ACTIVE_SANTRI: 'active_santri_id',
+  TENANT_SLUG: 'wali_tenant_slug',
   PESANTREN_BRANDING: 'pesantren_branding',
 };
 
 export const storage = {
-  async saveSession(token, wali, anak, santriIds) {
-    await AsyncStorage.multiSet([
+  async saveSession(token, wali, anak, santriIds, tenantSlug) {
+    const pairs = [
       [KEYS.TOKEN, token],
       [KEYS.WALI, JSON.stringify(wali)],
       [KEYS.ANAK, JSON.stringify(anak)],
       [KEYS.SANTRI_IDS, JSON.stringify(santriIds)],
-    ]);
+    ];
+    if (tenantSlug) {
+      pairs.push([KEYS.TENANT_SLUG, tenantSlug]);
+    }
+    await AsyncStorage.multiSet(pairs);
   },
 
   async getToken() {
@@ -47,6 +52,17 @@ export const storage = {
     await AsyncStorage.setItem(KEYS.ACTIVE_SANTRI, String(id));
   },
 
+  async getTenantSlug() {
+    const slug = await AsyncStorage.getItem(KEYS.TENANT_SLUG);
+    return slug || 'default';
+  },
+
+  async setTenantSlug(slug) {
+    if (slug) {
+      await AsyncStorage.setItem(KEYS.TENANT_SLUG, slug);
+    }
+  },
+
   async clearSession() {
     await AsyncStorage.multiRemove([
       KEYS.TOKEN,
@@ -54,6 +70,7 @@ export const storage = {
       KEYS.ANAK,
       KEYS.SANTRI_IDS,
       KEYS.ACTIVE_SANTRI,
+      KEYS.TENANT_SLUG,
     ]);
   },
 
@@ -68,6 +85,7 @@ export const storage = {
       banner_url: profil.banner_url ?? null,
       banner_active: profil.banner_active !== false,
       tentang: profil.tentang ?? null,
+      updated_at: profil.updated_at ?? null,
     };
     await AsyncStorage.setItem(KEYS.PESANTREN_BRANDING, JSON.stringify(payload));
   },

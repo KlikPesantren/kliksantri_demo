@@ -17,4 +17,6 @@ export const ENDPOINTS = {
   PENGUMUMAN: '/wali-app/pengumuman',
   PROFIL_PESANTREN: '/wali-app/profil-pesantren',
   CHANGE_PIN: '/wali-app/pin',
+  PUSH_TOKEN: '/wali-app/push-token',
+  TEST_NOTIFICATION: '/wali-app/test-notification',
 };

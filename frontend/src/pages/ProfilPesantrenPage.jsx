@@ -38,6 +38,28 @@ import { resolveDisplayMediaUrl } from "../utils/mediaUrl";
 
 
 
+const CURRENT_YEAR = new Date().getFullYear();
+
+
+
+function parseTahunBerdiriForm(value) {
+
+  if (value == null || value === "") return { value: null };
+
+  const n = Number(String(value).trim());
+
+  if (!Number.isInteger(n) || n < 1800 || n > CURRENT_YEAR) {
+
+    return { error: `Tahun berdiri harus 4 digit antara 1800 dan ${CURRENT_YEAR}.` };
+
+  }
+
+  return { value: n };
+
+}
+
+
+
 const EMPTY_FORM = {
 
   nama_pesantren: "",
@@ -49,6 +71,8 @@ const EMPTY_FORM = {
   email: "",
 
   website: "",
+
+  tahun_berdiri: "",
 
   logo_url: "",
 
@@ -133,6 +157,18 @@ function BannerPreview({ bannerUrl, bannerActive, name, address }) {
 
           )}
 
+          {hasImage && bannerActive ? (
+
+            <div style={overlayStyle}>
+
+              <div style={overlayTitleStyle}>{name || "Nama Pesantren"}</div>
+
+              {address ? <div style={overlaySubStyle}>{address}</div> : null}
+
+            </div>
+
+          ) : null}
+
         </div>
 
       </div>
@@ -215,6 +251,8 @@ function ProfilPesantrenPage() {
 
           website: d.website ?? "",
 
+          tahun_berdiri: d.tahun_berdiri != null ? String(d.tahun_berdiri) : "",
+
           logo_url: d.logo_url ?? "",
 
           banner_url: d.banner_url ?? "",
@@ -263,6 +301,18 @@ function ProfilPesantrenPage() {
 
 
 
+  useEffect(() => {
+
+    if (form.banner_url) {
+
+      console.log("[ADMIN FORM banner_url AFTER UPLOAD]", form.banner_url);
+
+    }
+
+  }, [form.banner_url]);
+
+
+
   const save = async () => {
 
     if (!form.nama_pesantren.trim()) {
@@ -280,6 +330,18 @@ function ProfilPesantrenPage() {
     setError(null);
 
     try {
+
+      const parsedTahun = parseTahunBerdiriForm(form.tahun_berdiri);
+
+      if (parsedTahun.error) {
+
+        alert(parsedTahun.error);
+
+        setSaving(false);
+
+        return;
+
+      }
 
       const payload = {
 
@@ -311,11 +373,15 @@ function ProfilPesantrenPage() {
 
         website: form.website || null,
 
+        tahun_berdiri: parsedTahun.value,
+
       };
 
-      await api.put("/profil-pesantren", payload);
+      console.log("[ADMIN SAVE PAYLOAD banner_url]", payload.banner_url);
 
-      updateLocal(payload);
+      const res = await api.put("/profil-pesantren", payload);
+
+      updateLocal(res.data?.data ?? payload);
 
       setSaved(true);
 
@@ -466,6 +532,32 @@ function ProfilPesantrenPage() {
                     placeholder="Alamat lengkap pesantren"
 
                     rows={3}
+
+                  />
+
+                </FormField>
+
+                <FormField label="Tahun Berdiri" htmlFor="profil-tahun-berdiri">
+
+                  <Input
+
+                    id="profil-tahun-berdiri"
+
+                    type="number"
+
+                    inputMode="numeric"
+
+                    min={1800}
+
+                    max={CURRENT_YEAR}
+
+                    value={form.tahun_berdiri}
+
+                    onChange={set("tahun_berdiri")}
+
+                    placeholder="1998"
+
+                    maxLength={4}
 
                   />
 
@@ -987,6 +1079,8 @@ const desktopImageStyle = {
 
 const mobileFrameStyle = {
 
+  position: "relative",
+
   width: "100%",
 
   maxWidth: 320,
@@ -1023,15 +1117,19 @@ const overlayStyle = {
 
   position: "absolute",
 
-  left: 0,
-
-  right: 0,
-
-  bottom: 0,
+  inset: 0,
 
   padding: "16px",
 
-  background: "linear-gradient(transparent, rgba(22, 163, 74, 0.75))",
+  display: "flex",
+
+  flexDirection: "column",
+
+  justifyContent: "flex-end",
+
+  background: "linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, transparent 100%)",
+
+  pointerEvents: "none",
 
 };
 

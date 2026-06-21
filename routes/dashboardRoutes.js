@@ -16,35 +16,36 @@ router.get(
 
     try {
 
+      const tenantId = req.tenantId;
+      const bulanIni = new Date().getMonth() + 1;
+      const tahunIni = new Date().getFullYear();
+
       const santri =
         await pool.query(
-          `SELECT COUNT(*) AS total FROM santri`
+          `SELECT COUNT(*) AS total FROM santri WHERE tenant_id = $1`,
+          [tenantId]
         );
 
       const kelas =
         await pool.query(
-          `SELECT COUNT(*) AS total FROM kelas`
+          `SELECT COUNT(*) AS total FROM kelas WHERE tenant_id = $1`,
+          [tenantId]
         );
 
       const wali =
         await pool.query(
-          `SELECT COUNT(*) AS total FROM wali_santri`
+          `SELECT COUNT(*) AS total FROM wali_santri WHERE tenant_id = $1`,
+          [tenantId]
         );
 
       const saldo =
         await pool.query(
-
           `
-
-          SELECT COALESCE(
-            SUM(saldo),
-            0
-          ) AS total_saldo
-
+          SELECT COALESCE(SUM(saldo), 0) AS total_saldo
           FROM santri
-
-          `
-
+          WHERE tenant_id = $1
+          `,
+          [tenantId]
         );
 
 
@@ -54,31 +55,23 @@ router.get(
 
       const hadirSantri =
         await pool.query(
-
           `
-
           SELECT COUNT(*) AS total
-
           FROM absensi
-
-          WHERE status = 'H'
-             OR status = 'Hadir'
-
-          `
-
+          WHERE tenant_id = $1
+            AND (status = 'H' OR status = 'Hadir')
+          `,
+          [tenantId]
         );
 
       const totalAbsensi =
         await pool.query(
-
           `
-
           SELECT COUNT(*) AS total
-
           FROM absensi
-
-          `
-
+          WHERE tenant_id = $1
+          `,
+          [tenantId]
         );
 
       // ======================
@@ -87,26 +80,12 @@ router.get(
 
       const totalHafalan =
         await pool.query(
-
           `
-
           SELECT COUNT(*) AS total
-
           FROM hafalan
-
-          WHERE bulan = $1
-            AND tahun = $2
-
+          WHERE tenant_id = $1 AND bulan = $2 AND tahun = $3
           `,
-
-          [
-
-            new Date().getMonth() + 1,
-
-            new Date().getFullYear()
-
-          ]
-
+          [tenantId, bulanIni, tahunIni]
         );
 
       // ======================
@@ -115,29 +94,12 @@ router.get(
 
       const rataNilai =
         await pool.query(
-
           `
-
-          SELECT COALESCE(
-            AVG(nilai),
-            0
-          ) AS rata
-
+          SELECT COALESCE(AVG(nilai), 0) AS rata
           FROM nilai_mingguan
-
-          WHERE bulan = $1
-            AND tahun = $2
-
+          WHERE tenant_id = $1 AND bulan = $2 AND tahun = $3
           `,
-
-          [
-
-            new Date().getMonth() + 1,
-
-            new Date().getFullYear()
-
-          ]
-
+          [tenantId, bulanIni, tahunIni]
         );
 
       // ======================
@@ -150,44 +112,25 @@ router.get(
 
         const guruHadir =
           await pool.query(
-
             `
-
-            SELECT COALESCE(
-              SUM(total_hadir),
-              0
-            ) AS total
-
+            SELECT COALESCE(SUM(total_hadir), 0) AS total
             FROM absensi_guru
-
-            `
-
+            WHERE tenant_id = $1
+            `,
+            [tenantId]
           );
 
         const guruTotal =
           await pool.query(
-
             `
-
             SELECT COALESCE(
-
-              SUM(
-
-                total_hadir +
-                total_izin +
-                total_sakit +
-                total_alfa
-
-              ),
-
+              SUM(total_hadir + total_izin + total_sakit + total_alfa),
               0
-
             ) AS total
-
             FROM absensi_guru
-
-            `
-
+            WHERE tenant_id = $1
+            `,
+            [tenantId]
           );
 
         persentaseGuru =
@@ -260,103 +203,48 @@ router.get(
 
 const belumKembali =
   await pool.query(
-
     `
-
     SELECT COUNT(*) AS total
-
     FROM perizinan
-
-    WHERE status = 'keluar'
-
-    `
-
+    WHERE tenant_id = $1 AND status = 'keluar'
+    `,
+    [tenantId]
   );
-
-  // ======================
-// PERIZINAN BULAN INI
-// ======================
 
 const totalPerizinan =
   await pool.query(
-
     `
-
     SELECT COUNT(*) AS total
-
     FROM perizinan
-
-    WHERE EXTRACT(MONTH FROM tanggal) = $1
-      AND EXTRACT(YEAR FROM tanggal) = $2
-
+    WHERE tenant_id = $1
+      AND EXTRACT(MONTH FROM tanggal) = $2
+      AND EXTRACT(YEAR FROM tanggal) = $3
     `,
-
-    [
-
-      new Date().getMonth() + 1,
-
-      new Date().getFullYear()
-
-    ]
-
+    [tenantId, bulanIni, tahunIni]
   );
-
-  // ======================
-// PELANGGARAN BULAN INI
-// ======================
 
 const totalPelanggaran =
   await pool.query(
-
     `
-
     SELECT COUNT(*) AS total
-
     FROM pelanggaran
-
-    WHERE EXTRACT(MONTH FROM tanggal) = $1
-      AND EXTRACT(YEAR FROM tanggal) = $2
-
+    WHERE tenant_id = $1
+      AND EXTRACT(MONTH FROM tanggal) = $2
+      AND EXTRACT(YEAR FROM tanggal) = $3
     `,
-
-    [
-
-      new Date().getMonth() + 1,
-
-      new Date().getFullYear()
-
-    ]
-
+    [tenantId, bulanIni, tahunIni]
   );
-
-  // ======================
-// SANTRI MELANGGAR
-// ======================
 
 const santriMelanggar =
   await pool.query(
-
     `
-
-    SELECT COUNT(
-      DISTINCT santri_id
-    ) AS total
-
+    SELECT COUNT(DISTINCT santri_id) AS total
     FROM pelanggaran
-
-    WHERE EXTRACT(MONTH FROM tanggal) = $1
-      AND EXTRACT(YEAR FROM tanggal) = $2
-
+    WHERE tenant_id = $1
+      AND EXTRACT(MONTH FROM tanggal) = $2
+      AND EXTRACT(YEAR FROM tanggal) = $3
     `,
-
-    [
-
-      new Date().getMonth() + 1,
-
-      new Date().getFullYear()
-
-    ]
-
+    [tenantId, bulanIni, tahunIni]
   );
 
 const persentaseMelanggar =
@@ -395,9 +283,11 @@ const persentaseMelanggar =
       try {
         const santriStatus = await pool.query(
           `SELECT
-             COUNT(*) FILTER (WHERE status = 'aktif')    AS aktif,
-             COUNT(*) FILTER (WHERE status != 'aktif')   AS non_aktif
-           FROM santri`
+             COUNT(*) FILTER (WHERE status = 'aktif') AS aktif,
+             COUNT(*) FILTER (WHERE status != 'aktif') AS non_aktif
+           FROM santri
+           WHERE tenant_id = $1`,
+          [tenantId]
         );
         santriAktif    = Number(santriStatus.rows[0].aktif);
         santriNonAktif = Number(santriStatus.rows[0].non_aktif);
@@ -408,33 +298,28 @@ const persentaseMelanggar =
       // ======================
 
       const absensiHariIni = await pool.query(
-        `SELECT COUNT(*) AS total FROM absensi WHERE tanggal = CURRENT_DATE`
+        `SELECT COUNT(*) AS total FROM absensi
+         WHERE tenant_id = $1 AND tanggal = CURRENT_DATE`,
+        [tenantId]
       );
-
-      // ======================
-      // NILAI MINGGUAN TERISI BULAN INI
-      // ======================
 
       const nilaiTerisi = await pool.query(
         `SELECT COUNT(*) AS total FROM nilai_mingguan
-         WHERE bulan = $1 AND tahun = $2`,
-        [new Date().getMonth() + 1, new Date().getFullYear()]
+         WHERE tenant_id = $1 AND bulan = $2 AND tahun = $3`,
+        [tenantId, bulanIni, tahunIni]
       );
-
-      // ======================
-      // SANTRI POIN TERTINGGI BULAN INI
-      // ======================
 
       const santriPoinTertinggi = await pool.query(
         `SELECT s.nama, COUNT(p.id) AS jumlah_pelanggaran
          FROM pelanggaran p
-         JOIN santri s ON p.santri_id = s.id
-         WHERE EXTRACT(MONTH FROM p.tanggal) = $1
-           AND EXTRACT(YEAR  FROM p.tanggal) = $2
+         JOIN santri s ON p.santri_id = s.id AND s.tenant_id = p.tenant_id
+         WHERE p.tenant_id = $1
+           AND EXTRACT(MONTH FROM p.tanggal) = $2
+           AND EXTRACT(YEAR FROM p.tanggal) = $3
          GROUP BY s.id, s.nama
          ORDER BY jumlah_pelanggaran DESC
          LIMIT 5`,
-        [new Date().getMonth() + 1, new Date().getFullYear()]
+        [tenantId, bulanIni, tahunIni]
       );
 
       // ======================
@@ -449,14 +334,16 @@ const persentaseMelanggar =
           `SELECT
              COUNT(*) AS total,
              COUNT(*) FILTER (WHERE must_change_pin = true) AS belum_ganti
-           FROM wali_akun`
+           FROM wali_akun
+           WHERE tenant_id = $1`,
+          [tenantId]
         );
         totalWaliAkun     = Number(waliAkunResult.rows[0].total);
         waliBelumGantiPin = Number(waliAkunResult.rows[0].belum_ganti);
       } catch { /* wali_akun belum dibuat */ }
 
       // ======================
-      // DASHBOARD KEUANGAN
+      // DASHBOARD KEUANGAN (tenant-scoped)
       // ======================
 
 const kasMasuk =
@@ -473,7 +360,8 @@ SUM(nominal),
 
 FROM buku_kas
 
-WHERE jenis = 'Masuk'
+WHERE tenant_id = $3
+  AND jenis = 'Masuk'
 
 AND EXTRACT(
 MONTH FROM tanggal
@@ -486,8 +374,9 @@ YEAR FROM tanggal
 `,
 
 [
-new Date().getMonth()+1,
-new Date().getFullYear()
+bulanIni,
+tahunIni,
+tenantId
 ]
 
 );
@@ -506,7 +395,8 @@ SUM(nominal),
 
 FROM buku_kas
 
-WHERE jenis = 'Keluar'
+WHERE tenant_id = $3
+  AND jenis = 'Keluar'
 
 AND EXTRACT(
 MONTH FROM tanggal
@@ -519,8 +409,9 @@ YEAR FROM tanggal
 `,
 
 [
-new Date().getMonth()+1,
-new Date().getFullYear()
+bulanIni,
+tahunIni,
+tenantId
 ]
 
 );
@@ -539,7 +430,11 @@ SUM(total_bayar),
 
 FROM tagihan_sahriyah
 
-`
+WHERE tenant_id = $1
+
+`,
+
+[tenantId]
 
 );
 
@@ -557,7 +452,11 @@ SUM(sisa_tagihan),
 
 FROM tagihan_sahriyah
 
-`
+WHERE tenant_id = $1
+
+`,
+
+[tenantId]
 
 );
 
@@ -618,7 +517,9 @@ END
 
 FROM buku_kas
 
-WHERE
+WHERE tenant_id = $2
+
+AND
 
 EXTRACT(
 YEAR FROM tanggal
@@ -631,7 +532,8 @@ ORDER BY bulan
 `,
 
 [
-new Date().getFullYear()
+tahunIni,
+tenantId
 ]
 
 );
@@ -657,12 +559,16 @@ petugas
 
 FROM buku_kas
 
+WHERE tenant_id = $1
+
 ORDER BY tanggal DESC,
 id DESC
 
 LIMIT 10
 
-`
+`,
+
+[tenantId]
 
 );
 
@@ -690,12 +596,17 @@ FROM pembayaran p
 LEFT JOIN santri s
 
 ON p.santri_id = s.id
+AND s.tenant_id = p.tenant_id
+
+WHERE p.tenant_id = $1
 
 ORDER BY p.id DESC
 
 LIMIT 10
 
-`
+`,
+
+[tenantId]
 
 );
 
@@ -714,11 +625,15 @@ t.sisa_tagihan
 FROM tagihan_sahriyah t
 LEFT JOIN santri s
 ON s.id = t.santri_id
-WHERE t.sisa_tagihan > 0
+AND s.tenant_id = t.tenant_id
+WHERE t.tenant_id = $1
+  AND t.sisa_tagihan > 0
 ORDER BY t.sisa_tagihan DESC
 LIMIT 10
 
-`
+`,
+
+[tenantId]
 
 );
 
@@ -731,23 +646,24 @@ const tamuHariIni =
 await pool.query(`
 SELECT COUNT(*) total
 FROM tamu
-WHERE tanggal = CURRENT_DATE
-`);
+WHERE tenant_id = $1 AND tanggal = CURRENT_DATE
+`, [tenantId]);
 
 const tamuBulanIni =
 await pool.query(`
 SELECT COUNT(*) total
 FROM tamu
-WHERE EXTRACT(MONTH FROM tanggal)=EXTRACT(MONTH FROM CURRENT_DATE)
-AND EXTRACT(YEAR FROM tanggal)=EXTRACT(YEAR FROM CURRENT_DATE)
-`);
+WHERE tenant_id = $1
+  AND EXTRACT(MONTH FROM tanggal)=EXTRACT(MONTH FROM CURRENT_DATE)
+  AND EXTRACT(YEAR FROM tanggal)=EXTRACT(YEAR FROM CURRENT_DATE)
+`, [tenantId]);
 
 const tamuMasihDidalam =
 await pool.query(`
 SELECT COUNT(*) total
 FROM tamu
-WHERE status='Masuk'
-`);
+WHERE tenant_id = $1 AND status='Masuk'
+`, [tenantId]);
 
 const kesehatanStats = await pool.query(`
   WITH latest AS (
@@ -756,10 +672,12 @@ const kesehatanStats = await pool.query(`
       ks.status_kesehatan,
       ks.status_penanganan
     FROM kesehatan_santri ks
+    INNER JOIN santri s ON s.id = ks.santri_id AND s.tenant_id = ks.tenant_id
+    WHERE ks.tenant_id = $1
     ORDER BY ks.santri_id, ks.created_at DESC
   ),
   santri_aktif AS (
-    SELECT COUNT(*)::int AS total FROM santri
+    SELECT COUNT(*)::int AS total FROM santri WHERE tenant_id = $1
   )
   SELECT
     (SELECT total FROM santri_aktif) AS total_santri,
@@ -769,7 +687,7 @@ const kesehatanStats = await pool.query(`
         AND l.status_penanganan IN ('observasi', 'istirahat')
     )::int AS perlu_tindak_lanjut
   FROM latest l
-`);
+`, [tenantId]);
 
 const kStat = kesehatanStats.rows[0] || {};
 const kTotalSantri = Number(kStat.total_santri || 0);

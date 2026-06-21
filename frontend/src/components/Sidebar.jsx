@@ -26,11 +26,11 @@ const SIDEBAR = {
   border: "rgba(148, 163, 184, 0.12)",
   text: "#E2E8F0",
   textMuted: "var(--text-muted)",
-  textFaint: "var(--neutral)",
-  hoverBg: "rgba(148, 163, 184, 0.08)",
+  textFaint: "#64748B",
+  hoverBg: "rgba(21, 128, 61, 0.08)",
   activeBg: "var(--sidebar-active-bg)",
-  activeBorder: "var(--accent-teal)",
-  activeText: "#F0FDFA",
+  activeBorder: "var(--primary)",
+  activeText: "#ECFDF5",
 };
 
 const MENU = [
@@ -43,10 +43,13 @@ const MENU = [
   { name: "Pengumuman", path: "/pengumuman", perm: "pengumuman.view", icon: <FaClipboardList /> },
   { name: "Nilai", path: "/nilai", perm: "nilai.view", icon: <FaClipboardList /> },
   { name: "Hafalan", path: "/hafalan", perm: "hafalan.view", icon: <FaClipboardList /> },
+  { name: "Program Unit", path: "/program-unit", perm: "program_unit.view", icon: <FaClipboardList /> },
   { name: "Absensi", path: "/absensi", perm: "absensi.view", icon: <FaClipboardList /> },
   { name: "Absensi Guru", path: "/absensi-guru", perm: "absensi_guru.view", icon: <FaClipboardList /> },
   { name: "Pembayaran", path: "/pembayaran", perm: "pembayaran.view", icon: <FaMoneyBill /> },
   { name: "Buku Kas", path: "/buku-kas", perm: "bukukas.view", icon: <FaMoneyBill /> },
+  { name: "Kas Instansi", path: "/kas-instansi", perm: "kas_instansi.view", icon: <FaMoneyBill /> },
+  { name: "Konsolidasi Yayasan", path: "/kas-instansi/konsolidasi", perm: "kas_instansi.konsolidasi", icon: <FaMoneyBill /> },
   { name: "Sahriyah", path: "/sahriyah", perm: "sahriyah.view", icon: <FaMoneyBill /> },
   { name: "Setting Sahriyah", path: "/sahriyah-setting", perm: "sahriyah.manage", icon: <FaMoneyBill /> },
   { name: "RFID Dashboard", path: "/rfid-dashboard", perm: "rfid.view", icon: <FaWifi /> },
@@ -84,7 +87,7 @@ const MENU_GROUPS = [
     id: "akademik",
     title: "Akademik",
     collapsible: true,
-    items: ["Nilai", "Hafalan", "Absensi", "Absensi Guru"],
+    items: ["Nilai", "Hafalan", "Program Unit", "Absensi", "Absensi Guru"],
   },
   {
     id: "keuangan",
@@ -93,6 +96,8 @@ const MENU_GROUPS = [
     items: [
       "Pembayaran",
       "Buku Kas",
+      "Kas Instansi",
+      "Konsolidasi Yayasan",
       "Sahriyah",
       "Setting Sahriyah",
       "RFID Dashboard",
@@ -303,20 +308,18 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
         onMouseEnter={(e) => {
           if (!active) {
             e.currentTarget.style.background = SIDEBAR.hoverBg;
-            e.currentTarget.style.transform = "translateX(2px)";
           }
         }}
         onMouseLeave={(e) => {
           if (!active) {
             e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.transform = "translateX(0)";
           }
         }}
       >
         <span
           style={{
             ...iconStyle,
-            color: active ? "var(--accent-teal)" : SIDEBAR.textMuted,
+            color: active ? "var(--primary)" : SIDEBAR.textMuted,
           }}
         >
           {menu.icon}
@@ -467,14 +470,14 @@ const navStyle = {
 };
 
 const sectionStyle = {
-  marginBottom: "var(--space-4)",
+  marginBottom: "var(--space-3)",
 };
 
 const sectionHeaderButtonStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "6px 8px",
+  padding: "7px 10px",
   marginBottom: "var(--space-2)",
   marginLeft: "-8px",
   width: "calc(100% + 8px)",
@@ -487,11 +490,11 @@ const sectionHeaderButtonStyle = {
 };
 
 const sectionTitleStyle = {
-  color: SIDEBAR.textFaint,
+  color: "#94A3B8",
   fontSize: "10px",
   fontWeight: 700,
   textTransform: "uppercase",
-  letterSpacing: "0.1em",
+  letterSpacing: "0.12em",
   marginBottom: "var(--space-2)",
   paddingLeft: "var(--space-1)",
 };
@@ -508,20 +511,20 @@ const chevronStyle = {
 const sectionMenuStyle = {
   display: "flex",
   flexDirection: "column",
-  gap: "2px",
+  gap: "3px",
 };
 
 const menuLinkStyle = {
   display: "flex",
   alignItems: "center",
   gap: "var(--space-3)",
-  padding: "9px var(--space-3)",
+  padding: "10px var(--space-3)",
   paddingLeft: "calc(var(--space-3) - 3px)",
-  borderRadius: "10px",
+  borderRadius: "var(--radius-md)",
   borderLeft: "3px solid transparent",
-  transition: "background 180ms ease, color 180ms ease, transform 180ms ease, border-color 180ms ease",
+  transition: "background 180ms ease, color 180ms ease, border-color 180ms ease",
   textDecoration: "none",
-  minHeight: "38px",
+  minHeight: "40px",
   boxSizing: "border-box",
 };
 

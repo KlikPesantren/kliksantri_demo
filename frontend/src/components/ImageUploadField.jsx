@@ -43,6 +43,7 @@ export default function ImageUploadField({
   value,
   onChange,
   accept = "image/png,image/jpeg,image/jpg,image/webp",
+  pickLabel = "Pilih File",
   previewHeight = 96,
 }) {
   const inputRef = useRef(null);
@@ -153,7 +154,7 @@ export default function ImageUploadField({
             opacity: uploading ? 0.65 : 1,
           }}
         >
-          Pilih File
+          {pickLabel}
         </button>
         {uploading ? (
           <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Mengupload...</span>

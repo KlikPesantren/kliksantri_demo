@@ -1,208 +1,75 @@
 const express = require("express");
-
 const pool = require("../db");
-
 const authMiddleware = require("../middleware/authMiddleware");
-
+const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
 
 const router = express.Router();
+const withTenant = [authMiddleware, tenantMiddleware];
 
-// ======================
-// GET ALL KELAS
-// ======================
+router.get("/", ...withTenant, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT *
+       FROM kelas
+       WHERE tenant_id = $1
+       ORDER BY id ASC`,
+      [req.tenantId]
+    );
 
-router.get(
-
-  "/",
-
-  authMiddleware,
-
-  async (req, res) => {
-
-    try {
-
-      const result =
-
-        await pool.query(
-
-          `
-          SELECT *
-
-          FROM kelas
-
-          ORDER BY id ASC
-          `
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
   }
-
-);
-
-// ======================
-// TAMBAH KELAS
-// ======================
+});
 
 router.post(
-
   "/",
-
-  authMiddleware,
+  ...withTenant,
   requirePermission("kelas.manage"),
-
   async (req, res) => {
-
     try {
+      const { nama_kelas } = req.body;
 
-      const {
-
-        nama_kelas
-
-      } = req.body;
-
-      const result =
-
-        await pool.query(
-
-          `
-          INSERT INTO kelas
-          (
-
-            nama_kelas
-
-          )
-
-          VALUES
-
-          (
-
-            $1
-
-          )
-
-          RETURNING *
-          `,
-
-          [
-
-            nama_kelas
-
-          ]
-
-        );
-
-      res.json({
-
-        success: true,
-
-        data:
-          result.rows[0]
-
-      });
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
-    }
-
-  }
-
-);
-
-// ======================
-// DELETE KELAS
-// ======================
-
-router.delete(
-
-  "/:id",
-
-  authMiddleware,
-  requirePermission("kelas.manage"),
-
-  async (req, res) => {
-
-    try {
-
-      await pool.query(
-
-        `
-        DELETE FROM kelas
-
-        WHERE id = $1
-        `,
-
-        [
-
-          req.params.id
-
-        ]
-
+      const result = await pool.query(
+        `INSERT INTO kelas (nama_kelas, tenant_id)
+         VALUES ($1, $2)
+         RETURNING *`,
+        [nama_kelas, req.tenantId]
       );
 
-      res.json({
-
-        success: true
-
-      });
-
-    }
-
-    catch (err) {
-
+      res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
       console.log(err);
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-
-      });
-
+      res.status(500).json({ success: false, error: err.message });
     }
-
   }
+);
 
+router.delete(
+  "/:id",
+  ...withTenant,
+  requirePermission("kelas.manage"),
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        `DELETE FROM kelas
+         WHERE id = $1 AND tenant_id = $2
+         RETURNING id`,
+        [req.params.id, req.tenantId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Kelas tidak ditemukan" });
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
 );
 
 module.exports = router;

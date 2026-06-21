@@ -1,62 +1,32 @@
 require("dotenv").config();
 
-const jwt =
-  require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 
-const authMiddleware = (
-
-  req,
-  res,
-  next
-
-) => {
-
+const authMiddleware = (req, res, next) => {
   try {
-
-    const authHeader =
-      req.headers.authorization;
+    const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-
       return res.status(401).json({
-
         success: false,
-
-        error: "Token tidak ada"
-
+        error: "Token tidak ada",
       });
-
     }
 
-    const token =
-      authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
 
-    const decoded =
-      jwt.verify(
-
-        token,
-
-        process.env.JWT_SECRET
-
-      );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = decoded;
+    req.tenantId = decoded.tenant_id ?? null;
 
     next();
-
   } catch (err) {
-
     return res.status(401).json({
-
       success: false,
-
-      error: "Token tidak valid"
-
+      error: "Token tidak valid",
     });
-
   }
-
 };
 
-module.exports =
-  authMiddleware;
+module.exports = authMiddleware;

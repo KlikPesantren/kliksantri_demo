@@ -23,11 +23,15 @@ import {
   FormActionBar,
 } from "../components/ui/form";
 import { exportExcel } from "../utils/exportExcel";
+import SantriImportModal from "../components/santri/SantriImportModal";
+import ImageUploadField from "../components/ImageUploadField";
+import { resolveDisplayMediaUrl } from "../utils/mediaUrl";
 
 function SantriPage() {
   const [santri, setSantri] = useState([]);
   const [kelas, setKelas] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
   const [form, setForm] = useState({
     nis: "",
@@ -157,6 +161,25 @@ function SantriPage() {
     exportExcel(rows, "Santri");
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await api.get("/santri/import/template", {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "template_import_santri.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Gagal unduh template");
+    }
+  };
+
   return (
     <AppShell title="Data Santri" breadcrumb="Master Data / Santri">
       <Card padding="md" shadow="card" border={false} radius="xl">
@@ -185,12 +208,15 @@ function SantriPage() {
             </FormGrid>
           </FormSection>
 
-          <FormSection title="Data Orang Tua">
+          <FormSection title="Data Wali">
+            <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>
+              Nomor HP ini otomatis menjadi akun login aplikasi wali.
+            </p>
             <FormGrid>
-              <FormField label="Nama Orang Tua" htmlFor="santri-ortu">
+              <FormField label="Nama Wali" htmlFor="santri-ortu">
                 <Input id="santri-ortu" type="text" name="orang_tua" value={form.orang_tua} onChange={handleChange} />
               </FormField>
-              <FormField label="No HP Orang Tua" htmlFor="santri-hp-ortu">
+              <FormField label="Nomor HP Wali" htmlFor="santri-hp-ortu">
                 <Input id="santri-hp-ortu" type="text" name="nomor_hp_ortu" value={form.nomor_hp_ortu} onChange={handleChange} />
               </FormField>
             </FormGrid>
@@ -201,8 +227,16 @@ function SantriPage() {
               <FormField label="Alamat" htmlFor="santri-alamat" fullWidth>
                 <Input id="santri-alamat" type="text" name="alamat" value={form.alamat} onChange={handleChange} />
               </FormField>
-              <FormField label="URL Foto" htmlFor="santri-foto" fullWidth>
-                <Input id="santri-foto" type="text" name="foto" value={form.foto} onChange={handleChange} />
+              <FormField label="Upload Foto" htmlFor="santri-foto" fullWidth>
+                <ImageUploadField
+                  id="santri-foto"
+                  label="Foto Santri"
+                  value={form.foto}
+                  onChange={(url) => setForm((prev) => ({ ...prev, foto: url }))}
+                  accept="image/*"
+                  pickLabel="Pilih Foto"
+                  previewHeight={120}
+                />
               </FormField>
             </FormGrid>
           </FormSection>
@@ -234,9 +268,17 @@ function SantriPage() {
               />
             }
             actions={
-              <Button variant="success" onClick={handleExport}>
-                Export Excel
-              </Button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Button variant="secondary" onClick={handleDownloadTemplate}>
+                  Download Template
+                </Button>
+                <Button variant="primary" onClick={() => setImportOpen(true)}>
+                  Import Excel
+                </Button>
+                <Button variant="success" onClick={handleExport}>
+                  Export Excel
+                </Button>
+              </div>
             }
           />
 
@@ -267,12 +309,14 @@ function SantriPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedItems.map((item) => (
+                    {paginatedItems.map((item) => {
+                      const fotoSrc = resolveDisplayMediaUrl(item.foto);
+                      return (
                       <tr key={item.id}>
                         <td>
-                          {item.foto ? (
+                          {fotoSrc ? (
                             <img
-                              src={item.foto}
+                              src={fotoSrc}
                               alt="foto"
                               width="40"
                               height="40"
@@ -298,7 +342,8 @@ function SantriPage() {
                           />
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </Table>
               </TableScroll>
@@ -312,6 +357,12 @@ function SantriPage() {
           )}
         </DataTableCard>
       </div>
+
+      <SantriImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={getSantri}
+      />
     </AppShell>
   );
 }
