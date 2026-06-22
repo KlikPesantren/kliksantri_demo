@@ -312,14 +312,11 @@ app.use(
 );
 
 app.use(
-
   "/audit",
-
   authMiddleware,
+  tenantMiddleware,
   requirePermission("audit.view"),
-
   auditApi
-
 );
 
 app.use(

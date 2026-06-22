@@ -7,6 +7,7 @@ const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
 
 const withTenant = [authMiddleware, tenantMiddleware];
+const { validateTenantAssignableRole, tenantAssignableRolesSqlList } = require("../utils/platformRbac");
 
 // ======================
 // GET /users/meta/roles — daftar role untuk dropdown form
@@ -19,7 +20,11 @@ router.get(
   async (req, res) => {
     try {
       const result = await pool.query(
-        "SELECT name, label FROM roles ORDER BY id ASC"
+        `SELECT name, label
+         FROM roles
+         WHERE name = ANY($1::text[])
+         ORDER BY id ASC`,
+        [tenantAssignableRolesSqlList()],
       );
       res.json({ success: true, data: result.rows });
     } catch (err) {
@@ -73,6 +78,11 @@ router.post(
         return res.status(400).json({ success: false, error: "Semua field wajib diisi" });
       }
 
+      const roleCheck = validateTenantAssignableRole(role);
+      if (!roleCheck.ok) {
+        return res.status(roleCheck.status).json({ success: false, error: roleCheck.error });
+      }
+
       const exists = await pool.query(
         "SELECT id FROM users WHERE username = $1 AND tenant_id = $2",
         [username, req.tenantId]
@@ -113,6 +123,11 @@ router.put(
 
       if (!nama || !username || !role) {
         return res.status(400).json({ success: false, error: "Nama, username, dan role wajib diisi" });
+      }
+
+      const roleCheck = validateTenantAssignableRole(role);
+      if (!roleCheck.ok) {
+        return res.status(roleCheck.status).json({ success: false, error: roleCheck.error });
       }
 
       let result;

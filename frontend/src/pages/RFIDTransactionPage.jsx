@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppShell from "../layouts/AppShell";
 import api, { API_BASE_URL } from "../services/api";
 import Badge from "../components/ui/Badge";
@@ -12,8 +12,9 @@ import {
   Table,
   TableScroll,
   TablePagination,
-  useClientPagination,
 } from "../components/ui/table";
+import { FilterBar, FormField, Input, Select } from "../components/ui/form";
+import { DEFAULT_PAGE_SIZE } from "../hooks/useClientPagination";
 
 function trxTypeLabel(trxType) {
   if (trxType === "payment") return "PEMBAYARAN";
@@ -28,44 +29,101 @@ function trxTypeBadgeVariant(trxType) {
   return "danger";
 }
 
-function RFIDTransactionPage() {
-  const [transactions, setTransactions] = useState([]);
-  const [tableSearch, setTableSearch] = useState("");
-
-  const loadData = async () => {
-    try {
-      const res = await api.get("/rfid/transactions");
-      setTransactions(res.data.data || []);
-    } catch (err) {
-      console.error(err);
-    }
+function getDefaultDateRange() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 6);
+  return {
+    start_date: start.toISOString().slice(0, 10),
+    end_date: end.toISOString().slice(0, 10),
   };
+}
+
+function getApiError(err, fallback = "Terjadi kesalahan. Silakan coba lagi.") {
+  return err?.response?.data?.error || fallback;
+}
+
+function RFIDTransactionPage() {
+  const defaultRange = getDefaultDateRange();
+  const [transactions, setTransactions] = useState([]);
+  const [pagination, setPagination] = useState({
+    limit: DEFAULT_PAGE_SIZE,
+    offset: 0,
+    total: 0,
+  });
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
+  const [startDate, setStartDate] = useState(defaultRange.start_date);
+  const [endDate, setEndDate] = useState(defaultRange.end_date);
+  const [filterType, setFilterType] = useState("");
+
+  const searchDebounceRef = useRef(null);
+
+  const fetchTransactions = useCallback(
+    async (pageNum = 1) => {
+      setIsLoading(true);
+
+      try {
+        const params = {
+          start_date: startDate,
+          end_date: endDate,
+          limit: DEFAULT_PAGE_SIZE,
+          offset: (pageNum - 1) * DEFAULT_PAGE_SIZE,
+        };
+
+        if (tableSearch.trim()) params.search = tableSearch.trim();
+        if (filterType) params.type = filterType;
+
+        const res = await api.get("/rfid/transactions", { params });
+        setTransactions(res.data.data || []);
+        setPagination(
+          res.data.pagination || {
+            limit: DEFAULT_PAGE_SIZE,
+            offset: 0,
+            total: 0,
+          },
+        );
+        setPage(pageNum);
+      } catch (err) {
+        console.error(err);
+        alert(getApiError(err, "Gagal memuat transaksi RFID"));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [startDate, endDate, tableSearch, filterType],
+  );
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
 
-  const filteredTransactions = useMemo(() => {
-    const q = tableSearch.trim().toLowerCase();
-    if (!q) return transactions;
-    return transactions.filter((trx) =>
-      [
-        trx.nama_santri,
-        trx.trx_type,
-        trx.nama_merchant,
-        trx.device_id,
-        trx.sync_status,
-        trx.nominal,
-      ].some((field) => String(field || "").toLowerCase().includes(q)),
-    );
-  }, [transactions, tableSearch]);
+    searchDebounceRef.current = setTimeout(() => {
+      fetchTransactions(1);
+    }, tableSearch.trim() ? 300 : 0);
 
-  const { page, setPage, paginatedItems, totalItems, pageSize } =
-    useClientPagination(filteredTransactions);
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [startDate, endDate, tableSearch, filterType, fetchTransactions]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [tableSearch, setPage]);
+  const pageSize = pagination.limit || DEFAULT_PAGE_SIZE;
+
+  const buildExportUrl = () => {
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+    });
+
+    if (tableSearch.trim()) params.set("search", tableSearch.trim());
+    if (filterType) params.set("type", filterType);
+
+    return `${API_BASE_URL}/rfid/transactions/export?${params.toString()}`;
+  };
 
   return (
     <AppShell
@@ -78,23 +136,48 @@ function RFIDTransactionPage() {
         subtitle="Riwayat pembayaran, topup, dan refund RFID"
         actions={
           <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-            {filteredTransactions.length} transaksi
+            {pagination.total || 0} transaksi
           </span>
         }
       >
+        <FilterBar label="Filter">
+          <FormField label="Dari" htmlFor="trx-start-date">
+            <Input
+              id="trx-start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </FormField>
+          <FormField label="Sampai" htmlFor="trx-end-date">
+            <Input
+              id="trx-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </FormField>
+          <Select value={filterType} onChange={(e) => setFilterType(e.target.value)} aria-label="Tipe transaksi">
+            <option value="">Semua Tipe</option>
+            <option value="payment">Pembayaran</option>
+            <option value="topup">Topup</option>
+            <option value="refund">Refund</option>
+          </Select>
+        </FilterBar>
+
         <TableToolbar
           search={
             <SearchInput
               value={tableSearch}
               onChange={(e) => setTableSearch(e.target.value)}
-              placeholder="Cari santri, merchant, device, tipe..."
+              placeholder="Cari nama santri..."
             />
           }
           actions={
             <Button
               variant="success"
               onClick={() => {
-                window.open(`${API_BASE_URL}/rfid/transactions/export`, "_blank");
+                window.open(buildExportUrl(), "_blank");
               }}
             >
               Export Excel
@@ -102,14 +185,12 @@ function RFIDTransactionPage() {
           }
         />
 
-        {filteredTransactions.length === 0 ? (
+        {isLoading ? (
+          <EmptyState title="Memuat data..." description="Mohon tunggu sebentar." />
+        ) : transactions.length === 0 ? (
           <EmptyState
-            title={transactions.length === 0 ? "Belum ada transaksi" : "Tidak ada hasil pencarian"}
-            description={
-              transactions.length === 0
-                ? "Transaksi RFID akan muncul setelah ada aktivitas."
-                : "Coba kata kunci lain atau hapus filter pencarian."
-            }
+            title="Tidak ada transaksi"
+            description="Ubah rentang tanggal atau filter pencarian."
           />
         ) : (
           <>
@@ -129,7 +210,7 @@ function RFIDTransactionPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedItems.map((trx) => (
+                  {transactions.map((trx) => (
                     <tr key={trx.id}>
                       <td className="table-v3__cell--mono">
                         {new Date(trx.created_at).toLocaleString()}
@@ -140,8 +221,8 @@ function RFIDTransactionPage() {
                           {trxTypeLabel(trx.trx_type)}
                         </Badge>
                       </td>
-                      <td>{trx.nama_merchant}</td>
-                      <td>{trx.device_id}</td>
+                      <td>{trx.nama_merchant || "—"}</td>
+                      <td>{trx.device_id || "—"}</td>
                       <td className="table-v3__cell--strong">
                         Rp {Number(trx.nominal).toLocaleString()}
                       </td>
@@ -158,8 +239,8 @@ function RFIDTransactionPage() {
             <TablePagination
               page={page}
               pageSize={pageSize}
-              totalItems={totalItems}
-              onPageChange={setPage}
+              totalItems={pagination.total || 0}
+              onPageChange={fetchTransactions}
             />
           </>
         )}

@@ -12,18 +12,6 @@ import {
 } from "../components/dashboard/dashboardShared.jsx";
 import { formatCurrency, formatNumber } from "../utils/formatCurrency";
 
-function isToday(value) {
-  if (!value) return false;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
-  const now = new Date();
-  return (
-    date.getDate() === now.getDate()
-    && date.getMonth() === now.getMonth()
-    && date.getFullYear() === now.getFullYear()
-  );
-}
-
 function trxTypeLabel(trxType) {
   if (trxType === "payment") return "Pembayaran";
   if (trxType === "topup") return "Topup";
@@ -31,28 +19,18 @@ function trxTypeLabel(trxType) {
   return String(trxType || "Transaksi");
 }
 
-function computeTopMerchant(transactions) {
-  const counts = {};
-  (transactions || []).forEach((item) => {
-    const name = item.nama_merchant || "Merchant";
-    counts[name] = (counts[name] || 0) + 1;
-  });
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  return sorted[0] ? { name: sorted[0][0], count: sorted[0][1] } : null;
-}
-
 function RFIDDashboardPage() {
   const [dashboard, setDashboard] = useState({});
-  const [transactions, setTransactions] = useState([]);
+  const [summary, setSummary] = useState({});
 
   const loadData = async () => {
     try {
-      const [dashRes, trxRes] = await Promise.all([
+      const [dashRes, summaryRes] = await Promise.all([
         api.get("/rfid/dashboard"),
-        api.get("/rfid/transactions"),
+        api.get("/rfid/dashboard-summary"),
       ]);
       setDashboard(dashRes.data || {});
-      setTransactions(trxRes.data.data || []);
+      setSummary(summaryRes.data?.data || {});
     } catch (err) {
       console.error(err);
     }
@@ -62,31 +40,18 @@ function RFIDDashboardPage() {
     loadData();
   }, []);
 
-  const todayTransactions = useMemo(
-    () => transactions.filter((item) => isToday(item.created_at)),
-    [transactions],
-  );
-
-  const refundHariIni = useMemo(
-    () => todayTransactions.filter(
-      (item) => String(item.trx_type || "").toLowerCase() === "refund",
-    ).length,
-    [todayTransactions],
-  );
-
-  const topMerchant = useMemo(() => computeTopMerchant(transactions), [transactions]);
-
   const recentActivity = useMemo(
-    () => transactions.slice(0, 5).map((item) => ({
+    () => (summary.recent_activity || []).map((item) => ({
       key: `rfid-${item.id}`,
       title: item.nama_santri || `Santri #${item.santri_id}`,
       subtitle: `${trxTypeLabel(item.trx_type)} · ${item.nama_merchant || "—"}`,
       meta: formatCurrency(item.nominal),
     })),
-    [transactions],
+    [summary.recent_activity],
   );
 
-  const syncQueue = (Number(dashboard.pending_sync) || 0) + (Number(dashboard.failed_sync) || 0);
+  const syncQueue = (Number(summary.pending_sync) || 0) + (Number(dashboard.failed_sync) || 0);
+  const topMerchant = summary.top_merchant;
 
   return (
     <AppShell
@@ -104,7 +69,7 @@ function RFIDDashboardPage() {
           />
           <KpiCard
             label="Total Belanja"
-            value={formatCurrency(dashboard.belanja_hari_ini || 0)}
+            value={formatCurrency(dashboard.belanja_hari_ini || summary.nominal_hari_ini || 0)}
             accent="info"
           />
           <KpiCard
@@ -114,8 +79,8 @@ function RFIDDashboardPage() {
           />
           <KpiCard
             label="Device Online"
-            value={formatNumber(dashboard.device_online || 0)}
-            accent={dashboard.device_offline > 0 ? "warning" : "success"}
+            value={formatNumber(summary.device_online ?? dashboard.device_online ?? 0)}
+            accent={(summary.device_offline ?? dashboard.device_offline ?? 0) > 0 ? "warning" : "success"}
           />
         </KpiGrid>
 
@@ -127,7 +92,7 @@ function RFIDDashboardPage() {
               <span className="dashboard-monitor-stat__label">Antrian sync</span>
             </div>
             <p className="dashboard-monitor-meta">
-              {formatNumber(dashboard.pending_sync || 0)} pending ·{" "}
+              {formatNumber(summary.pending_sync || dashboard.pending_sync || 0)} pending ·{" "}
               {formatNumber(dashboard.failed_sync || 0)} gagal
             </p>
           </Card>
@@ -136,28 +101,30 @@ function RFIDDashboardPage() {
             <ExecSectionTitle title="Transaksi Hari Ini" subtitle="Volume belanja RFID hari ini" />
             <div className="dashboard-monitor-stat">
               <span className="dashboard-monitor-stat__value">
-                {formatNumber(todayTransactions.length)}
+                {formatNumber(summary.transaksi_hari_ini || 0)}
               </span>
               <span className="dashboard-monitor-stat__label">Transaksi</span>
             </div>
             <p className="dashboard-monitor-meta">
-              Total {formatCurrency(dashboard.belanja_hari_ini || 0)}
+              Total {formatCurrency(summary.nominal_hari_ini || dashboard.belanja_hari_ini || 0)}
             </p>
           </Card>
 
           <Card {...DASHBOARD_PANEL}>
             <ExecSectionTitle title="Refund Hari Ini" subtitle="Pengembalian saldo RFID" />
             <div className="dashboard-monitor-stat">
-              <span className="dashboard-monitor-stat__value">{formatNumber(refundHariIni)}</span>
+              <span className="dashboard-monitor-stat__value">
+                {formatNumber(summary.refund_hari_ini || 0)}
+              </span>
               <span className="dashboard-monitor-stat__label">Refund</span>
             </div>
             <p className="dashboard-monitor-meta">
-              Pantau refund di menu RFID Refund.
+              Topup hari ini: {formatNumber(summary.topup_hari_ini || 0)}
             </p>
           </Card>
 
           <Card {...DASHBOARD_PANEL}>
-            <ExecSectionTitle title="Top Merchant" subtitle="Merchant paling aktif" />
+            <ExecSectionTitle title="Top Merchant" subtitle="Merchant paling aktif (30 hari)" />
             <div className="dashboard-monitor-stat">
               <span className="dashboard-monitor-stat__value dashboard-monitor-stat__value--text">
                 {topMerchant?.name || "—"}

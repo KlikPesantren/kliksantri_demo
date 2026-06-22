@@ -102,7 +102,9 @@ router.post("/login", async (req, res) => {
       expiresIn: "7d",
     });
 
-    const permissions = await requirePermission.getPermissionList(user.role);
+    const permissions = await requirePermission.getPermissionList(user.role, {
+      tenantScoped: true,
+    });
 
     res.json({
       success: true,
@@ -183,7 +185,9 @@ router.get("/me", async (req, res) => {
       }
     }
 
-    const permissions = await requirePermission.getPermissionList(me.role);
+    const permissions = await requirePermission.getPermissionList(me.role, {
+      tenantScoped: Boolean(me.tenant_id),
+    });
 
     res.json({
       success: true,
@@ -213,56 +217,11 @@ router.get("/me", async (req, res) => {
 // =====================
 
 router.post("/register", async (req, res) => {
-  try {
-    const { nama, username, password, role, tenant_slug } = req.body;
-
-    const tenantResult = await resolveTenantForLogin(tenant_slug);
-    if (tenantResult.error) {
-      return res.status(tenantResult.status).json({
-        success: false,
-        error: tenantResult.error,
-        message: tenantResult.error,
-      });
-    }
-    const { tenant } = tenantResult;
-
-    const checkUser = await pool.query(
-      `
-      SELECT id
-      FROM users
-      WHERE username = $1
-        AND tenant_id = $2
-      `,
-      [username, tenant.id]
-    );
-
-    if (checkUser.rows.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: "Username sudah digunakan",
-      });
-    }
-
-    const result = await pool.query(
-      `
-      INSERT INTO users (nama, username, password, role, tenant_id)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, nama, username, role, tenant_id
-      `,
-      [nama, username, password, role, tenant.id]
-    );
-
-    res.json({
-      success: true,
-      data: result.rows[0],
-    });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
-  }
+  return res.status(403).json({
+    success: false,
+    error: "Registrasi publik dinonaktifkan. Hubungi admin platform.",
+    message: "Registrasi publik dinonaktifkan. Hubungi admin platform.",
+  });
 });
 
 module.exports = router;

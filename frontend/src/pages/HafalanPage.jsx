@@ -4,8 +4,11 @@ import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
 import Button, { actionBarStyle } from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
 import { Table, TableScroll } from "../components/ui/table";
+import { OperationalPageStyles } from "../components/shared/OperationalPageStyles";
 import { exportExcel } from "../utils/exportExcel";
+import { FaFilter } from "react-icons/fa";
 
 const filterPanelStyle = {
   display: "flex",
@@ -20,24 +23,25 @@ function AkademikResponsiveStyles() {
       .akademik-page {
         min-width: 0;
         max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
       }
 
-      .akademik-filter-panel select,
-      .akademik-filter-panel input[type="number"] {
+      .akademik-filter-panel.filter-bar-v3 {
+        margin-bottom: 0;
+      }
+
+      .akademik-filter-panel .filter-bar-v3__fields select,
+      .akademik-filter-panel .filter-bar-v3__fields input[type="number"] {
         min-width: 0;
         flex: 1 1 140px;
         max-width: 100%;
       }
 
-      .akademik-table-input {
-        width: 100%;
-        min-width: 80px;
-        box-sizing: border-box;
-      }
-
       @media (max-width: 767px) {
-        .akademik-filter-panel select,
-        .akademik-filter-panel input[type="number"] {
+        .akademik-filter-panel .filter-bar-v3__fields select,
+        .akademik-filter-panel .filter-bar-v3__fields input[type="number"] {
           flex: 1 1 100%;
         }
       }
@@ -193,9 +197,16 @@ function HafalanPage() {
   return (
     <AppShell title="Hafalan Mingguan" breadcrumb="Akademik / Hafalan Mingguan">
       <AkademikResponsiveStyles />
-      <div className="akademik-page">
+      <OperationalPageStyles />
+      <div className="akademik-page ops-page">
+      <div className="ops-page__form-card">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div className="akademik-filter-panel" style={filterPanelStyle}>
+        <div className="akademik-filter-panel ops-page__filter filter-bar-v3 filter-bar-v3--table">
+          <span className="filter-bar-v3__label">
+            <FaFilter size={11} aria-hidden />
+            Filter hafalan
+          </span>
+          <div className="filter-bar-v3__fields" style={filterPanelStyle}>
           <select
             value={kelasId}
             onChange={(e) => {
@@ -223,12 +234,31 @@ function HafalanPage() {
             type="number"
             value={tahun}
             onChange={(e) => setTahun(e.target.value)}
+            aria-label="Tahun"
           />
+          </div>
         </div>
       </Card>
+      </div>
 
+      {!kelasId ? (
+        <div className="ops-page__empty">
+          <EmptyState
+            title="Pilih kelas terlebih dahulu"
+            description="Pilih kelas, bulan, dan tahun untuk mengisi hafalan mingguan santri."
+          />
+        </div>
+      ) : santri.length === 0 ? (
+        <div className="ops-page__empty">
+          <EmptyState
+            title="Belum ada santri di kelas ini"
+            description="Tidak ada santri terdaftar pada kelas yang dipilih."
+          />
+        </div>
+      ) : (
+      <>
       {pekanList.map((pekan) => (
-        <div key={pekan} style={{ marginTop: "var(--space-6)" }}>
+        <div key={pekan} className="ops-akademik-card ops-page__card">
           <Card padding="md" shadow="card" border={false} radius="xl">
             <SectionHeading variant="eyebrow" spacing="first">
               Pekan {pekan}
@@ -255,7 +285,7 @@ function HafalanPage() {
                       <td className="table-v3__col--sticky table-v3__cell--strong">{s.nama}</td>
                       <td>
                         <input
-                          className="akademik-table-input"
+                          className="ops-hafalan-input"
                           type="text"
                           value={hafalan[`${pekan}-${s.id}-${bulan}-${tahun}`]?.kitab || ""}
                           onChange={(e) =>
@@ -265,7 +295,7 @@ function HafalanPage() {
                       </td>
                       <td>
                         <input
-                          className="akademik-table-input"
+                          className="ops-hafalan-input"
                           type="text"
                           value={hafalan[`${pekan}-${s.id}-${bulan}-${tahun}`]?.awal || ""}
                           onChange={(e) =>
@@ -275,7 +305,7 @@ function HafalanPage() {
                       </td>
                       <td>
                         <input
-                          className="akademik-table-input"
+                          className="ops-hafalan-input"
                           type="text"
                           value={hafalan[`${pekan}-${s.id}-${bulan}-${tahun}`]?.akhir || ""}
                           onChange={(e) =>
@@ -285,7 +315,7 @@ function HafalanPage() {
                       </td>
                       <td>
                         <input
-                          className="akademik-table-input"
+                          className="ops-hafalan-input"
                           type="text"
                           value={hafalan[`${pekan}-${s.id}-${bulan}-${tahun}`]?.catatan || ""}
                           onChange={(e) =>
@@ -312,6 +342,8 @@ function HafalanPage() {
           Simpan Hafalan
         </Button>
       </div>
+      </>
+      )}
       </div>
     </AppShell>
   );

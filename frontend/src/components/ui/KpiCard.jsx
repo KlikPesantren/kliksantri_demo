@@ -1,33 +1,17 @@
-// KPI Standard V3 — single layout: VALUE → label, small left accent.
-
-const ACCENT_PRESETS = {
-  primary: "var(--primary)",
-  neutral: "var(--neutral)",
-  success: "var(--success)",
-  warning: "var(--warning)",
-  danger: "var(--danger)",
-  info: "var(--info)",
-  teal: "var(--primary)",
-};
-
-function resolveAccent(accent) {
-  if (!accent) return ACCENT_PRESETS.primary;
-  return ACCENT_PRESETS[accent] || accent;
-}
+// KPI Standard V3 — premium layout: optional icon → VALUE → label (no card accent lines).
 
 function KpiCard({
   label,
   value,
   trend = null,
   icon = null,
-  accent = "primary",
+  accent: _accent = "primary",
   onClick,
   // LEGACY — ignored; kept for backward compatibility during migration
   layout: _layout,
   accentPosition: _accentPosition,
   size: _size,
 }) {
-  const resolvedAccent = resolveAccent(accent);
   const isInteractive = typeof onClick === "function";
 
   return (
@@ -39,12 +23,11 @@ function KpiCard({
       className="kpi-card-v3"
       style={{
         ...cardStyle,
-        borderLeftColor: resolvedAccent,
         cursor: isInteractive ? "pointer" : undefined,
       }}
     >
       {icon && (
-        <span style={iconStyle} aria-hidden="true">
+        <span className="kpi-card-v3__icon" aria-hidden="true">
           {icon}
         </span>
       )}
@@ -57,27 +40,18 @@ function KpiCard({
 
 const cardStyle = {
   background: "var(--surface)",
-  borderRadius: "var(--radius-xl)",
-  boxShadow: "var(--shadow-card)",
-  padding: "var(--space-3) var(--space-4)",
+  borderRadius: "20px",
+  border: "1px solid var(--border)",
+  boxShadow: "0 2px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04)",
+  padding: "var(--space-4) var(--space-5)",
   minHeight: "96px",
-  height: "96px",
+  height: "auto",
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
-  gap: "2px",
+  gap: "var(--space-2)",
   boxSizing: "border-box",
-  borderLeft: "3px solid var(--primary)",
   minWidth: 0,
-};
-
-const iconStyle = {
-  fontSize: "12px",
-  lineHeight: 1,
-  display: "inline-flex",
-  alignItems: "center",
-  color: "var(--text-muted)",
-  marginBottom: "2px",
 };
 
 export default KpiCard;

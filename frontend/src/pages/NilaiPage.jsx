@@ -3,8 +3,11 @@ import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import Button, { actionBarStyle } from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
 import { Table, TableScroll } from "../components/ui/table";
+import { OperationalPageStyles } from "../components/shared/OperationalPageStyles";
 import { exportExcel } from "../utils/exportExcel";
+import { FaFilter } from "react-icons/fa";
 
 const filterPanelStyle = {
   display: "flex",
@@ -19,18 +22,25 @@ function AkademikResponsiveStyles() {
       .akademik-page {
         min-width: 0;
         max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
       }
 
-      .akademik-filter-panel select,
-      .akademik-filter-panel input[type="number"] {
+      .akademik-filter-panel.filter-bar-v3 {
+        margin-bottom: 0;
+      }
+
+      .akademik-filter-panel .filter-bar-v3__fields select,
+      .akademik-filter-panel .filter-bar-v3__fields input[type="number"] {
         min-width: 0;
         flex: 1 1 140px;
         max-width: 100%;
       }
 
       @media (max-width: 767px) {
-        .akademik-filter-panel select,
-        .akademik-filter-panel input[type="number"] {
+        .akademik-filter-panel .filter-bar-v3__fields select,
+        .akademik-filter-panel .filter-bar-v3__fields input[type="number"] {
           flex: 1 1 100%;
         }
       }
@@ -163,9 +173,16 @@ function NilaiPage() {
   return (
     <AppShell title="Nilai Santri" breadcrumb="Akademik / Nilai Santri">
       <AkademikResponsiveStyles />
-      <div className="akademik-page">
+      <OperationalPageStyles />
+      <div className="akademik-page ops-page">
+      <div className="ops-page__form-card">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div className="akademik-filter-panel" style={filterPanelStyle}>
+        <div className="akademik-filter-panel ops-page__filter filter-bar-v3 filter-bar-v3--table">
+          <span className="filter-bar-v3__label">
+            <FaFilter size={11} aria-hidden />
+            Filter nilai
+          </span>
+          <div className="filter-bar-v3__fields" style={filterPanelStyle}>
           <select
             value={kelasId}
             onChange={(e) => {
@@ -193,11 +210,29 @@ function NilaiPage() {
             type="number"
             value={tahun}
             onChange={(e) => setTahun(e.target.value)}
+            aria-label="Tahun"
           />
+          </div>
         </div>
       </Card>
+      </div>
 
-      <div style={{ marginTop: "var(--space-6)" }}>
+      {!kelasId ? (
+        <div className="ops-page__empty">
+          <EmptyState
+            title="Pilih kelas terlebih dahulu"
+            description="Pilih kelas, bulan, dan tahun untuk mengisi nilai santri."
+          />
+        </div>
+      ) : santri.length === 0 ? (
+        <div className="ops-page__empty">
+          <EmptyState
+            title="Belum ada santri di kelas ini"
+            description="Tidak ada santri terdaftar pada kelas yang dipilih."
+          />
+        </div>
+      ) : (
+      <div className="ops-akademik-card ops-page__card">
         <Card padding="md" shadow="card" border={false} radius="xl">
           <TableScroll matrix sticky>
           <Table>
@@ -219,14 +254,9 @@ function NilaiPage() {
                         type="number"
                         min="0"
                         max="100"
+                        className="ops-nilai-input"
                         value={nilai[`${s.id}-${m}-${bulan}-${tahun}`] || ""}
                         onChange={(e) => handleNilai(s.id, m, e.target.value)}
-                        style={{
-                          width: "70px",
-                          border: "none",
-                          textAlign: "center",
-                          background: "transparent",
-                        }}
                       />
                     </td>
                   ))}
@@ -246,6 +276,7 @@ function NilaiPage() {
           </div>
         </Card>
       </div>
+      )}
       </div>
     </AppShell>
   );

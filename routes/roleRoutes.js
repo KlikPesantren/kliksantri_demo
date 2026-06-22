@@ -1,16 +1,35 @@
-const express          = require("express");
-const router           = express.Router();
-const pool             = require("../db");
-const authMiddleware   = require("../middleware/authMiddleware");
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const authMiddleware = require("../middleware/authMiddleware");
+const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
+const {
+  isPlatformRole,
+  isTenantAssignableRole,
+  rejectTenantRoleMutation,
+  tenantAssignableRolesSqlList,
+} = require("../utils/platformRbac");
 
-// Semua endpoint di sini butuh permission role.manage
-router.use(authMiddleware, requirePermission("role.manage"));
+router.use(authMiddleware, tenantMiddleware, requirePermission("role.manage"));
 
-// ======================
-// GET /roles
-// Daftar role + jumlah permission
-// ======================
+const assignableRoles = tenantAssignableRolesSqlList();
+
+async function getRoleById(id) {
+  const { rows } = await pool.query(
+    `SELECT id, name, label, is_system FROM roles WHERE id = $1`,
+    [id],
+  );
+  return rows[0] || null;
+}
+
+function sendMutationBlocked(res) {
+  const blocked = rejectTenantRoleMutation();
+  return res.status(blocked.status).json({
+    success: false,
+    error: blocked.error,
+  });
+}
 
 router.get("/", async (req, res) => {
   try {
@@ -19,44 +38,47 @@ router.get("/", async (req, res) => {
               COUNT(rp.permission_id) AS total_permission
        FROM roles r
        LEFT JOIN role_permissions rp ON rp.role_id = r.id
+       WHERE r.name = ANY($1::text[])
        GROUP BY r.id
-       ORDER BY r.id ASC`
+       ORDER BY r.id ASC`,
+      [assignableRoles],
     );
-    res.json({ success: true, data: result.rows });
+    res.json({
+      success: true,
+      rbac_read_only: true,
+      data: result.rows,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-// ======================
-// GET /roles/permissions
-// Katalog semua permission (untuk membangun matrix UI)
-// ======================
 
 router.get("/permissions", async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, key, label, grup FROM permissions ORDER BY grup, key`
+      `SELECT id, key, label, grup
+       FROM permissions
+       WHERE grup <> 'platform'
+       ORDER BY grup, key`,
     );
-    res.json({ success: true, data: result.rows });
+    res.json({
+      success: true,
+      rbac_read_only: true,
+      data: result.rows,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ======================
-// GET /roles/:id
-// Detail role + daftar permission key yang dimiliki
-// ======================
-
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const role = await getRoleById(id);
 
-    const role = await pool.query("SELECT * FROM roles WHERE id = $1", [id]);
-    if (role.rows.length === 0) {
+    if (!role || isPlatformRole(role.name) || !isTenantAssignableRole(role.name)) {
       return res.status(404).json({ success: false, error: "Role tidak ditemukan" });
     }
 
@@ -64,14 +86,16 @@ router.get("/:id", async (req, res) => {
       `SELECT p.key
        FROM role_permissions rp
        JOIN permissions p ON p.id = rp.permission_id
-       WHERE rp.role_id = $1`,
-      [id]
+       WHERE rp.role_id = $1
+         AND p.grup <> 'platform'`,
+      [id],
     );
 
     res.json({
       success: true,
+      rbac_read_only: true,
       data: {
-        ...role.rows[0],
+        ...role,
         permissions: perms.rows.map((r) => r.key),
       },
     });
@@ -81,109 +105,10 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ======================
-// POST /roles
-// Buat role baru (scalable — role baru tanpa ubah kode)
-// ======================
+router.post("/", (_req, res) => sendMutationBlocked(res));
 
-router.post("/", async (req, res) => {
-  try {
-    const { name, label } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, error: "Nama role wajib diisi" });
-    }
+router.put("/:id/permissions", (_req, res) => sendMutationBlocked(res));
 
-    const result = await pool.query(
-      `INSERT INTO roles (name, label, is_system)
-       VALUES ($1, $2, false)
-       ON CONFLICT (name) DO NOTHING
-       RETURNING *`,
-      [name.trim().toLowerCase(), label || name]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ success: false, error: "Role sudah ada" });
-    }
-
-    res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ======================
-// PUT /roles/:id/permissions
-// Set ulang permission untuk role (body: { permissions: ["santri.view", ...] })
-// ======================
-
-router.put("/:id/permissions", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const { id } = req.params;
-    const { permissions = [] } = req.body;
-
-    const role = await client.query("SELECT id FROM roles WHERE id = $1", [id]);
-    if (role.rows.length === 0) {
-      return res.status(404).json({ success: false, error: "Role tidak ditemukan" });
-    }
-
-    await client.query("BEGIN");
-
-    // Reset semua permission role ini
-    await client.query("DELETE FROM role_permissions WHERE role_id = $1", [id]);
-
-    // Pasang ulang sesuai daftar key yang dikirim
-    if (permissions.length > 0) {
-      await client.query(
-        `INSERT INTO role_permissions (role_id, permission_id)
-         SELECT $1, p.id FROM permissions p
-         WHERE p.key = ANY($2::text[])
-         ON CONFLICT DO NOTHING`,
-        [id, permissions]
-      );
-    }
-
-    await client.query("COMMIT");
-
-    // Invalidasi cache permission agar perubahan langsung berlaku
-    requirePermission.invalidateCache();
-
-    res.json({ success: true, message: "Permission role diperbarui" });
-  } catch (err) {
-    await client.query("ROLLBACK");
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// ======================
-// DELETE /roles/:id
-// Tidak boleh hapus role sistem
-// ======================
-
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const role = await pool.query("SELECT is_system FROM roles WHERE id = $1", [id]);
-    if (role.rows.length === 0) {
-      return res.status(404).json({ success: false, error: "Role tidak ditemukan" });
-    }
-    if (role.rows[0].is_system) {
-      return res.status(400).json({ success: false, error: "Role sistem tidak dapat dihapus" });
-    }
-
-    await pool.query("DELETE FROM roles WHERE id = $1", [id]);
-    requirePermission.invalidateCache();
-
-    res.json({ success: true, message: "Role dihapus" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+router.delete("/:id", (_req, res) => sendMutationBlocked(res));
 
 module.exports = router;

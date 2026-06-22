@@ -7,6 +7,11 @@ const requirePermission = require("../middleware/requirePermission");
 const { assertKelasInTenant } = require("../services/tenantScope");
 const { syncWaliFromSantri } = require("../services/waliSyncService");
 const {
+  getOperationalChecklist,
+  getExitSummary,
+} = require("../services/santriOperationalService");
+const { isSantriNonAktif } = require("../utils/santriStatus");
+const {
   buildTemplateWorkbook,
   previewImport,
   commitImport,
@@ -187,6 +192,32 @@ router.post(
   }
 );
 
+router.get("/:id/operational-checklist", ...withTenant, async (req, res) => {
+  try {
+    const data = await getOperationalChecklist(req.tenantId, req.params.id);
+    if (!data) {
+      return res.status(404).json({ success: false, error: "Santri tidak ditemukan" });
+    }
+    res.json({ success: true, data });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/:id/exit-summary", ...withTenant, async (req, res) => {
+  try {
+    const data = await getExitSummary(req.tenantId, req.params.id);
+    if (!data) {
+      return res.status(404).json({ success: false, error: "Santri tidak ditemukan" });
+    }
+    res.json({ success: true, data });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.put(
   "/:id",
   ...withTenant,
@@ -205,6 +236,7 @@ router.put(
         nomor_hp_ortu,
         kelas_id,
         foto,
+        status,
       } = req.body;
 
       const kelasCheck = await assertKelasInTenant(req.tenantId, kelas_id, client);
@@ -213,6 +245,22 @@ router.put(
       }
 
       await client.query("BEGIN");
+
+      const existing = await client.query(
+        `SELECT id, status
+         FROM santri
+         WHERE id = $1 AND tenant_id = $2`,
+        [id, req.tenantId],
+      );
+
+      if (existing.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ success: false, error: "Santri tidak ditemukan" });
+      }
+
+      const nextStatus = status ?? existing.rows[0].status ?? "aktif";
+      const wasAktif = !isSantriNonAktif(existing.rows[0].status);
+      const willNonAktif = isSantriNonAktif(nextStatus);
 
       const result = await client.query(
         `UPDATE santri
@@ -223,8 +271,9 @@ router.put(
              orang_tua = $5,
              nomor_hp_ortu = $6,
              kelas_id = $7,
-             foto = $8
-         WHERE id = $9 AND tenant_id = $10
+             foto = $8,
+             status = $9
+         WHERE id = $10 AND tenant_id = $11
          RETURNING *`,
         [
           nis,
@@ -235,6 +284,7 @@ router.put(
           nomor_hp_ortu,
           kelas_id || null,
           foto,
+          nextStatus,
           id,
           req.tenantId,
         ]
@@ -251,12 +301,18 @@ router.put(
         santri,
       });
 
+      const exitSummary =
+        wasAktif && willNonAktif
+          ? await getExitSummary(req.tenantId, id, client)
+          : null;
+
       await client.query("COMMIT");
 
       res.json({
         success: true,
         data: santri,
         wali_sync: waliSync,
+        exit_summary: exitSummary,
       });
     } catch (err) {
       await client.query("ROLLBACK");

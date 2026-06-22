@@ -3,8 +3,6 @@ import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
-import KpiCard from "../components/ui/KpiCard";
-import KpiGrid from "../components/ui/KpiGrid";
 import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
@@ -13,7 +11,11 @@ import EmptyState from "../components/ui/EmptyState";
 import StatusBadge from "../components/ui/StatusBadge";
 import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
 import { LegacyPageStyles } from "../components/shared/PageResponsiveStyles";
-import { FaSignOutAlt } from "react-icons/fa";
+import {
+  OperationalPageStyles,
+  resolveTamuStatusClass,
+} from "../components/shared/OperationalPageStyles";
+import { FaSignOutAlt, FaFilter } from "react-icons/fa";
 import {
   FormField,
   Input,
@@ -191,15 +193,28 @@ function TamuPage() {
   return (
     <AppShell title="Daftar Hadir Tamu" breadcrumb="Keamanan / Daftar Hadir Tamu">
       <LegacyPageStyles />
-      <div className="legacy-page">
-        <KpiGrid>
-          <KpiCard label="Tamu Hari Ini" value={formatNumber(totalHariIni)} accent="primary" />
-          <KpiCard label="Masih Di Dalam" value={formatNumber(masihDidalam)} accent="success" />
-          <KpiCard label="Sudah Keluar" value={formatNumber(sudahKeluar)} accent="danger" />
-          <KpiCard label="Bulan Ini" value={formatNumber(totalBulanIni)} accent="neutral" />
-        </KpiGrid>
+      <OperationalPageStyles />
+      <div className="ops-page">
+        <div className="ops-page__summary">
+          <div className="ops-page__stat">
+            <span className="ops-page__stat-label">Tamu Hari Ini</span>
+            <span className="ops-page__stat-value">{formatNumber(totalHariIni)}</span>
+          </div>
+          <div className="ops-page__stat">
+            <span className="ops-page__stat-label">Masih Di Dalam</span>
+            <span className="ops-page__stat-value">{formatNumber(masihDidalam)}</span>
+          </div>
+          <div className="ops-page__stat">
+            <span className="ops-page__stat-label">Sudah Keluar</span>
+            <span className="ops-page__stat-value">{formatNumber(sudahKeluar)}</span>
+          </div>
+          <div className="ops-page__stat">
+            <span className="ops-page__stat-label">Bulan Ini</span>
+            <span className="ops-page__stat-value">{formatNumber(totalBulanIni)}</span>
+          </div>
+        </div>
 
-        <div style={{ marginTop: "var(--space-6)" }}>
+        <div className="ops-page__form-card">
           <Card padding="md" shadow="card" border={false} radius="xl">
             <SectionHeading variant="eyebrow" spacing="first">
               Input Tamu
@@ -282,17 +297,21 @@ function TamuPage() {
           </Card>
         </div>
 
-        <div style={{ marginTop: "var(--space-6)" }}>
+        <div className="ops-page__card">
           <DataTableCard
             title="Daftar Tamu"
             subtitle="Rekap kunjungan tamu pesantren"
+            border
             actions={
-              <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-                {tamu.length} tamu
-              </span>
+              <span className="ops-page__meta">{tamu.length} tamu</span>
             }
           >
-            <FilterBar label="Filter" className="filter-bar-v3--table">
+            <FilterBar label="Filter" className="filter-bar-v3 filter-bar-v3--table ops-page__filter">
+              <span className="filter-bar-v3__label">
+                <FaFilter size={11} aria-hidden />
+                Cari tamu
+              </span>
+              <div className="filter-bar-v3__fields">
               <SearchInput
                 value={searchNama}
                 onChange={(e) => setSearchNama(e.target.value)}
@@ -314,6 +333,7 @@ function TamuPage() {
                 onChange={(e) => setFilterTanggal(e.target.value)}
                 aria-label="Filter tanggal"
               />
+              </div>
             </FilterBar>
 
             <TableToolbar
@@ -325,10 +345,12 @@ function TamuPage() {
             />
 
             {tamu.length === 0 ? (
+              <div className="ops-page__empty">
               <EmptyState
                 title="Belum ada tamu"
                 description="Input tamu pertama untuk memulai."
               />
+              </div>
             ) : (
               <>
               <TableScroll>
@@ -360,9 +382,11 @@ function TamuPage() {
                         <td>{item.bertemu_dengan}</td>
                         <td>{item.jumlah_orang}</td>
                         <td>
-                          <StatusBadge status={item.status === "Masuk" ? "aktif" : "ditolak"}>
-                            {item.status}
-                          </StatusBadge>
+                          <span className={`ops-tamu ops-tamu--${resolveTamuStatusClass(item.status)}`}>
+                            <StatusBadge status={item.status === "Masuk" ? "aktif" : "ditolak"}>
+                              {item.status}
+                            </StatusBadge>
+                          </span>
                         </td>
                         <td>{item.petugas}</td>
                         <td className="table-v3__cell--actions">

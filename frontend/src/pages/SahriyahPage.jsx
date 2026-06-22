@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FaMoneyBillWave } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
@@ -18,8 +18,8 @@ import {
   TableScroll,
   TableActions,
   TablePagination,
-  useClientPagination,
 } from "../components/ui/table";
+import { DEFAULT_PAGE_SIZE } from "../hooks/useClientPagination";
 import {
   FormField,
   Input,
@@ -32,8 +32,52 @@ import { exportExcel } from "../utils/exportExcel";
 import { formatCurrency, formatNumber } from "../utils/formatCurrency";
 import { KeuanganPageStyles } from "../components/shared/PageResponsiveStyles";
 
+function getApiError(err, fallback = "Terjadi kesalahan. Silakan coba lagi.") {
+  return err?.response?.data?.error || fallback;
+}
+
+function isSahriyahLunas(status) {
+  return String(status || "").trim().toLowerCase() === "lunas";
+}
+
+function buildSahriyahParams({
+  bulan,
+  tahun,
+  search,
+  filterStatus,
+  filterKelas,
+  page,
+  limit = DEFAULT_PAGE_SIZE,
+}) {
+  const params = {
+    bulan,
+    tahun,
+    limit,
+    offset: (page - 1) * limit,
+  };
+
+  if (search.trim()) params.search = search.trim();
+  if (filterStatus) params.status = filterStatus;
+  if (filterKelas) params.kelas_id = filterKelas;
+
+  return params;
+}
+
 function SahriyahPage() {
   const [data, setData] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    lunas: 0,
+    belum_lunas: 0,
+    total_nominal: 0,
+  });
+  const [pagination, setPagination] = useState({
+    limit: DEFAULT_PAGE_SIZE,
+    offset: 0,
+    total: 0,
+  });
+  const [page, setPage] = useState(1);
+  const [isLoadingTable, setIsLoadingTable] = useState(false);
   const [showBayar, setShowBayar] = useState(false);
   const [selectedTagihan, setSelectedTagihan] = useState(null);
   const [formBayar, setFormBayar] = useState({
@@ -42,35 +86,129 @@ function SahriyahPage() {
     petugas: "",
   });
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterKelas, setFilterKelas] = useState("");
+  const [kelas, setKelas] = useState([]);
   const [showRiwayat, setShowRiwayat] = useState(false);
   const [riwayat, setRiwayat] = useState([]);
   const [bulan, setBulan] = useState(new Date().getMonth() + 1);
   const [tahun, setTahun] = useState(new Date().getFullYear());
+  const [isSavingBayar, setIsSavingBayar] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const getData = async () => {
-    try {
-      const response = await api.get(`/sahriyah?t=${Date.now()}`);
-      setData([...response.data.data]);
-    } catch (err) {
-      console.error(err);
+  const searchDebounceRef = useRef(null);
+
+  const fetchSahriyah = useCallback(
+    async (pageNum = 1) => {
+      setIsLoadingTable(true);
+
+      try {
+        const params = buildSahriyahParams({
+          bulan,
+          tahun,
+          search,
+          filterStatus,
+          filterKelas,
+          page: pageNum,
+        });
+
+        const response = await api.get("/sahriyah", { params });
+        setData(response.data.data || []);
+        setPagination(
+          response.data.pagination || {
+            limit: DEFAULT_PAGE_SIZE,
+            offset: 0,
+            total: 0,
+          },
+        );
+        setSummary(
+          response.data.summary || {
+            total: 0,
+            lunas: 0,
+            belum_lunas: 0,
+            total_nominal: 0,
+          },
+        );
+        setPage(pageNum);
+      } catch (err) {
+        console.error(err);
+        alert(getApiError(err, "Gagal memuat data sahriyah"));
+      } finally {
+        setIsLoadingTable(false);
+      }
+    },
+    [bulan, tahun, search, filterStatus, filterKelas],
+  );
+
+  useEffect(() => {
+    api.get("/kelas").then((res) => setKelas(res.data.data || [])).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
     }
-  };
+
+    searchDebounceRef.current = setTimeout(() => {
+      fetchSahriyah(1);
+    }, search.trim() ? 300 : 0);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [bulan, tahun, search, filterStatus, filterKelas, fetchSahriyah]);
 
   const generateTagihan = async () => {
+    setIsGenerating(true);
+
     try {
-      await api.post("/sahriyah/generate", { bulan, tahun });
-      alert("Tagihan berhasil dibuat");
-      getData();
+      const response = await api.post("/sahriyah/generate", { bulan, tahun });
+      const {
+        created_count = 0,
+        skipped_count = 0,
+        skipped_existing_count = 0,
+        skipped_no_setting_count = 0,
+        total_target = 0,
+      } = response.data || {};
+
+      alert(
+        `Generate selesai.\n\nDibuat: ${created_count}\nSudah ada: ${skipped_existing_count || skipped_count}\nTanpa setting sahriyah: ${skipped_no_setting_count}\nTarget santri aktif: ${total_target}`,
+      );
+      await fetchSahriyah(1);
     } catch (err) {
       console.error(err);
-      alert("Generate gagal");
+      alert(getApiError(err, "Generate tagihan gagal"));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   const bayarTagihan = (tagihan) => {
+    if (isSahriyahLunas(tagihan.status)) return;
     setSelectedTagihan(tagihan);
     setFormBayar({ nominal: "", beras: "", petugas: "" });
     setShowBayar(true);
+  };
+
+  const tutupBayar = () => {
+    if (isSavingBayar) return;
+    setShowBayar(false);
+    setSelectedTagihan(null);
+    setFormBayar({ nominal: "", beras: "", petugas: "" });
+  };
+
+  const isiBayarSisaUang = () => {
+    if (!selectedTagihan) return;
+    const sisa = Math.max(0, Number(selectedTagihan.sisa_tagihan || 0));
+    setFormBayar((prev) => ({ ...prev, nominal: sisa > 0 ? String(sisa) : "" }));
+  };
+
+  const isiBayarSisaBeras = () => {
+    if (!selectedTagihan) return;
+    const sisa = Math.max(0, Number(selectedTagihan.sisa_beras || 0));
+    setFormBayar((prev) => ({ ...prev, beras: sisa > 0 ? String(sisa) : "" }));
   };
 
   const lihatRiwayat = async (id) => {
@@ -80,33 +218,20 @@ function SahriyahPage() {
       setShowRiwayat(true);
     } catch (err) {
       console.error(err);
+      alert(getApiError(err, "Gagal memuat riwayat"));
     }
   };
 
-  useEffect(() => {
-    getData();
-  }, []);
-
-  const filtered = useMemo(
-    () =>
-      data.filter(
-        (d) =>
-          d.nama?.toLowerCase().includes(search.toLowerCase()) &&
-          d.bulan === bulan &&
-          d.tahun === tahun,
-      ),
-    [data, search, bulan, tahun],
-  );
-
-  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filtered);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, bulan, tahun, setPage]);
-
-  useEffect(() => {}, [data]);
-
   const simpanPembayaran = async () => {
+    if (isSavingBayar || !selectedTagihan) return;
+
+    if (isSahriyahLunas(selectedTagihan.status)) {
+      alert("Tagihan sahriyah sudah lunas dan tidak dapat dibayar lagi");
+      return;
+    }
+
+    setIsSavingBayar(true);
+
     try {
       await api.put(`/sahriyah/bayar/${selectedTagihan.id}`, {
         nominal: Number(formBayar.nominal || 0),
@@ -114,25 +239,17 @@ function SahriyahPage() {
         petugas: formBayar.petugas,
       });
 
-      const response = await api.get(`/sahriyah?t=${Date.now()}`);
-
-      
-
-      setData([]);
-
-      setTimeout(() => {
-        setData([...response.data.data]);
-      }, 10);
-
       setShowBayar(false);
       setSelectedTagihan(null);
       setFormBayar({ nominal: "", beras: "", petugas: "" });
 
-      setSelectedTagihan(null);
-      setFormBayar({ nominal: "", beras: "", petugas: "" });
+      alert("Pembayaran berhasil disimpan");
+      await fetchSahriyah(page);
     } catch (err) {
       console.error(err);
-      alert("Pembayaran gagal");
+      alert(getApiError(err, "Pembayaran gagal"));
+    } finally {
+      setIsSavingBayar(false);
     }
   };
 
@@ -142,66 +259,68 @@ function SahriyahPage() {
 
     try {
       await api.delete(`/sahriyah/${id}`);
-      await getData();
+      await fetchSahriyah(page);
       alert("Tagihan berhasil dihapus");
     } catch (err) {
       console.error(err);
-      alert("Gagal menghapus tagihan");
+      alert(getApiError(err, "Gagal menghapus tagihan"));
     }
   };
 
-  const handleExport = () => {
-    const rows = filtered.map((d) => ({
-      Nama: d.nama,
-      Tagihan: Number(d.nominal),
-      SudahBayar: Number(d.total_bayar),
-      Sisa: Number(d.sisa_tagihan),
-      Beras: Number(d.nominal_beras),
-      BerasMasuk: Number(d.beras_terbayar),
-      SisaBeras: Number(d.sisa_beras),
-      Status: d.status,
-    }));
+  const handleExport = async () => {
+    try {
+      const params = buildSahriyahParams({
+        bulan,
+        tahun,
+        search,
+        filterStatus,
+        filterKelas,
+        page: 1,
+        limit: 10000,
+      });
 
-    exportExcel(rows, "Sahriyah");
+      const response = await api.get("/sahriyah", { params });
+      const rows = (response.data.data || []).map((d) => ({
+        Nama: d.nama,
+        Tagihan: Number(d.nominal),
+        SudahBayar: Number(d.total_bayar),
+        Sisa: Number(d.sisa_tagihan),
+        Beras: Number(d.nominal_beras),
+        BerasMasuk: Number(d.beras_terbayar),
+        SisaBeras: Number(d.sisa_beras),
+        Status: d.status,
+      }));
+
+      exportExcel(rows, "Sahriyah");
+    } catch (err) {
+      console.error(err);
+      alert(getApiError(err, "Gagal export sahriyah"));
+    }
   };
 
-  const totalNominal = filtered.reduce((a, b) => a + Number(b.nominal || 0), 0);
-  const periodData = data.filter((d) => d.bulan === bulan && d.tahun === tahun);
-
   const bulanLabel = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
   ][bulan - 1];
+
+  const pageSize = pagination.limit || DEFAULT_PAGE_SIZE;
 
   return (
     <AppShell title="Sahriyah" breadcrumb="Keuangan / Sahriyah">
       <KeuanganPageStyles />
       <div className="keuangan-page">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <FilterBar label="Periode" actions={<Button onClick={generateTagihan}>Generate Tagihan</Button>}>
+        <FilterBar label="Periode" actions={
+          <Button onClick={generateTagihan} disabled={isGenerating}>
+            {isGenerating ? "Memproses..." : "Generate Tagihan"}
+          </Button>
+        }>
           <Select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} aria-label="Bulan">
-            <option value={1}>Januari</option>
-            <option value={2}>Februari</option>
-            <option value={3}>Maret</option>
-            <option value={4}>April</option>
-            <option value={5}>Mei</option>
-            <option value={6}>Juni</option>
-            <option value={7}>Juli</option>
-            <option value={8}>Agustus</option>
-            <option value={9}>September</option>
-            <option value={10}>Oktober</option>
-            <option value={11}>November</option>
-            <option value={12}>Desember</option>
+            {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+              <option key={m} value={m}>
+                {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][m - 1]}
+              </option>
+            ))}
           </Select>
           <Select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} aria-label="Tahun">
             <option value={2025}>2025</option>
@@ -209,23 +328,26 @@ function SahriyahPage() {
             <option value={2027}>2027</option>
             <option value={2028}>2028</option>
           </Select>
+          <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Status">
+            <option value="">Semua Status</option>
+            <option value="Lunas">Lunas</option>
+            <option value="Belum Lunas">Belum Lunas</option>
+          </Select>
+          <Select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} aria-label="Kelas">
+            <option value="">Semua Kelas</option>
+            {kelas.map((k) => (
+              <option key={k.id} value={k.id}>{k.nama_kelas}</option>
+            ))}
+          </Select>
         </FilterBar>
       </Card>
 
       <div style={{ marginTop: "var(--space-6)" }}>
         <KpiGrid>
-          <KpiCard label="Total Tagihan" value={formatNumber(filtered.length)} accent="primary" />
-          <KpiCard
-            label="Lunas"
-            value={formatNumber(filtered.filter((d) => d.status === "Lunas").length)}
-            accent="success"
-          />
-          <KpiCard
-            label="Belum Lunas"
-            value={formatNumber(filtered.filter((d) => d.status !== "Lunas").length)}
-            accent="danger"
-          />
-          <KpiCard label="Total Nominal" value={formatCurrency(totalNominal)} accent="primary" />
+          <KpiCard label="Total Tagihan" value={formatNumber(summary.total || 0)} accent="primary" />
+          <KpiCard label="Lunas" value={formatNumber(summary.lunas || 0)} accent="success" />
+          <KpiCard label="Belum Lunas" value={formatNumber(summary.belum_lunas || 0)} accent="danger" />
+          <KpiCard label="Total Nominal" value={formatCurrency(summary.total_nominal || 0)} accent="primary" />
         </KpiGrid>
       </div>
 
@@ -235,7 +357,7 @@ function SahriyahPage() {
           subtitle={`Tagihan ${bulanLabel} ${tahun}`}
           actions={
             <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-              {filtered.length} tagihan
+              {pagination.total || 0} tagihan
             </span>
           }
         >
@@ -248,20 +370,18 @@ function SahriyahPage() {
               />
             }
             actions={
-              <Button variant="success" onClick={handleExport}>
+              <Button variant="success" onClick={handleExport} disabled={isLoadingTable}>
                 Export Excel
               </Button>
             }
           />
 
-          {filtered.length === 0 ? (
+          {isLoadingTable ? (
+            <EmptyState title="Memuat data..." description="Mohon tunggu sebentar." />
+          ) : data.length === 0 ? (
             <EmptyState
-              title={periodData.length === 0 ? "Belum ada tagihan" : "Tidak ada hasil pencarian"}
-              description={
-                periodData.length === 0
-                  ? "Generate tagihan untuk periode ini terlebih dahulu."
-                  : "Coba kata kunci lain atau hapus filter pencarian."
-              }
+              title="Tidak ada tagihan"
+              description="Generate tagihan untuk periode ini atau ubah filter pencarian."
             />
           ) : (
             <>
@@ -283,15 +403,9 @@ function SahriyahPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedItems.map((d) => (
+                    {data.map((d) => (
                       <tr key={d.id}>
-                        <td className="table-v3__cell--strong">
-                          {d.nama}
-                          <br />
-                          <span className="table-v3__cell--muted">
-                            ID:{d.id} · Bayar:{d.total_bayar}
-                          </span>
-                        </td>
+                        <td className="table-v3__cell--strong">{d.nama}</td>
                         <td>Rp {Number(d.nominal || 0).toLocaleString()}</td>
                         <td>Rp {Number(d.total_bayar || 0).toLocaleString()}</td>
                         <td>Rp {Number(d.sisa_tagihan || 0).toLocaleString()}</td>
@@ -311,7 +425,7 @@ function SahriyahPage() {
                                 icon: FaMoneyBillWave,
                                 title: "Bayar",
                                 variant: "success",
-                                hidden: d.status === "Lunas",
+                                hidden: isSahriyahLunas(d.status),
                                 onClick: () => bayarTagihan(d),
                               },
                               { type: "history", onClick: () => lihatRiwayat(d.id) },
@@ -327,61 +441,69 @@ function SahriyahPage() {
               <TablePagination
                 page={page}
                 pageSize={pageSize}
-                totalItems={totalItems}
-                onPageChange={setPage}
+                totalItems={pagination.total || 0}
+                onPageChange={fetchSahriyah}
               />
             </>
           )}
         </DataTableCard>
       </div>
 
-      <Modal
-        open={showBayar}
-        title="Bayar Sahriyah"
-        onClose={() => setShowBayar(false)}
-        width={440}
-      >
-        <p style={{ margin: "0 0 var(--space-4)", color: "var(--text-secondary)" }}>
-          {selectedTagihan?.nama}
-        </p>
-        <FormGrid columns="modal">
-          <FormField label="Nominal Uang" htmlFor="sahriyah-nominal">
-            <Input
-              id="sahriyah-nominal"
-              type="number"
-              value={formBayar.nominal}
-              onChange={(e) => setFormBayar({ ...formBayar, nominal: e.target.value })}
-            />
-          </FormField>
-          <FormField label="Beras (Kg)" htmlFor="sahriyah-beras">
-            <Input
-              id="sahriyah-beras"
-              type="number"
-              value={formBayar.beras}
-              onChange={(e) => setFormBayar({ ...formBayar, beras: e.target.value })}
-            />
-          </FormField>
-          <FormField label="Petugas" htmlFor="sahriyah-petugas">
-            <Input
-              id="sahriyah-petugas"
-              value={formBayar.petugas}
-              onChange={(e) => setFormBayar({ ...formBayar, petugas: e.target.value })}
-            />
-          </FormField>
-        </FormGrid>
-        <FormActionBar className="form-action-bar-v3--compact">
-          <Button onClick={simpanPembayaran}>Bayar</Button>
-          <Button variant="outline" onClick={() => setShowBayar(false)}>
-            Batal
-          </Button>
-        </FormActionBar>
+      <Modal open={showBayar} title="Bayar Sahriyah" onClose={tutupBayar} width={480}>
+        {selectedTagihan ? (
+          <>
+            <div className="form-modal-summary-v3">
+              <p><strong>Santri:</strong> {selectedTagihan.nama}</p>
+              <p><strong>Sisa Uang:</strong> {formatCurrency(selectedTagihan.sisa_tagihan || 0)}</p>
+              <p><strong>Sisa Beras:</strong> {Number(selectedTagihan.sisa_beras || 0)} Kg</p>
+            </div>
+            <FormGrid columns="modal">
+              <FormField label="Nominal Uang" htmlFor="sahriyah-nominal">
+                <Input
+                  id="sahriyah-nominal"
+                  type="number"
+                  value={formBayar.nominal}
+                  onChange={(e) => setFormBayar({ ...formBayar, nominal: e.target.value })}
+                  disabled={isSavingBayar}
+                />
+              </FormField>
+              <FormField label="Beras (Kg)" htmlFor="sahriyah-beras">
+                <Input
+                  id="sahriyah-beras"
+                  type="number"
+                  value={formBayar.beras}
+                  onChange={(e) => setFormBayar({ ...formBayar, beras: e.target.value })}
+                  disabled={isSavingBayar}
+                />
+              </FormField>
+              <FormField label="Petugas" htmlFor="sahriyah-petugas">
+                <Input
+                  id="sahriyah-petugas"
+                  value={formBayar.petugas}
+                  onChange={(e) => setFormBayar({ ...formBayar, petugas: e.target.value })}
+                  disabled={isSavingBayar}
+                />
+              </FormField>
+            </FormGrid>
+            <FormActionBar className="form-action-bar-v3--compact">
+              <Button variant="secondary" onClick={isiBayarSisaUang} disabled={isSavingBayar || Number(selectedTagihan.sisa_tagihan || 0) <= 0}>
+                Bayar Sisa Uang
+              </Button>
+              <Button variant="secondary" onClick={isiBayarSisaBeras} disabled={isSavingBayar || Number(selectedTagihan.sisa_beras || 0) <= 0}>
+                Bayar Sisa Beras
+              </Button>
+              <Button onClick={simpanPembayaran} disabled={isSavingBayar}>
+                {isSavingBayar ? "Menyimpan..." : "Bayar"}
+              </Button>
+              <Button variant="outline" onClick={tutupBayar} disabled={isSavingBayar}>
+                Batal
+              </Button>
+            </FormActionBar>
+          </>
+        ) : null}
       </Modal>
 
-      <SahriyahHistoriModal
-        open={showRiwayat}
-        riwayat={riwayat}
-        onClose={() => setShowRiwayat(false)}
-      />
+      <SahriyahHistoriModal open={showRiwayat} riwayat={riwayat} onClose={() => setShowRiwayat(false)} />
       </div>
     </AppShell>
   );

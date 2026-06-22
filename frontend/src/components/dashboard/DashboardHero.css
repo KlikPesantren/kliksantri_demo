@@ -1,10 +1,10 @@
 .dashboard-hero {
   position: relative;
-  min-height: 252px;
-  border-radius: 28px;
+  min-height: 192px;
+  border-radius: 24px;
   overflow: hidden;
   border: 1px solid #E5E7EB;
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
   background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 48%, #DCFCE7 100%);
   animation: dashboardHeroFadeIn 320ms ease-out both;
 }
@@ -40,21 +40,21 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  min-height: 252px;
-  padding: var(--space-6) var(--space-6);
-  padding-right: calc(320px + 72px);
+  min-height: 192px;
+  padding: var(--space-4) var(--space-5);
+  padding-right: calc(256px + 56px);
   box-sizing: border-box;
 }
 
 .dashboard-hero__content {
   flex: 1;
   min-width: 0;
-  max-width: 580px;
+  max-width: 560px;
 }
 
 .dashboard-hero__greeting {
-  margin: 0 0 var(--space-3);
-  font-size: 15px;
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
   font-weight: 600;
   color: var(--primary);
   line-height: 1.35;
@@ -63,37 +63,37 @@
 
 .dashboard-hero__title {
   margin: 0;
-  font-size: 44px;
+  font-size: 36px;
   font-weight: 800;
   color: var(--text-primary);
-  line-height: 1.05;
+  line-height: 1.08;
   letter-spacing: -0.03em;
 }
 
 .dashboard-hero__subtext {
-  margin: var(--space-3) 0 0;
-  font-size: 15px;
+  margin: var(--space-2) 0 0;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
-  line-height: 1.55;
-  max-width: 520px;
+  line-height: 1.5;
+  max-width: 480px;
 }
 
 .dashboard-hero__quote {
   position: absolute;
-  right: 36px;
+  right: 28px;
   top: 50%;
   transform: translateY(-50%);
   flex-shrink: 0;
-  width: 320px;
-  padding: var(--space-5);
+  width: 256px;
+  padding: var(--space-3) var(--space-4);
   background: linear-gradient(145deg, #15803D 0%, #166534 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 22px;
-  box-shadow: 0 16px 40px rgba(21, 128, 61, 0.22), 0 4px 12px rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(21, 128, 61, 0.18), 0 2px 8px rgba(15, 23, 42, 0.06);
   color: #ffffff;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
   font-weight: 500;
   animation: dashboardHeroQuoteSlide 320ms ease-out 80ms both;
 }
@@ -104,24 +104,24 @@
 
 .dashboard-hero__quote-mark {
   display: block;
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1;
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .dashboard-hero__quote-mark--open {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .dashboard-hero__quote-mark--close {
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
   text-align: right;
 }
 
 @keyframes dashboardHeroFadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -132,7 +132,7 @@
 @keyframes dashboardHeroQuoteSlide {
   from {
     opacity: 0;
-    transform: translate(24px, -50%);
+    transform: translate(20px, -50%);
   }
   to {
     opacity: 1;
@@ -142,16 +142,16 @@
 
 @media (max-width: 1023px) {
   .dashboard-hero__inner {
-    padding-right: calc(260px + 56px);
+    padding-right: calc(208px + 48px);
   }
 
   .dashboard-hero__quote {
-    width: 260px;
-    right: 28px;
+    width: 208px;
+    right: 24px;
   }
 
   .dashboard-hero__title {
-    font-size: 38px;
+    font-size: 32px;
   }
 }
 
@@ -179,8 +179,8 @@
     align-items: flex-start;
     justify-content: center;
     min-height: 0;
-    padding: var(--space-5);
-    padding-right: var(--space-5);
+    padding: var(--space-4);
+    padding-right: var(--space-4);
   }
 
   .dashboard-hero__content {
@@ -188,20 +188,20 @@
   }
 
   .dashboard-hero__title {
-    font-size: 32px;
+    font-size: 28px;
   }
 
   .dashboard-hero__subtext {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .dashboard-hero__quote {
     position: static;
     transform: none;
     width: 100%;
-    max-width: none;
-    align-self: stretch;
-    margin-top: var(--space-4);
+    max-width: 280px;
+    align-self: flex-start;
+    margin-top: var(--space-3);
     animation-name: dashboardHeroQuoteSlideMobile;
   }
 }
@@ -209,7 +209,7 @@
 @keyframes dashboardHeroQuoteSlideMobile {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;

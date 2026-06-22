@@ -6,6 +6,7 @@ import {
   FaImage,
   FaToggleOn,
   FaToggleOff,
+  FaSearch,
 } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
@@ -13,8 +14,7 @@ import Card from "../components/ui/Card";
 import StatusBadge from "../components/ui/StatusBadge";
 import Button from "../components/ui/Button";
 import Modal from "../components/Modal";
-import KpiCard from "../components/ui/KpiCard";
-import KpiGrid from "../components/ui/KpiGrid";
+import { OperationalPageStyles } from "../components/shared/OperationalPageStyles";
 import { formatNumber } from "../utils/formatCurrency";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
@@ -105,14 +105,45 @@ function PengumumanPageStyles() {
       .pengumuman-page {
         min-width: 0;
         max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
+      }
+
+      .pengumuman-page .ops-page__form-card > div,
+      .pengumuman-page .ops-page__empty > div {
+        border-radius: 20px !important;
+      }
+
+      .pengumuman-cover-placeholder {
+        width: 100%;
+        height: 100%;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: var(--text-muted);
+        background: linear-gradient(145deg, #15803D 0%, #166534 100%);
+      }
+
+      .pengumuman-cover-placeholder span {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.85;
+        color: rgba(255, 255, 255, 0.75);
       }
 
       .pengumuman-cover {
         width: 100%;
         aspect-ratio: 16 / 9;
-        border-radius: var(--radius-xl);
+        border-radius: 20px;
         overflow: hidden;
         background: var(--neutral-subtle);
+        border: 1px solid var(--border);
       }
 
       .pengumuman-cover img {
@@ -127,29 +158,7 @@ function PengumumanPageStyles() {
       }
 
       .pengumuman-cover--hero {
-        border-radius: var(--radius-xl);
-      }
-
-      .pengumuman-cover-placeholder {
-        width: 100%;
-        height: 100%;
-        min-height: 120px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        color: var(--text-muted);
-        background: var(--accent-teal-gradient);
-      }
-
-      .pengumuman-cover-placeholder span {
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        opacity: 0.85;
-        color: rgba(255, 255, 255, 0.75);
+        border-radius: 20px;
       }
 
       .pengumuman-clamp-3 {
@@ -162,9 +171,9 @@ function PengumumanPageStyles() {
       .pengumuman-hero {
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: var(--radius-xl);
+        border-radius: 20px;
         overflow: hidden;
-        box-shadow: var(--shadow-card);
+        box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
       }
 
       .pengumuman-hero-body {
@@ -199,11 +208,17 @@ function PengumumanPageStyles() {
         grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto;
         gap: var(--space-4);
         align-items: start;
-        padding: var(--space-4);
+        padding: var(--space-5);
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
+        border-radius: 20px;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+        transition: box-shadow 180ms ease, transform 180ms ease;
+      }
+
+      .pengumuman-feed-item:hover {
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+        transform: translateY(-1px);
       }
 
       .pengumuman-feed-item--inactive {
@@ -216,11 +231,12 @@ function PengumumanPageStyles() {
 
       .pengumuman-feed-title {
         margin: 0;
-        font-size: 17px;
+        font-size: 18px;
         font-weight: 800;
         line-height: 1.35;
         color: var(--text-primary);
         cursor: pointer;
+        letter-spacing: -0.02em;
       }
 
       .pengumuman-feed-preview {
@@ -304,18 +320,17 @@ function PengumumanPageStyles() {
       }
 
       .pengumuman-toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-3);
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: var(--space-5);
+        margin-bottom: 0;
       }
 
-      .pengumuman-toolbar-search {
-        flex: 1 1 240px;
+      .pengumuman-toolbar .filter-bar-v3__fields {
+        flex: 1;
         min-width: 0;
-        max-width: 420px;
+      }
+
+      .pengumuman-toolbar .filter-bar-v3__fields .form-control-v3,
+      .pengumuman-toolbar .filter-bar-v3__fields input {
+        max-width: 100%;
       }
 
       .pengumuman-read-modal {
@@ -749,20 +764,32 @@ function PengumumanPage() {
       breadcrumb="Sistem / Pengumuman"
     >
       <PengumumanPageStyles />
-      <div className="pengumuman-page">
+      <OperationalPageStyles />
+      <div className="pengumuman-page ops-page">
         {!formOpen && (
-          <div style={{ marginBottom: "var(--space-6)" }}>
-            <KpiGrid>
-              <KpiCard label="Total Pengumuman" value={formatNumber(stats.total)} accent="primary" />
-              <KpiCard label="Aktif" value={formatNumber(stats.aktif)} accent="success" />
-              <KpiCard label="Prioritas Tinggi" value={formatNumber(stats.prioritasTinggi)} accent="danger" />
-            </KpiGrid>
+          <div className="ops-page__summary">
+            <div className="ops-page__stat">
+              <span className="ops-page__stat-label">Total Pengumuman</span>
+              <span className="ops-page__stat-value">{formatNumber(stats.total)}</span>
+            </div>
+            <div className="ops-page__stat">
+              <span className="ops-page__stat-label">Aktif</span>
+              <span className="ops-page__stat-value">{formatNumber(stats.aktif)}</span>
+            </div>
+            <div className="ops-page__stat">
+              <span className="ops-page__stat-label">Prioritas Tinggi</span>
+              <span className="ops-page__stat-value">{formatNumber(stats.prioritasTinggi)}</span>
+            </div>
           </div>
         )}
 
         {!formOpen && (
-          <div className="pengumuman-toolbar">
-            <div className="pengumuman-toolbar-search">
+          <div className="pengumuman-toolbar ops-page__filter filter-bar-v3 filter-bar-v3--table">
+            <span className="filter-bar-v3__label">
+              <FaSearch size={11} aria-hidden />
+              Cari pengumuman
+            </span>
+            <div className="filter-bar-v3__fields">
               <SearchInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -787,13 +814,16 @@ function PengumumanPage() {
                 </button>
               ))}
             </div>
-            <Button type="button" variant="primary" onClick={() => setFormOpen(true)}>
-              + Buat Pengumuman
-            </Button>
+            <div className="ops-page__filter-actions">
+              <Button type="button" variant="primary" onClick={() => setFormOpen(true)}>
+                + Buat Pengumuman
+              </Button>
+            </div>
           </div>
         )}
 
         {formOpen && (
+          <div className="ops-page__form-card">
           <Card padding="md" shadow="card" border={false} radius="xl">
             <p style={formEyebrowStyle}>{editId ? "Edit Pengumuman" : "Pengumuman Baru"}</p>
 
@@ -897,9 +927,10 @@ function PengumumanPage() {
               </Button>
             </FormActionBar>
           </Card>
+          </div>
         )}
 
-        <div style={{ marginTop: formOpen ? "var(--space-6)" : 0 }}>
+        <div>
           <div style={feedHeaderStyle}>
             <div>
               <h2 style={feedTitleStyle}>Portal Berita Pesantren</h2>
@@ -907,12 +938,13 @@ function PengumumanPage() {
                 Feed informasi modern — siap ditampilkan di APK Wali Santri
               </p>
             </div>
-            <span style={feedCountStyle}>{filtered.length} pengumuman</span>
+            <span className="ops-page__meta">{filtered.length} pengumuman</span>
           </div>
 
           {loading ? (
             <p style={{ color: "var(--text-secondary)", marginTop: "var(--space-4)" }}>Memuat feed...</p>
           ) : filtered.length === 0 ? (
+            <div className="ops-page__empty">
             <Card padding="none" shadow="card" border={false} radius="xl">
               <EmptyState
                 title={list.length === 0 ? "Belum ada pengumuman" : "Tidak ada hasil pencarian"}
@@ -930,6 +962,7 @@ function PengumumanPage() {
                 }
               />
             </Card>
+            </div>
           ) : (
             <>
               {featuredItem && (
@@ -980,10 +1013,11 @@ const formEyebrowStyle = {
 };
 
 const coverEditorStyle = {
-  borderRadius: "var(--radius-xl)",
+  borderRadius: "20px",
   overflow: "hidden",
   border: "1px solid var(--border)",
   background: "var(--background)",
+  boxShadow: "0 2px 16px rgba(15, 23, 42, 0.05)",
 };
 
 const coverActionsStyle = {
@@ -1021,9 +1055,10 @@ const feedHeaderStyle = {
 
 const feedTitleStyle = {
   margin: 0,
-  fontSize: "18px",
-  fontWeight: 700,
+  fontSize: "20px",
+  fontWeight: 800,
   color: "var(--text-primary)",
+  letterSpacing: "-0.02em",
 };
 
 const feedSubtitleStyle = {
@@ -1031,13 +1066,6 @@ const feedSubtitleStyle = {
   fontSize: "13px",
   color: "var(--text-secondary)",
   lineHeight: 1.5,
-};
-
-const feedCountStyle = {
-  fontSize: "13px",
-  color: "var(--text-secondary)",
-  fontWeight: 600,
-  whiteSpace: "nowrap",
 };
 
 export default PengumumanPage;

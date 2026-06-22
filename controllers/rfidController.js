@@ -1,5 +1,10 @@
 const pool = require("../db");
 const auditService = require("../services/auditService");
+const {
+  parsePagination,
+  buildPaginationResponse,
+} = require("../utils/paginationHelpers");
+const { isSantriAktif } = require("../utils/santriStatus");
 
 const crypto = require("crypto");
 
@@ -37,6 +42,13 @@ exports.rfidPayment = async (req, res) => {
     }
 
     const santri = santriResult.rows[0];
+
+    if (!isSantriAktif(santri.status)) {
+      return res.status(409).json({
+        success: false,
+        error: "Santri nonaktif tidak dapat melakukan pembayaran RFID",
+      });
+    }
 
     const duplicate = await pool.query(
       `
@@ -376,42 +388,117 @@ async (req,res)=>{
   }
 
 };
-// ==========================
-// RFID TRANSACTIONS
-// ==========================
 
-exports.getTransactions =
+exports.getDashboardSummary =
 async(req,res)=>{
 
   try{
     const tenantId = req.tenantId;
 
-    const result =
-      await pool.query(
-        `
+    const stats = await pool.query(
+      `
         SELECT
-          tr.*,
+          COUNT(*) FILTER (
+            WHERE DATE(tr.created_at) = CURRENT_DATE
+          )::int AS transaksi_hari_ini,
+          COALESCE(SUM(tr.nominal) FILTER (
+            WHERE DATE(tr.created_at) = CURRENT_DATE
+              AND LOWER(TRIM(tr.trx_type)) = 'payment'
+          ), 0)::bigint AS nominal_hari_ini,
+          COUNT(*) FILTER (
+            WHERE DATE(tr.created_at) = CURRENT_DATE
+              AND LOWER(TRIM(tr.trx_type)) = 'topup'
+          )::int AS topup_hari_ini,
+          COUNT(*) FILTER (
+            WHERE DATE(tr.created_at) = CURRENT_DATE
+              AND LOWER(TRIM(tr.trx_type)) = 'refund'
+          )::int AS refund_hari_ini
+        FROM transaksi_rfid tr
+        WHERE tr.tenant_id = $1
+      `,
+      [tenantId],
+    );
+
+    const devices = await pool.query(
+      `
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'online')::int AS device_online,
+          COUNT(*) FILTER (WHERE status != 'online')::int AS device_offline
+        FROM devices
+        WHERE tenant_id = $1
+      `,
+      [tenantId],
+    );
+
+    const pending = await pool.query(
+      `
+        SELECT COUNT(*)::int AS pending_sync
+        FROM rfid_sync_queue
+        WHERE sync_status = 'pending'
+          AND tenant_id = $1
+      `,
+      [tenantId],
+    );
+
+    const topMerchant = await pool.query(
+      `
+        SELECT
+          COALESCE(m.nama_merchant, 'Merchant') AS name,
+          COUNT(*)::int AS count
+        FROM transaksi_rfid tr
+        LEFT JOIN merchant_rfid m
+          ON m.id = tr.merchant_id
+         AND m.tenant_id = tr.tenant_id
+        WHERE tr.tenant_id = $1
+          AND LOWER(TRIM(tr.trx_type)) = 'payment'
+          AND tr.created_at >= (CURRENT_DATE - INTERVAL '30 days')
+        GROUP BY COALESCE(m.nama_merchant, 'Merchant')
+        ORDER BY count DESC
+        LIMIT 1
+      `,
+      [tenantId],
+    );
+
+    const recent = await pool.query(
+      `
+        SELECT
+          tr.id,
+          tr.created_at,
+          tr.nominal,
+          tr.trx_type,
           s.nama AS nama_santri,
-          m.nama_merchant,
-          d.device_id
+          m.nama_merchant
         FROM transaksi_rfid tr
         LEFT JOIN santri s
-          ON s.id = tr.santri_id AND s.tenant_id = tr.tenant_id
+          ON s.id = tr.santri_id
+         AND s.tenant_id = tr.tenant_id
         LEFT JOIN merchant_rfid m
-          ON m.id = tr.merchant_id AND m.tenant_id = tr.tenant_id
-        LEFT JOIN devices d
-          ON d.id = tr.device_id AND d.tenant_id = tr.tenant_id
+          ON m.id = tr.merchant_id
+         AND m.tenant_id = tr.tenant_id
         WHERE tr.tenant_id = $1
         ORDER BY tr.created_at DESC
-        LIMIT 500
-        `,
-        [tenantId]
-      );
+        LIMIT 5
+      `,
+      [tenantId],
+    );
+
+    const row = stats.rows[0] || {};
+    const deviceRow = devices.rows[0] || {};
+    const pendingRow = pending.rows[0] || {};
 
     res.json({
-      success:true,
-      data:
-        result.rows
+      success: true,
+      data: {
+        transaksi_hari_ini: row.transaksi_hari_ini || 0,
+        nominal_hari_ini: Number(row.nominal_hari_ini || 0),
+        topup_hari_ini: row.topup_hari_ini || 0,
+        refund_hari_ini: row.refund_hari_ini || 0,
+        device_online: deviceRow.device_online || 0,
+        device_offline: deviceRow.device_offline || 0,
+        pending_sync: pendingRow.pending_sync || 0,
+        top_merchant: topMerchant.rows[0] || null,
+        recent_activity: recent.rows,
+      },
     });
 
   }
@@ -421,7 +508,216 @@ async(req,res)=>{
     console.log(err);
 
     res.status(500).json({
-      success:false
+      success:false,
+      error: err.message,
+    });
+
+  }
+
+};
+
+// ==========================
+// RFID TRANSACTIONS
+// ==========================
+
+function buildTransactionFilters(tenantId, query, { applyDefaultDateRange = false } = {}) {
+  const conditions = ["tr.tenant_id = $1"];
+  const params = [tenantId];
+  let index = 2;
+
+  const hasDateFilter = query.start_date || query.end_date;
+
+  if (query.start_date) {
+    conditions.push(`tr.created_at >= $${index}::date`);
+    params.push(String(query.start_date));
+    index += 1;
+  } else if (applyDefaultDateRange && !hasDateFilter) {
+    conditions.push(`tr.created_at >= (CURRENT_DATE - INTERVAL '6 days')`);
+  }
+
+  if (query.end_date) {
+    conditions.push(`tr.created_at < ($${index}::date + INTERVAL '1 day')`);
+    params.push(String(query.end_date));
+    index += 1;
+  } else if (applyDefaultDateRange && !hasDateFilter) {
+    conditions.push(`tr.created_at < (CURRENT_DATE + INTERVAL '1 day')`);
+  }
+
+  if (query.santri_id) {
+    conditions.push(`tr.santri_id = $${index}`);
+    params.push(Number(query.santri_id));
+    index += 1;
+  }
+
+  if (query.merchant_id) {
+    conditions.push(`tr.merchant_id = $${index}`);
+    params.push(Number(query.merchant_id));
+    index += 1;
+  }
+
+  if (query.device_id) {
+    conditions.push(`tr.device_id = $${index}`);
+    params.push(Number(query.device_id));
+    index += 1;
+  }
+
+  if (query.type) {
+    conditions.push(`LOWER(TRIM(tr.trx_type)) = LOWER(TRIM($${index}))`);
+    params.push(String(query.type));
+    index += 1;
+  }
+
+  if (query.status) {
+    conditions.push(`LOWER(TRIM(tr.sync_status)) = LOWER(TRIM($${index}))`);
+    params.push(String(query.status));
+    index += 1;
+  }
+
+  if (query.search && String(query.search).trim()) {
+    const pattern = `%${String(query.search).trim()}%`;
+    conditions.push(`(s.nama ILIKE $${index} OR s.nis ILIKE $${index})`);
+    params.push(pattern);
+    index += 1;
+  }
+
+  return {
+    whereSql: conditions.join(" AND "),
+    params,
+    nextIndex: index,
+    joinSql: `
+      FROM transaksi_rfid tr
+      LEFT JOIN santri s
+        ON s.id = tr.santri_id AND s.tenant_id = tr.tenant_id
+      LEFT JOIN merchant_rfid m
+        ON m.id = tr.merchant_id AND m.tenant_id = tr.tenant_id
+      LEFT JOIN devices d
+        ON d.id = tr.device_id AND d.tenant_id = tr.tenant_id
+    `,
+  };
+}
+
+exports.getTransactions =
+async(req,res)=>{
+
+  try{
+    const tenantId = req.tenantId;
+    const paging = parsePagination(req.query, { defaultLimit: 20, maxLimit: 200 });
+    const { whereSql, params, nextIndex, joinSql } = buildTransactionFilters(
+      tenantId,
+      req.query,
+      { applyDefaultDateRange: paging.hasPagingParams },
+    );
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total ${joinSql} WHERE ${whereSql}`,
+      params,
+    );
+
+    const total = countResult.rows[0]?.total || 0;
+
+    let listSql = `
+      SELECT
+        tr.*,
+        s.nama AS nama_santri,
+        s.nis,
+        m.nama_merchant,
+        d.device_id
+      ${joinSql}
+      WHERE ${whereSql}
+      ORDER BY tr.created_at DESC
+    `;
+
+    const listParams = [...params];
+
+    if (paging.hasPagingParams) {
+      listSql += ` LIMIT $${nextIndex} OFFSET $${nextIndex + 1}`;
+      listParams.push(paging.limit, paging.offset);
+    }
+
+    const result = await pool.query(listSql, listParams);
+
+    res.json({
+      success:true,
+      data: result.rows,
+      pagination: buildPaginationResponse({
+        hasPagingParams: paging.hasPagingParams,
+        limit: paging.limit,
+        offset: paging.offset,
+        total,
+        rowCount: result.rows.length,
+      }),
+    });
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false,
+      error: err.message,
+    });
+
+  }
+
+};
+
+exports.searchSantri =
+async(req,res)=>{
+
+  try{
+    const tenantId = req.tenantId;
+    const search = String(req.query.search || "").trim();
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50);
+
+    if (!search) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const pattern = `%${search}%`;
+
+    const result = await pool.query(
+      `
+        SELECT
+          s.id,
+          s.nis,
+          s.nama,
+          s.uid_rfid,
+          s.saldo,
+          s.status,
+          s.kelas_id,
+          k.nama_kelas
+        FROM santri s
+        LEFT JOIN kelas k
+          ON k.id = s.kelas_id
+         AND k.tenant_id = s.tenant_id
+        WHERE s.tenant_id = $1
+          AND (
+            s.nama ILIKE $2
+            OR s.nis ILIKE $2
+            OR s.uid_rfid ILIKE $2
+          )
+        ORDER BY s.nama ASC
+        LIMIT $3
+      `,
+      [tenantId, pattern, limit],
+    );
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message,
     });
 
   }
@@ -469,6 +765,14 @@ async(req,res)=>{
       throw new Error(
         "Santri tidak ditemukan"
       );
+    }
+
+    if (!isSantriAktif(santri.rows[0].status)) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        success: false,
+        error: "Santri nonaktif tidak dapat melakukan topup RFID",
+      });
     }
 
     const saldoAwal =
@@ -600,19 +904,22 @@ VALUES
   (
     device_id,
     event_type,
-    detail
+    detail,
+    tenant_id
   )
   VALUES
   (
     $1,
     $2,
-    $3
+    $3,
+    $4
   )
   `,
   [
     "BACKEND",
     "RFID_TOPUP",
-    `${santri.rows[0].nama} | Rp ${nominal}`
+    `${santri.rows[0].nama} | Rp ${nominal}`,
+    tenantId,
   ]
 );
 
@@ -658,25 +965,29 @@ async(req,res)=>{
 
   try{
     const tenantId = req.tenantId;
+    const { whereSql, params, joinSql } = buildTransactionFilters(
+      tenantId,
+      req.query,
+      { applyDefaultDateRange: true },
+    );
 
     const result =
       await pool.query(`
         SELECT
           tr.created_at,
           s.nama AS nama_santri,
+          tr.trx_type,
           m.nama_merchant,
           d.device_id,
           tr.nominal,
           tr.saldo_awal,
           tr.saldo_akhir,
           tr.sync_status
-        FROM transaksi_rfid tr
-        LEFT JOIN santri s ON s.id = tr.santri_id AND s.tenant_id = tr.tenant_id
-        LEFT JOIN merchant_rfid m ON m.id = tr.merchant_id AND m.tenant_id = tr.tenant_id
-        LEFT JOIN devices d ON d.id = tr.device_id AND d.tenant_id = tr.tenant_id
-        WHERE tr.tenant_id = $1
+        ${joinSql}
+        WHERE ${whereSql}
         ORDER BY tr.created_at DESC
-      `, [tenantId]);
+        LIMIT 10000
+      `, params);
 
     const worksheet =
       XLSX.utils.json_to_sheet(
@@ -837,6 +1148,28 @@ async(req,res)=>{
     const data =
       trx.rows[0];
 
+    if (String(data.trx_type || "").toLowerCase() !== "payment") {
+      throw new Error("Hanya transaksi pembayaran yang dapat direfund");
+    }
+
+    const refundMarker = `REFUND-OF-${transaksi_id}`;
+
+    const alreadyRefunded = await client.query(
+      `
+        SELECT id
+        FROM transaksi_rfid
+        WHERE tenant_id = $1
+          AND trx_type = 'refund'
+          AND trx_id = $2
+        LIMIT 1
+      `,
+      [tenantId, refundMarker]
+    );
+
+    if (alreadyRefunded.rows.length > 0) {
+      throw new Error("Transaksi ini sudah pernah direfund");
+    }
+
     const santri =
       await client.query(
         `
@@ -903,7 +1236,7 @@ async(req,res)=>{
       )
       `,
       [
-        `REFUND-${Date.now()}`,
+        refundMarker,
         data.santri_id,
         data.merchant_id,
         data.device_id,
@@ -920,17 +1253,20 @@ async(req,res)=>{
       (
         device_id,
         event_type,
-        detail
+        detail,
+        tenant_id
       )
       VALUES
       (
         'BACKEND',
         'RFID_REFUND',
-        $1
+        $1,
+        $2
       )
       `,
       [
-        `TRX ${data.trx_id}`
+        `TRX ${data.trx_id}`,
+        tenantId,
       ]
     );
 
@@ -950,9 +1286,15 @@ async(req,res)=>{
       "ROLLBACK"
     );
 
-    res.status(500).json({
+    const message = err.message || "Refund gagal";
+    const isBusinessError =
+      message.includes("sudah pernah direfund") ||
+      message.includes("Hanya transaksi pembayaran") ||
+      message.includes("tidak ditemukan");
+
+    res.status(isBusinessError ? 409 : 500).json({
       success:false,
-      error:err.message
+      error: message
     });
 
   }

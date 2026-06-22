@@ -19,11 +19,13 @@ const adminRfidManage = [
 ];
 
 router.get("/dashboard", ...adminRfidView, rfidController.getDashboard);
+router.get("/dashboard-summary", ...adminRfidView, rfidController.getDashboardSummary);
 
 router.post("/payment", deviceAuthMiddleware, rfidController.rfidPayment);
 
 router.get("/transactions", ...adminRfidView, rfidController.getTransactions);
 router.get("/transactions/export", ...adminRfidView, rfidController.exportTransactions);
+router.get("/santri/search", ...adminRfidView, rfidController.searchSantri);
 
 router.post("/topup", ...adminRfidManage, rfidController.topupSaldo);
 router.get("/topup/export", ...adminRfidView, rfidController.exportTopup);

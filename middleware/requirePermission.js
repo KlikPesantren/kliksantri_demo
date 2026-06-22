@@ -1,4 +1,9 @@
 const pool = require("../db");
+const {
+  isPlatformPermission,
+  isPlatformRole,
+  filterTenantPermissionKeys,
+} = require("../utils/platformRbac");
 
 // Cache in-memory: { roleName: Set(permKey) }
 let cache = null;
@@ -30,6 +35,18 @@ async function getPermissions(role) {
   return cache[role] || new Set();
 }
 
+function denyPlatformPermissionForTenant(req, res, permKey) {
+  if (req.tenantId && isPlatformPermission(permKey)) {
+    res.status(403).json({
+      success: false,
+      error: "Akses ditolak",
+      required: permKey,
+    });
+    return true;
+  }
+  return false;
+}
+
 function requireAnyPermission(permKeys) {
   return async (req, res, next) => {
     try {
@@ -40,6 +57,10 @@ function requireAnyPermission(permKeys) {
           success: false,
           error: "Tidak terautentikasi",
         });
+      }
+
+      if (permKeys.some((key) => denyPlatformPermissionForTenant(req, res, key))) {
+        return;
       }
 
       const perms = await getPermissions(role);
@@ -76,6 +97,10 @@ function requirePermission(permKey) {
         });
       }
 
+      if (denyPlatformPermissionForTenant(req, res, permKey)) {
+        return;
+      }
+
       const perms = await getPermissions(role);
 
       if (!perms.has(permKey)) {
@@ -100,9 +125,13 @@ requirePermission.invalidateCache = () => {
 };
 
 // Helper untuk endpoint /auth (kembalikan array permission untuk frontend)
-requirePermission.getPermissionList = async (role) => {
+requirePermission.getPermissionList = async (role, { tenantScoped = false } = {}) => {
   const perms = await getPermissions(role);
-  return [...perms];
+  const list = [...perms];
+  if (tenantScoped || !isPlatformRole(role)) {
+    return filterTenantPermissionKeys(list);
+  }
+  return list;
 };
 
 requirePermission.requireAnyPermission =

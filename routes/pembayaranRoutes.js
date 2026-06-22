@@ -5,30 +5,408 @@ const {
   assertSantriInTenant,
   assertPembayaranInTenant,
 } = require("../services/tenantScope");
+const {
+  parsePagination,
+  buildPaginationResponse,
+} = require("../utils/paginationHelpers");
+const {
+  normalizeBulanToName,
+  getBulanFilterVariants,
+} = require("../utils/bulanNormalize");
+const { isSantriAktif, SQL_SANTri_AKTIF } = require("../utils/santriStatus");
 
-console.log("PEMBAYARAN ROUTES LOADED");
+async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, santri_ids }) {
+  if (scope === "selected" || (!scope && Array.isArray(santri_ids) && santri_ids.length)) {
+    const ids = [...new Set((santri_ids || []).map((id) => Number(id)).filter(Boolean))];
+    if (ids.length === 0) return [];
+
+    const result = await client.query(
+      `SELECT s.id
+       FROM santri s
+       WHERE s.tenant_id = $1
+         AND s.id = ANY($2::int[])
+         AND ${SQL_SANTri_AKTIF}
+       ORDER BY s.id`,
+      [tenantId, ids],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
+  if (scope === "kelas" && kelas_id) {
+    const result = await client.query(
+      `SELECT s.id
+       FROM santri s
+       WHERE s.tenant_id = $1
+         AND s.kelas_id = $2
+         AND ${SQL_SANTri_AKTIF}
+       ORDER BY s.id`,
+      [tenantId, Number(kelas_id)],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
+  const result = await client.query(
+    `SELECT s.id
+     FROM santri s
+     WHERE s.tenant_id = $1
+       AND ${SQL_SANTri_AKTIF}
+     ORDER BY s.id`,
+    [tenantId],
+  );
+  return result.rows.map((row) => row.id);
+}
+
+function buildPembayaranFilters(tenantId, query) {
+  const conditions = ["p.tenant_id = $1"];
+  const params = [tenantId];
+  let index = 2;
+
+  if (query.bulan) {
+    const variants = getBulanFilterVariants(query.bulan);
+    if (variants.length > 0) {
+      conditions.push(`LOWER(TRIM(p.bulan)) = ANY($${index}::text[])`);
+      params.push(variants);
+      index += 1;
+    }
+  }
+
+  if (query.tahun) {
+    conditions.push(`p.tahun = $${index}`);
+    params.push(Number(query.tahun));
+    index += 1;
+  }
+
+  if (query.jenis_tagihan_id) {
+    conditions.push(`p.jenis_tagihan_id = $${index}`);
+    params.push(Number(query.jenis_tagihan_id));
+    index += 1;
+  }
+
+  if (query.status) {
+    conditions.push(`LOWER(TRIM(p.status)) = LOWER(TRIM($${index}))`);
+    params.push(String(query.status));
+    index += 1;
+  }
+
+  if (query.search && String(query.search).trim()) {
+    const pattern = `%${String(query.search).trim()}%`;
+    conditions.push(`(s.nama ILIKE $${index} OR s.nis ILIKE $${index})`);
+    params.push(pattern);
+    index += 1;
+  }
+
+  return {
+    whereSql: conditions.join(" AND "),
+    params,
+    nextIndex: index,
+  };
+}
+
+function isStatusLunas(status) {
+  return String(status || "").trim().toLowerCase() === "lunas";
+}
+
+async function resolveJenisTagihanId(client, tenantId, namaTagihan) {
+  const trimmed = String(namaTagihan || "").trim();
+  if (!trimmed) {
+    throw new Error("Nama tagihan wajib diisi");
+  }
+
+  const found = await client.query(
+    `SELECT id
+     FROM jenis_tagihan
+     WHERE tenant_id = $1
+       AND LOWER(TRIM(nama_tagihan)) = LOWER(TRIM($2))
+     LIMIT 1`,
+    [tenantId, trimmed]
+  );
+
+  if (found.rows.length > 0) {
+    return found.rows[0].id;
+  }
+
+  const inserted = await client.query(
+    `INSERT INTO jenis_tagihan (nama_tagihan, is_bulanan, tenant_id)
+     VALUES ($1, true, $2)
+     RETURNING id`,
+    [trimmed, tenantId]
+  );
+
+  return inserted.rows[0].id;
+}
+
+async function findExistingPembayaran(client, tenantId, santriId, jenisTagihanId, bulan, tahun) {
+  const result = await client.query(
+    `SELECT id
+     FROM pembayaran
+     WHERE tenant_id = $1
+       AND santri_id = $2
+       AND jenis_tagihan_id = $3
+       AND bulan = $4
+       AND tahun = $5
+     LIMIT 1`,
+    [tenantId, santriId, jenisTagihanId, String(bulan), Number(tahun)]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function insertPembayaran(client, tenantId, payload) {
+  const {
+    santri_id,
+    jenis_tagihan_id,
+    nama_tagihan,
+    bulan,
+    tahun,
+    nominal_tagihan,
+    nominal_bayar = 0,
+  } = payload;
+
+  const sisa_tunggakan = Number(nominal_tagihan) - Number(nominal_bayar);
+  let status = "belum";
+  if (sisa_tunggakan <= 0) status = "lunas";
+  else if (Number(nominal_bayar) > 0) status = "cicil";
+
+  const result = await client.query(
+    `INSERT INTO pembayaran (
+       santri_id, jenis_tagihan_id, nama_tagihan, bulan, tahun,
+       nominal_tagihan, nominal_bayar, sisa_tunggakan, status, tenant_id
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING *`,
+    [
+      santri_id,
+      jenis_tagihan_id,
+      nama_tagihan,
+      normalizeBulanToName(bulan) || String(bulan),
+      Number(tahun),
+      Number(nominal_tagihan),
+      Number(nominal_bayar),
+      sisa_tunggakan,
+      status,
+      tenantId,
+    ]
+  );
+
+  return result.rows[0];
+}
 
 router.get("/", async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT pembayaran.*, santri.nama
-       FROM pembayaran
-       LEFT JOIN santri
-         ON pembayaran.santri_id = santri.id
-        AND santri.tenant_id = pembayaran.tenant_id
-       WHERE pembayaran.tenant_id = $1
-       ORDER BY pembayaran.id DESC`,
-      [req.tenantId]
+    const paging = parsePagination(req.query, { defaultLimit: 20, maxLimit: 200 });
+    const { whereSql, params, nextIndex } = buildPembayaranFilters(
+      req.tenantId,
+      req.query,
     );
 
-    res.json({ success: true, data: result.rows });
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM pembayaran p
+       LEFT JOIN santri s
+         ON p.santri_id = s.id
+        AND s.tenant_id = p.tenant_id
+       WHERE ${whereSql}`,
+      params,
+    );
+
+    const total = countResult.rows[0]?.total || 0;
+
+    let listSql = `
+      SELECT p.*, s.nama, s.nis
+      FROM pembayaran p
+      LEFT JOIN santri s
+        ON p.santri_id = s.id
+       AND s.tenant_id = p.tenant_id
+      WHERE ${whereSql}
+      ORDER BY p.id DESC
+    `;
+
+    const listParams = [...params];
+
+    if (paging.hasPagingParams) {
+      listSql += ` LIMIT $${nextIndex} OFFSET $${nextIndex + 1}`;
+      listParams.push(paging.limit, paging.offset);
+    }
+
+    const result = await pool.query(listSql, listParams);
+
+    res.json({
+      success: true,
+      data: result.rows,
+      pagination: buildPaginationResponse({
+        hasPagingParams: paging.hasPagingParams,
+        limit: paging.limit,
+        offset: paging.offset,
+        total,
+        rowCount: result.rows.length,
+      }),
+    });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+router.get("/generate-preview", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const scope = req.query.scope || "all";
+    const kelas_id = req.query.kelas_id;
+    const santri_ids = String(req.query.santri_ids || "")
+      .split(",")
+      .map((id) => Number(id))
+      .filter(Boolean);
+
+    const targetIds = await resolveGenerateTargetIds(client, req.tenantId, {
+      scope,
+      kelas_id,
+      santri_ids,
+    });
+
+    res.json({
+      success: true,
+      total_target: targetIds.length,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+router.post("/generate", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const {
+      santri_ids = [],
+      scope,
+      kelas_id,
+      nama_tagihan,
+      bulan,
+      tahun,
+      nominal_tagihan,
+    } = req.body;
+
+    const targetIds = await resolveGenerateTargetIds(client, req.tenantId, {
+      scope,
+      kelas_id,
+      santri_ids,
+    });
+
+    const uniqueIds = [...new Set(targetIds)];
+    const total_target = uniqueIds.length;
+
+    if (!total_target) {
+      return res.status(400).json({
+        success: false,
+        error: "Tidak ada santri target untuk generate tagihan",
+      });
+    }
+
+    if (!nama_tagihan || !String(nama_tagihan).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Nama tagihan wajib diisi",
+      });
+    }
+
+    if (!bulan || !tahun || !nominal_tagihan) {
+      return res.status(400).json({
+        success: false,
+        error: "Bulan, tahun, dan nominal tagihan wajib diisi",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    const jenisTagihanId = await resolveJenisTagihanId(
+      client,
+      req.tenantId,
+      nama_tagihan
+    );
+
+    let created_count = 0;
+    let skipped_count = 0;
+    let skipped_nonaktif_count = 0;
+
+    for (const santriId of uniqueIds) {
+      const santriRow = await client.query(
+        `SELECT id, status
+         FROM santri
+         WHERE id = $1 AND tenant_id = $2`,
+        [santriId, req.tenantId],
+      );
+
+      if (santriRow.rows.length === 0) {
+        skipped_count += 1;
+        continue;
+      }
+
+      if (!isSantriAktif(santriRow.rows[0].status)) {
+        skipped_nonaktif_count += 1;
+        continue;
+      }
+
+      const santriCheck = await assertSantriInTenant(req.tenantId, santriId, client);
+      if (!santriCheck.ok) {
+        skipped_count += 1;
+        continue;
+      }
+
+      const existing = await findExistingPembayaran(
+        client,
+        req.tenantId,
+        santriId,
+        jenisTagihanId,
+        bulan,
+        tahun
+      );
+
+      if (existing) {
+        skipped_count += 1;
+        continue;
+      }
+
+      await insertPembayaran(client, req.tenantId, {
+        santri_id: santriId,
+        jenis_tagihan_id: jenisTagihanId,
+        nama_tagihan: String(nama_tagihan).trim(),
+        bulan: normalizeBulanToName(bulan) || bulan,
+        tahun,
+        nominal_tagihan,
+        nominal_bayar: 0,
+      });
+
+      created_count += 1;
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      created_count,
+      skipped_count,
+      skipped_nonaktif_count,
+      total_target,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      error: err.message || "Gagal generate tagihan",
+    });
+  } finally {
+    client.release();
+  }
+});
+
 router.post("/", async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const {
       santri_id,
@@ -39,41 +417,56 @@ router.post("/", async (req, res) => {
       nominal_bayar,
     } = req.body;
 
-    const santriCheck = await assertSantriInTenant(req.tenantId, santri_id);
+    const santriCheck = await assertSantriInTenant(req.tenantId, santri_id, client);
     if (!santriCheck.ok) {
       return res.status(400).json({ success: false, error: santriCheck.error });
     }
 
-    const sisa_tunggakan = nominal_tagihan - nominal_bayar;
+    await client.query("BEGIN");
 
-    let status = "belum";
-    if (sisa_tunggakan <= 0) status = "lunas";
-    else if (nominal_bayar > 0) status = "cicil";
-
-    const result = await pool.query(
-      `INSERT INTO pembayaran (
-         santri_id, nama_tagihan, bulan, tahun,
-         nominal_tagihan, nominal_bayar, sisa_tunggakan, status, tenant_id
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [
-        santri_id,
-        nama_tagihan,
-        bulan,
-        tahun,
-        nominal_tagihan,
-        nominal_bayar,
-        sisa_tunggakan,
-        status,
-        req.tenantId,
-      ]
+    const jenisTagihanId = await resolveJenisTagihanId(
+      client,
+      req.tenantId,
+      nama_tagihan
     );
 
-    res.json({ success: true, data: result.rows[0] });
+    const existing = await findExistingPembayaran(
+      client,
+      req.tenantId,
+      santri_id,
+      jenisTagihanId,
+      bulan,
+      tahun
+    );
+
+    if (existing) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        success: false,
+        error: "Tagihan untuk santri, jenis tagihan, bulan, dan tahun ini sudah ada",
+        skipped: true,
+      });
+    }
+
+    const row = await insertPembayaran(client, req.tenantId, {
+      santri_id,
+      jenis_tagihan_id: jenisTagihanId,
+      nama_tagihan: String(nama_tagihan).trim(),
+      bulan,
+      tahun,
+      nominal_tagihan,
+      nominal_bayar,
+    });
+
+    await client.query("COMMIT");
+
+    res.json({ success: true, data: row, created_count: 1, skipped_count: 0, total_target: 1 });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.log(err);
     res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -96,6 +489,14 @@ router.put("/bayar/:id", async (req, res) => {
     }
 
     const data = pembayaran.rows[0];
+
+    if (isStatusLunas(data.status)) {
+      return res.status(409).json({
+        success: false,
+        error: "Tagihan sudah lunas dan tidak dapat dibayar lagi",
+      });
+    }
+
     const totalBayarBaru = Number(data.nominal_bayar || 0) + Number(nominal);
     const sisaBaru = Number(data.nominal_tagihan) - totalBayarBaru;
 
@@ -149,6 +550,36 @@ router.put("/bayar/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
+    const owned = await assertPembayaranInTenant(req.tenantId, req.params.id);
+    if (!owned.ok) {
+      return res.status(404).json({ success: false, error: owned.error });
+    }
+
+    const pembayaran = await pool.query(
+      `SELECT id, nominal_bayar
+       FROM pembayaran
+       WHERE id = $1 AND tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+
+    const detail = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM pembayaran_detail
+       WHERE pembayaran_id = $1 AND tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+
+    const hasPayments =
+      Number(pembayaran.rows[0]?.nominal_bayar || 0) > 0 ||
+      Number(detail.rows[0]?.total || 0) > 0;
+
+    if (hasPayments) {
+      return res.status(409).json({
+        success: false,
+        error: "Tagihan ini sudah memiliki riwayat pembayaran dan tidak bisa dihapus.",
+      });
+    }
+
     const result = await pool.query(
       `DELETE FROM pembayaran
        WHERE id = $1 AND tenant_id = $2

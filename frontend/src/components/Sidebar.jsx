@@ -171,18 +171,89 @@ function getActiveGroupId(pathname, menuByPath) {
   return null;
 }
 
+function SidebarBrandStyles() {
+  return (
+    <style>{`
+      .sidebar-brand-wrap {
+        width: 100%;
+        min-height: 132px;
+        box-sizing: border-box;
+        align-items: stretch !important;
+      }
+
+      .sidebar-brand-wrap > div {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        width: 100%;
+        gap: var(--space-3) !important;
+        min-width: 0;
+      }
+
+      .sidebar-brand-wrap > div > div:first-child {
+        flex-shrink: 0;
+      }
+
+      .sidebar-brand-wrap .sidebar-brand-text {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-width: 0;
+        gap: var(--space-2);
+      }
+
+      .sidebar-brand-wrap .sidebar-brand-text > div:first-child {
+        white-space: normal !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.5 !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        color: #F8FAFC !important;
+        margin: 0 !important;
+        max-height: calc(1.5em * 2);
+        word-break: break-word;
+      }
+
+      .sidebar-brand-wrap .sidebar-brand-text > div:last-child {
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: normal !important;
+        line-height: 1.45 !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        color: #94A3B8 !important;
+        opacity: 0.82 !important;
+        margin: 0 !important;
+        max-height: calc(1.45em * 2);
+        word-break: break-word;
+      }
+    `}</style>
+  );
+}
+
 function SidebarBrand() {
   const { display } = useTenantProfile();
 
   return (
-    <div className="sidebar-brand-wrap" style={brandContainerStyle}>
-      <TenantBrand
-        variant="sidebar"
-        logo={display.logo}
-        name={display.name}
-        location={display.address}
-      />
-    </div>
+    <>
+      <SidebarBrandStyles />
+      <div className="sidebar-brand-wrap" style={brandContainerStyle}>
+        <TenantBrand
+          variant="sidebar"
+          size="lg"
+          logo={display.logo}
+          name={display.name}
+          location={display.address}
+        />
+      </div>
+    </>
   );
 }
 
@@ -447,16 +518,20 @@ const topStyle = {
 
 const brandContainerStyle = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   gap: "var(--space-3)",
   minWidth: 0,
+  width: "100%",
 };
 
 const brandWrapperStyle = {
-  paddingBottom: "var(--space-4)",
-  marginBottom: "var(--space-4)",
+  paddingTop: "var(--space-3)",
+  paddingBottom: "var(--space-5)",
+  marginBottom: "var(--space-5)",
+  minHeight: "148px",
   borderBottom: `1px solid ${SIDEBAR.border}`,
   flexShrink: 0,
+  boxSizing: "border-box",
 };
 
 const navStyle = {

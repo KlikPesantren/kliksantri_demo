@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaSearch, FaSignInAlt } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
 import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
-import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
 import StatusBadge from "../components/ui/StatusBadge";
+import {
+  OperationalPageStyles,
+  resolveStatusClass,
+} from "../components/shared/OperationalPageStyles";
 import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
-import { FaSignInAlt } from "react-icons/fa";
 import {
   FormField,
   Input,
@@ -141,7 +144,9 @@ function PerizinanPage() {
 
   return (
     <AppShell title="Perizinan Santri" breadcrumb="Keamanan / Perizinan">
-      <div>
+      <OperationalPageStyles />
+      <div className="ops-page">
+        <div className="ops-page__form-card">
         <Card padding="md" shadow="card" border={false} radius="xl">
           <SectionHeading variant="eyebrow" spacing="first">
             Input Perizinan
@@ -226,28 +231,35 @@ function PerizinanPage() {
             </Button>
           </FormActionBar>
         </Card>
+        </div>
 
-        <div style={{ marginTop: "var(--space-6)" }}>
+        <div className="ops-page__card">
           <DataTableCard
             title="Daftar Perizinan"
             subtitle="Kelola izin keluar santri"
+            border
             actions={
-              <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+              <span className="ops-page__meta">
                 {filtered.length} perizinan
               </span>
             }
           >
-            <TableToolbar
-              search={
+            <div className="ops-page__filter filter-bar-v3 filter-bar-v3--table">
+              <span className="filter-bar-v3__label">
+                <FaSearch size={11} aria-hidden />
+                Cari perizinan
+              </span>
+              <div className="filter-bar-v3__fields">
                 <SearchInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari nama santri..."
                 />
-              }
-            />
+              </div>
+            </div>
 
             {filtered.length === 0 ? (
+              <div className="ops-page__empty">
               <EmptyState
                 title={perizinan.length === 0 ? "Belum ada perizinan" : "Tidak ada hasil pencarian"}
                 description={
@@ -256,6 +268,7 @@ function PerizinanPage() {
                     : "Coba kata kunci lain atau hapus filter pencarian."
                 }
               />
+              </div>
             ) : (
               <>
               <TableScroll>
@@ -286,7 +299,9 @@ function PerizinanPage() {
                         <td>{p.jam_kembali || "—"}</td>
                         <td>{p.catatan || "—"}</td>
                         <td>
-                          <StatusBadge status={p.status} />
+                          <span className={`ops-status ops-status--${resolveStatusClass(p.status)}`}>
+                            <StatusBadge status={p.status} />
+                          </span>
                         </td>
                         <td className="table-v3__cell--actions">
                           <TableActions

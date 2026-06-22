@@ -3,6 +3,60 @@ const router = express.Router();
 const pool = require("../db");
 const { assertTagihanInTenant } = require("../services/tenantScope");
 const notificationService = require("../services/notificationService");
+const {
+  parsePagination,
+  buildPaginationResponse,
+} = require("../utils/paginationHelpers");
+const { SQL_SANTri_AKTIF } = require("../utils/santriStatus");
+
+function buildSahriyahFilters(tenantId, query) {
+  const conditions = ["t.tenant_id = $1"];
+  const params = [tenantId];
+  let index = 2;
+
+  if (query.bulan) {
+    conditions.push(`t.bulan = $${index}`);
+    params.push(Number(query.bulan));
+    index += 1;
+  }
+
+  if (query.tahun) {
+    conditions.push(`t.tahun = $${index}`);
+    params.push(Number(query.tahun));
+    index += 1;
+  }
+
+  if (query.status) {
+    conditions.push(`LOWER(TRIM(t.status)) = LOWER(TRIM($${index}))`);
+    params.push(String(query.status));
+    index += 1;
+  }
+
+  if (query.kelas_id) {
+    conditions.push(`s.kelas_id = $${index}`);
+    params.push(Number(query.kelas_id));
+    index += 1;
+  }
+
+  if (query.search && String(query.search).trim()) {
+    const pattern = `%${String(query.search).trim()}%`;
+    conditions.push(`(s.nama ILIKE $${index} OR s.nis ILIKE $${index})`);
+    params.push(pattern);
+    index += 1;
+  }
+
+  return {
+    whereSql: conditions.join(" AND "),
+    params,
+    nextIndex: index,
+    joinSql: `
+      FROM tagihan_sahriyah t
+      LEFT JOIN santri s
+        ON t.santri_id = s.id
+       AND s.tenant_id = t.tenant_id
+    `,
+  };
+}
 
 function formatNominalRp(value) {
   const amount = Number(value || 0);
@@ -10,20 +64,69 @@ function formatNominalRp(value) {
   return `Rp${amount.toLocaleString("id-ID")}`;
 }
 
+function isStatusLunas(status) {
+  return String(status || "").trim().toLowerCase() === "lunas";
+}
+
 router.get("/", async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT t.*, s.nama
-       FROM tagihan_sahriyah t
-       LEFT JOIN santri s
-         ON t.santri_id = s.id
-        AND s.tenant_id = t.tenant_id
-       WHERE t.tenant_id = $1
-       ORDER BY t.tahun DESC, t.bulan DESC`,
-      [req.tenantId]
+    const paging = parsePagination(req.query, { defaultLimit: 20, maxLimit: 200 });
+    const { whereSql, params, nextIndex, joinSql } = buildSahriyahFilters(
+      req.tenantId,
+      req.query,
     );
 
-    res.json({ success: true, data: result.rows });
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total ${joinSql} WHERE ${whereSql}`,
+      params,
+    );
+
+    const total = countResult.rows[0]?.total || 0;
+
+    const summaryResult = await pool.query(
+      `SELECT
+         COUNT(*)::int AS total,
+         COUNT(*) FILTER (WHERE LOWER(TRIM(t.status)) = 'lunas')::int AS lunas,
+         COUNT(*) FILTER (WHERE LOWER(TRIM(t.status)) != 'lunas')::int AS belum_lunas,
+         COALESCE(SUM(t.nominal), 0)::numeric AS total_nominal
+       ${joinSql}
+       WHERE ${whereSql}`,
+      params,
+    );
+
+    let listSql = `
+      SELECT t.*, s.nama, s.nis, s.kelas_id
+      ${joinSql}
+      WHERE ${whereSql}
+      ORDER BY t.tahun DESC, t.bulan DESC, t.id DESC
+    `;
+
+    const listParams = [...params];
+
+    if (paging.hasPagingParams) {
+      listSql += ` LIMIT $${nextIndex} OFFSET $${nextIndex + 1}`;
+      listParams.push(paging.limit, paging.offset);
+    }
+
+    const result = await pool.query(listSql, listParams);
+
+    res.json({
+      success: true,
+      data: result.rows,
+      pagination: buildPaginationResponse({
+        hasPagingParams: paging.hasPagingParams,
+        limit: paging.limit,
+        offset: paging.offset,
+        total,
+        rowCount: result.rows.length,
+      }),
+      summary: summaryResult.rows[0] || {
+        total: 0,
+        lunas: 0,
+        belum_lunas: 0,
+        total_nominal: 0,
+      },
+    });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, error: err.message });
@@ -35,17 +138,28 @@ router.post("/generate", async (req, res) => {
     const { bulan, tahun } = req.body;
 
     const santri = await pool.query(
-      `SELECT s.id, ss.nominal_uang, ss.nominal_beras, ss.keterangan
+      `SELECT s.id, ss.id AS setting_id, ss.nominal_uang, ss.nominal_beras, ss.keterangan
        FROM santri s
        LEFT JOIN sahriyah_setting ss
          ON s.id = ss.santri_id
         AND ss.tenant_id = s.tenant_id
        WHERE s.tenant_id = $1
+         AND ${SQL_SANTri_AKTIF}
        ORDER BY s.id`,
       [req.tenantId]
     );
 
+    let created_count = 0;
+    let skipped_existing_count = 0;
+    let skipped_no_setting_count = 0;
+    const total_target = santri.rows.length;
+
     for (const s of santri.rows) {
+      if (!s.setting_id) {
+        skipped_no_setting_count += 1;
+        continue;
+      }
+
       const cek = await pool.query(
         `SELECT id
          FROM tagihan_sahriyah
@@ -72,10 +186,21 @@ router.post("/generate", async (req, res) => {
             req.tenantId,
           ]
         );
+        created_count += 1;
+      } else {
+        skipped_existing_count += 1;
       }
     }
 
-    res.json({ success: true, message: "Tagihan berhasil dibuat" });
+    res.json({
+      success: true,
+      message: "Tagihan berhasil dibuat",
+      created_count,
+      skipped_count: skipped_existing_count,
+      skipped_existing_count,
+      skipped_no_setting_count,
+      total_target,
+    });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, error: err.message });
@@ -101,6 +226,14 @@ router.put("/bayar/:id", async (req, res) => {
     }
 
     const data = tagihan.rows[0];
+
+    if (isStatusLunas(data.status)) {
+      return res.status(409).json({
+        success: false,
+        error: "Tagihan sahriyah sudah lunas dan tidak dapat dibayar lagi",
+      });
+    }
+
     const totalBayarBaru = Number(data.total_bayar || 0) + Number(nominal);
     const sisaTagihanBaru = Number(data.nominal) - totalBayarBaru;
     const berasTerbayarBaru = Number(data.beras_terbayar || 0) + Number(beras || 0);

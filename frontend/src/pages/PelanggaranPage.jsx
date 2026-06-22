@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaSearch } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import SectionHeading from "../components/ui/SectionHeading";
 import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
-import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import {
+  OperationalPageStyles,
+  resolvePoinTone,
+} from "../components/shared/OperationalPageStyles";
 import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
 import { LegacyPageStyles } from "../components/shared/PageResponsiveStyles";
 import {
@@ -126,7 +130,9 @@ function PelanggaranPage() {
   return (
     <AppShell title="Pelanggaran Santri" breadcrumb="Keamanan / Pelanggaran">
       <LegacyPageStyles />
-      <div className="legacy-page">
+      <OperationalPageStyles />
+      <div className="ops-page legacy-page">
+        <div className="ops-page__form-card">
         <Card padding="md" shadow="card" border={false} radius="xl">
           <SectionHeading variant="eyebrow" spacing="first">
             Input Pelanggaran
@@ -223,28 +229,35 @@ function PelanggaranPage() {
             </Button>
           </FormActionBar>
         </Card>
+        </div>
 
-        <div style={{ marginTop: "var(--space-6)" }}>
+        <div className="ops-page__card">
           <DataTableCard
             title="Daftar Pelanggaran"
             subtitle="Rekap pelanggaran santri"
+            border
             actions={
-              <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+              <span className="ops-page__meta">
                 {filtered.length} pelanggaran
               </span>
             }
           >
-            <TableToolbar
-              search={
+            <div className="ops-page__filter filter-bar-v3 filter-bar-v3--table">
+              <span className="filter-bar-v3__label">
+                <FaSearch size={11} aria-hidden />
+                Cari pelanggaran
+              </span>
+              <div className="filter-bar-v3__fields">
                 <SearchInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari nama santri..."
                 />
-              }
-            />
+              </div>
+            </div>
 
             {filtered.length === 0 ? (
+              <div className="ops-page__empty">
               <EmptyState
                 title={pelanggaran.length === 0 ? "Belum ada pelanggaran" : "Tidak ada hasil pencarian"}
                 description={
@@ -253,6 +266,7 @@ function PelanggaranPage() {
                     : "Coba kata kunci lain atau hapus filter pencarian."
                 }
               />
+              </div>
             ) : (
               <>
               <TableScroll>
@@ -274,7 +288,11 @@ function PelanggaranPage() {
                         <td className="table-v3__cell--strong">{p.nama}</td>
                         <td>{p.tanggal}</td>
                         <td>{p.jenis}</td>
-                        <td>{p.poin}</td>
+                        <td>
+                          <span className={`ops-poin ops-poin--${resolvePoinTone(p.poin)}`}>
+                            {p.poin}
+                          </span>
+                        </td>
                         <td>{p.tindakan || "—"}</td>
                         <td>{p.petugas || "—"}</td>
                         <td className="table-v3__cell--actions">

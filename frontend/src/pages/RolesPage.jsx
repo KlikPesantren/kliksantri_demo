@@ -19,6 +19,7 @@ import {
 function RolesPage() {
   const [roles, setRoles]             = useState([]);
   const [allPerms, setAllPerms]       = useState([]);
+  const [rbacReadOnly, setRbacReadOnly] = useState(true);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState("");
   const [success, setSuccess]         = useState("");
@@ -54,6 +55,9 @@ function RolesPage() {
       ]);
       setRoles(rRes.data.data || []);
       setAllPerms(pRes.data.data || []);
+      setRbacReadOnly(
+        Boolean(rRes.data.rbac_read_only ?? pRes.data.rbac_read_only ?? true),
+      );
     } catch (err) {
       setError(err.response?.data?.error || "Gagal memuat data role");
     } finally {
@@ -106,7 +110,7 @@ function RolesPage() {
   };
 
   const saveMatrix = async () => {
-    if (!selectedRole) return;
+    if (rbacReadOnly || !selectedRole) return;
     setSavingMatrix(true);
     setError("");
     try {
@@ -124,6 +128,7 @@ function RolesPage() {
   };
 
   const handleAddRole = async () => {
+    if (rbacReadOnly) return;
     if (!newRole.name.trim()) {
       setError("Nama role wajib diisi");
       return;
@@ -149,6 +154,7 @@ function RolesPage() {
   };
 
   const handleDelete = async () => {
+    if (rbacReadOnly) return;
     setError("");
     try {
       await api.delete(`/roles/${deleteTarget.id}`);
@@ -163,16 +169,27 @@ function RolesPage() {
   return (
     <AppShell
       title="Role & Hak Akses"
-      description="Kelola role dan matrix permission sistem RBAC"
+      description={
+        rbacReadOnly
+          ? "Lihat role bawaan sistem — perubahan matrix hanya via admin platform"
+          : "Kelola role dan matrix permission sistem RBAC"
+      }
       breadcrumb="Sistem / Role & Hak Akses"
     >
       <LegacyPageStyles />
       {error && <div style={bannerError}>{error}</div>}
       {success && <div style={bannerSuccess}>{success}</div>}
 
+      {rbacReadOnly ? (
+        <div style={bannerInfo}>
+          Manajemen role dinonaktifkan untuk tenant. Anda hanya dapat melihat role bawaan
+          dan assign user ke role yang diizinkan.
+        </div>
+      ) : null}
+
       <DataTableCard
           title="Daftar Role"
-          subtitle="Kelola role dan permission sistem"
+          subtitle={rbacReadOnly ? "Read-only — role bawaan sistem" : "Kelola role dan permission sistem"}
           actions={
             <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
               {roles.length} role
@@ -181,9 +198,11 @@ function RolesPage() {
         >
           <TableToolbar
             actions={
-              <Button type="button" variant="primary" onClick={() => setAddModal(true)}>
-                + Tambah Role Custom
-              </Button>
+              rbacReadOnly ? null : (
+                <Button type="button" variant="primary" onClick={() => setAddModal(true)}>
+                  + Tambah Role Custom
+                </Button>
+              )
             }
           />
 
@@ -226,12 +245,12 @@ function RolesPage() {
                             {
                               type: "custom",
                               icon: FaCog,
-                              title: "Edit Permission",
+                              title: rbacReadOnly ? "Lihat Permission" : "Edit Permission",
                               onClick: () => openMatrix(r),
                             },
                             {
                               type: "delete",
-                              hidden: r.is_system,
+                              hidden: rbacReadOnly || r.is_system,
                               onClick: () => openDelete(r),
                             },
                           ]}
@@ -253,7 +272,7 @@ function RolesPage() {
         </DataTableCard>
       <Modal
         open={matrixModal}
-        title={`Permission Matrix — ${selectedRole?.label || selectedRole?.name || ""}`}
+        title={`${rbacReadOnly ? "Lihat" : "Edit"} Permission Matrix — ${selectedRole?.label || selectedRole?.name || ""}`}
         onClose={() => setMatrixModal(false)}
         width={720}
       >
@@ -287,6 +306,7 @@ function RolesPage() {
                         type="checkbox"
                         checked={checked.has(p.key)}
                         onChange={() => togglePerm(p.key)}
+                        disabled={rbacReadOnly}
                       />
                       <span>
                         <span style={{ display: "block", fontSize: "13px", color: "var(--text-primary)" }}>
@@ -303,17 +323,19 @@ function RolesPage() {
         </div>
 
         <FormActionBar className="form-action-bar-v3--compact">
-          <Button
-            type="button"
-            variant="primary"
-            onClick={saveMatrix}
-            loading={savingMatrix}
-            disabled={savingMatrix}
-          >
-            Simpan Permission
-          </Button>
+          {!rbacReadOnly ? (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={saveMatrix}
+              loading={savingMatrix}
+              disabled={savingMatrix}
+            >
+              Simpan Permission
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" onClick={() => setMatrixModal(false)}>
-            Batal
+            Tutup
           </Button>
         </FormActionBar>
       </Modal>
@@ -385,6 +407,16 @@ const checkLabel = {
   gap: "8px",
   cursor: "pointer",
   padding: "6px 4px",
+};
+
+const bannerInfo = {
+  background: "var(--neutral-subtle)",
+  color: "var(--text-secondary)",
+  padding: "12px 16px",
+  borderRadius: "8px",
+  marginBottom: "16px",
+  fontSize: "14px",
+  borderLeft: "3px solid var(--primary)",
 };
 
 const bannerError = {

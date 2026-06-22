@@ -24,13 +24,32 @@ import {
 } from "../components/ui/form";
 import { exportExcel } from "../utils/exportExcel";
 import SantriImportModal from "../components/santri/SantriImportModal";
+import SantriOperationalChecklist from "../components/santri/SantriOperationalChecklist";
 import ImageUploadField from "../components/ImageUploadField";
 import { resolveDisplayMediaUrl } from "../utils/mediaUrl";
+import { formatCurrency } from "../utils/formatCurrency";
+
+function isStatusNonAktif(status) {
+  const normalized = String(status ?? "aktif").trim().toLowerCase();
+  return normalized !== "aktif" && normalized !== "active" && normalized !== "";
+}
+
+function formatExitSummary(summary) {
+  const lines = [
+    `Tagihan pembayaran belum lunas: ${summary.tagihan_pembayaran_belum_lunas || 0}`,
+    `Tagihan sahriyah belum lunas: ${summary.tagihan_sahriyah_belum_lunas || 0}`,
+    `Saldo RFID: ${formatCurrency(Number(summary.saldo_rfid || 0))}`,
+    `Kartu RFID terdaftar: ${summary.kartu_rfid_aktif ? "Ya" : "Tidak"}`,
+    `Wali terhubung: ${summary.wali_terhubung ? "Ya" : "Belum"}`,
+  ];
+  return lines.join("\n");
+}
 
 function SantriPage() {
   const [santri, setSantri] = useState([]);
   const [kelas, setKelas] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [originalStatus, setOriginalStatus] = useState("aktif");
   const [importOpen, setImportOpen] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
   const [form, setForm] = useState({
@@ -42,6 +61,7 @@ function SantriPage() {
     nomor_hp_ortu: "",
     kelas_id: "",
     foto: "",
+    status: "aktif",
   });
 
   const getSantri = async () => {
@@ -101,6 +121,7 @@ function SantriPage() {
 
   const editSantri = (item) => {
     setEditId(item.id);
+    setOriginalStatus(item.status || "aktif");
     setForm({
       nis: item.nis || "",
       nama: item.nama || "",
@@ -110,18 +131,39 @@ function SantriPage() {
       nomor_hp_ortu: item.nomor_hp || "",
       kelas_id: item.kelas_id || "",
       foto: item.foto || "",
+      status: item.status || "aktif",
     });
   };
 
   const updateSantri = async () => {
     try {
-      await api.put(`/santri/${editId}`, form);
-      alert("Santri updated");
+      const wasAktif = !isStatusNonAktif(originalStatus);
+      const willNonAktif = isStatusNonAktif(form.status);
+
+      if (wasAktif && willNonAktif) {
+        const summaryRes = await api.get(`/santri/${editId}/exit-summary`);
+        const summary = summaryRes.data.data;
+        const ok = window.confirm(
+          `Santri akan diubah menjadi nonaktif.\n\nRingkasan:\n${formatExitSummary(summary)}\n\nLanjutkan?`,
+        );
+        if (!ok) return;
+      }
+
+      const response = await api.put(`/santri/${editId}`, form);
+      if (response.data.exit_summary) {
+        alert(
+          `Santri diperbarui.\n\nRingkasan keluar:\n${formatExitSummary(response.data.exit_summary)}`,
+        );
+      } else {
+        alert("Santri updated");
+      }
       resetForm();
       getSantri();
       setEditId(null);
+      setOriginalStatus("aktif");
     } catch (err) {
       console.error(err);
+      alert(err.response?.data?.error || "Gagal memperbarui santri");
     }
   };
 
@@ -144,7 +186,10 @@ function SantriPage() {
       nomor_hp_ortu: "",
       kelas_id: "",
       foto: "",
+      status: "aktif",
     });
+    setEditId(null);
+    setOriginalStatus("aktif");
   };
 
   const handleExport = () => {
@@ -205,8 +250,18 @@ function SantriPage() {
               <FormField label="UID RFID" htmlFor="santri-rfid">
                 <Input id="santri-rfid" type="text" name="uid_rfid" value={form.uid_rfid} onChange={handleChange} />
               </FormField>
+              <FormField label="Status" htmlFor="santri-status">
+                <Select id="santri-status" name="status" value={form.status} onChange={handleChange}>
+                  <option value="aktif">Aktif</option>
+                  <option value="nonaktif">Nonaktif</option>
+                  <option value="lulus">Lulus</option>
+                  <option value="keluar">Keluar</option>
+                </Select>
+              </FormField>
             </FormGrid>
           </FormSection>
+
+          {editId ? <SantriOperationalChecklist santriId={editId} /> : null}
 
           <FormSection title="Data Wali">
             <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>
@@ -305,6 +360,7 @@ function SantriPage() {
                       <th>No Telepon</th>
                       <th>RFID</th>
                       <th>Saldo</th>
+                      <th>Status</th>
                       <th className="table-v3__cell--actions">Aksi</th>
                     </tr>
                   </thead>
@@ -333,6 +389,7 @@ function SantriPage() {
                         <td>{item.nomor_hp || "—"}</td>
                         <td className="table-v3__cell--mono">{item.uid_rfid || "—"}</td>
                         <td>Rp {Number(item.saldo || 0).toLocaleString()}</td>
+                        <td>{item.status || "aktif"}</td>
                         <td className="table-v3__cell--actions">
                           <TableActions
                             items={[

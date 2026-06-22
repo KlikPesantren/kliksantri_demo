@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FaUndo } from "react-icons/fa";
 import AppShell from "../layouts/AppShell";
 import api from "../services/api";
 import Card from "../components/ui/Card";
+import Modal from "../components/Modal";
+import Button from "../components/ui/Button";
 import StatusBadge from "../components/ui/StatusBadge";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
-import { Table, TableScroll, TableActions, TablePagination, useClientPagination } from "../components/ui/table";
-import { FilterBar, FormField, Select } from "../components/ui/form";
+import SantriSearchPicker from "../components/rfid/SantriSearchPicker";
+import { Table, TableScroll, TableActions, TablePagination } from "../components/ui/table";
+import { FilterBar, FormField, Input, FormActionBar } from "../components/ui/form";
+import { DEFAULT_PAGE_SIZE } from "../hooks/useClientPagination";
+import { formatCurrency } from "../utils/formatCurrency";
+
 function trxTypeLabel(trxType) {
   if (trxType === "payment") return "PEMBAYARAN";
   if (trxType === "topup") return "TOPUP";
@@ -17,76 +23,151 @@ function trxTypeLabel(trxType) {
   return String(trxType || "").toUpperCase();
 }
 
+function getApiError(err, fallback = "Terjadi kesalahan. Silakan coba lagi.") {
+  return err?.response?.data?.error || fallback;
+}
+
+function getDefaultDateRange() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 6);
+  return {
+    start_date: start.toISOString().slice(0, 10),
+    end_date: end.toISOString().slice(0, 10),
+  };
+}
+
 function RFIDRefundPage() {
-  const [santri, setSantri] = useState([]);
+  const defaultRange = getDefaultDateRange();
+  const [selectedSantri, setSelectedSantri] = useState(null);
+  const [santriId, setSantriId] = useState("");
   const [transaksi, setTransaksi] = useState([]);
-  const [selectedSantri, setSelectedSantri] = useState("");
+  const [pagination, setPagination] = useState({ limit: DEFAULT_PAGE_SIZE, offset: 0, total: 0 });
+  const [page, setPage] = useState(1);
   const [tableSearch, setTableSearch] = useState("");
+  const [startDate, setStartDate] = useState(defaultRange.start_date);
+  const [endDate, setEndDate] = useState(defaultRange.end_date);
+  const [confirmItem, setConfirmItem] = useState(null);
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const loadData = async () => {
-    try {
-      const santriRes = await api.get("/santri");
-      const trxRes = await api.get("/rfid/transactions");
+  const searchDebounceRef = useRef(null);
 
-      setSantri(santriRes.data.data || []);
-      setTransaksi(trxRes.data.data || []);
-    } catch (err) {
-      console.error(err);
+  const fetchTransactions = useCallback(
+    async (pageNum = 1) => {
+      if (!santriId) {
+        setTransaksi([]);
+        setPagination({ limit: DEFAULT_PAGE_SIZE, offset: 0, total: 0 });
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const params = {
+          type: "payment",
+          santri_id: santriId,
+          start_date: startDate,
+          end_date: endDate,
+          limit: DEFAULT_PAGE_SIZE,
+          offset: (pageNum - 1) * DEFAULT_PAGE_SIZE,
+        };
+
+        if (tableSearch.trim()) params.search = tableSearch.trim();
+
+        const trxRes = await api.get("/rfid/transactions", { params });
+        setTransaksi(trxRes.data.data || []);
+        setPagination(
+          trxRes.data.pagination || { limit: DEFAULT_PAGE_SIZE, offset: 0, total: 0 },
+        );
+        setPage(pageNum);
+      } catch (err) {
+        console.error(err);
+        alert(getApiError(err, "Gagal memuat data refund RFID"));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [santriId, startDate, endDate, tableSearch],
+  );
+
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
     }
+
+    searchDebounceRef.current = setTimeout(() => {
+      fetchTransactions(1);
+    }, tableSearch.trim() ? 300 : 0);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [santriId, startDate, endDate, tableSearch, fetchTransactions]);
+
+  const openRefundConfirm = (item) => {
+    if (item.trx_type !== "payment") return;
+    setConfirmItem(item);
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const closeRefundConfirm = () => {
+    if (isRefunding) return;
+    setConfirmItem(null);
+  };
 
-  const filteredTransaksi = useMemo(() => {
-    const bySantri = transaksi.filter(
-      (item) => String(item.santri_id) === String(selectedSantri),
-    );
-    const q = tableSearch.trim().toLowerCase();
-    if (!q) return bySantri;
-    return bySantri.filter((item) =>
-      [item.nama_merchant, item.trx_type, item.nominal, item.created_at]
-        .some((field) => String(field || "").toLowerCase().includes(q)),
-    );
-  }, [transaksi, selectedSantri, tableSearch]);
+  const executeRefund = async () => {
+    if (!confirmItem || isRefunding) return;
 
-  const { page, setPage, paginatedItems, totalItems, pageSize } = useClientPagination(filteredTransaksi);
+    setIsRefunding(true);
 
-  useEffect(() => {
-    setPage(1);
-  }, [tableSearch, selectedSantri, setPage]);
-
-  const refund = async (id) => {
     try {
       await api.post("/rfid/refund", {
-        transaksi_id: id,
+        transaksi_id: confirmItem.id,
       });
 
       alert("Refund berhasil");
-      loadData();
+      setConfirmItem(null);
+      await fetchTransactions(page);
     } catch (err) {
       console.error(err);
+      alert(getApiError(err, "Refund gagal"));
+    } finally {
+      setIsRefunding(false);
     }
   };
+
+  const pageSize = pagination.limit || DEFAULT_PAGE_SIZE;
 
   return (
     <AppShell title="Refund RFID" breadcrumb="Keamanan / RFID Refund">
       <Card padding="md" shadow="card" border={false} radius="xl">
         <FilterBar label="Filter">
-          <FormField label="Santri" htmlFor="refund-santri">
-            <Select
-              id="refund-santri"
-              value={selectedSantri}
-              onChange={(e) => setSelectedSantri(e.target.value)}
-            >
-              <option value="">Pilih Santri</option>
-              {santri.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nama}
-                </option>
-              ))}
-            </Select>
+          <SantriSearchPicker
+            id="refund-santri-search"
+            label="Santri"
+            value={santriId}
+            onChange={setSantriId}
+            onSelect={setSelectedSantri}
+            selectedSantri={selectedSantri}
+            required
+          />
+          <FormField label="Dari" htmlFor="refund-start-date">
+            <Input
+              id="refund-start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </FormField>
+          <FormField label="Sampai" htmlFor="refund-end-date">
+            <Input
+              id="refund-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
           </FormField>
         </FilterBar>
       </Card>
@@ -94,10 +175,10 @@ function RFIDRefundPage() {
       <div style={{ marginTop: "var(--space-6)" }}>
         <DataTableCard
           title="Transaksi Refund"
-          subtitle="Proses refund transaksi pembayaran RFID"
+          subtitle="Proses refund transaksi pembayaran RFID (7 hari terakhir default)"
           actions={
             <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-              {filteredTransaksi.length} transaksi
+              {pagination.total || 0} transaksi
             </span>
           }
         >
@@ -106,86 +187,111 @@ function RFIDRefundPage() {
               <SearchInput
                 value={tableSearch}
                 onChange={(e) => setTableSearch(e.target.value)}
-                placeholder="Cari merchant, jenis, nominal..."
-                disabled={!selectedSantri}
+                placeholder="Cari merchant..."
+                disabled={!santriId}
               />
             }
           />
 
-          {!selectedSantri ? (
+          {!santriId ? (
             <EmptyState
               title="Pilih santri terlebih dahulu"
-              description="Gunakan dropdown di atas untuk menampilkan transaksi yang dapat direfund."
+              description="Gunakan pencarian santri di atas untuk menampilkan transaksi payment."
             />
-          ) : filteredTransaksi.length === 0 ? (
+          ) : isLoading ? (
+            <EmptyState title="Memuat data..." description="Mohon tunggu sebentar." />
+          ) : transaksi.length === 0 ? (
             <EmptyState
-              title={
-                transaksi.filter((item) => String(item.santri_id) === String(selectedSantri)).length === 0
-                  ? "Belum ada transaksi"
-                  : "Tidak ada hasil pencarian"
-              }
-              description={
-                transaksi.filter((item) => String(item.santri_id) === String(selectedSantri)).length === 0
-                  ? "Transaksi santri ini belum tersedia."
-                  : "Coba kata kunci lain atau hapus filter pencarian."
-              }
+              title="Tidak ada transaksi payment"
+              description="Coba ubah rentang tanggal atau filter pencarian."
             />
           ) : (
             <>
-            <TableScroll>
-              <Table>
-                <thead>
-                  <tr>
-                    <th>Tanggal</th>
-                    <th>Merchant</th>
-                    <th>Nominal</th>
-                    <th>Jenis</th>
-                    <th className="table-v3__cell--actions">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedItems.map((item) => (
-                    <tr key={item.id}>
-                      <td className="table-v3__cell--mono">
-                        {new Date(item.created_at).toLocaleString()}
-                      </td>
-                      <td>{item.nama_merchant || "—"}</td>
-                      <td className="table-v3__cell--strong">
-                        Rp {Number(item.nominal).toLocaleString()}
-                      </td>
-                      <td>
-                        <StatusBadge status={item.trx_type}>
-                          {trxTypeLabel(item.trx_type)}
-                        </StatusBadge>
-                      </td>
-                      <td className="table-v3__cell--actions">
-                        <TableActions
-                          items={[
-                            {
-                              type: "custom",
-                              icon: FaUndo,
-                              title: "Refund",
-                              variant: "success",
-                              hidden: item.trx_type !== "payment",
-                              onClick: () => refund(item.id),
-                            },
-                          ]}
-                        />
-                      </td>
+              <TableScroll>
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>Tanggal</th>
+                      <th>Merchant</th>
+                      <th>Nominal</th>
+                      <th>Jenis</th>
+                      <th className="table-v3__cell--actions">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </TableScroll>
-            <TablePagination
-              page={page}
-              pageSize={pageSize}
-              totalItems={totalItems}
-              onPageChange={setPage}
-            />
+                  </thead>
+                  <tbody>
+                    {transaksi.map((item) => (
+                      <tr key={item.id}>
+                        <td className="table-v3__cell--mono">
+                          {new Date(item.created_at).toLocaleString()}
+                        </td>
+                        <td>{item.nama_merchant || "—"}</td>
+                        <td className="table-v3__cell--strong">
+                          {formatCurrency(item.nominal)}
+                        </td>
+                        <td>
+                          <StatusBadge status={item.trx_type}>
+                            {trxTypeLabel(item.trx_type)}
+                          </StatusBadge>
+                        </td>
+                        <td className="table-v3__cell--actions">
+                          <TableActions
+                            items={[
+                              {
+                                type: "custom",
+                                icon: FaUndo,
+                                title: "Refund",
+                                variant: "success",
+                                hidden: item.trx_type !== "payment",
+                                onClick: () => openRefundConfirm(item),
+                              },
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </TableScroll>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={pagination.total || 0}
+                onPageChange={fetchTransactions}
+              />
             </>
-          )}        </DataTableCard>
+          )}
+        </DataTableCard>
       </div>
+
+      <Modal
+        open={Boolean(confirmItem)}
+        title="Konfirmasi Refund RFID"
+        onClose={closeRefundConfirm}
+        width={480}
+      >
+        {confirmItem ? (
+          <>
+            <div className="form-modal-summary-v3">
+              <p><strong>Santri:</strong> {confirmItem.nama_santri || selectedSantri?.nama || "—"}</p>
+              <p><strong>Nominal:</strong> {formatCurrency(confirmItem.nominal)}</p>
+              <p>
+                <strong>Tanggal:</strong>{" "}
+                {new Date(confirmItem.created_at).toLocaleString("id-ID")}
+              </p>
+              <p><strong>Merchant:</strong> {confirmItem.nama_merchant || "—"}</p>
+              <p><strong>Device:</strong> {confirmItem.device_id || "—"}</p>
+            </div>
+            <FormActionBar className="form-action-bar-v3--compact">
+              <Button onClick={executeRefund} disabled={isRefunding}>
+                {isRefunding ? "Memproses..." : "Ya, Refund"}
+              </Button>
+              <Button variant="outline" onClick={closeRefundConfirm} disabled={isRefunding}>
+                Batal
+              </Button>
+            </FormActionBar>
+          </>
+        ) : null}
+      </Modal>
     </AppShell>
   );
 }

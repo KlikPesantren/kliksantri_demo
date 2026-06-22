@@ -34,7 +34,7 @@ function PageHeader({ title, description, breadcrumb, onMenuClick }) {
   const role = formatRole(user?.role);
 
   return (
-    <header className="page-header">
+    <header className="page-header" style={headerStyle}>
       <div className="page-header-leading">
         {onMenuClick && (
           <button
@@ -68,67 +68,71 @@ function PageHeader({ title, description, breadcrumb, onMenuClick }) {
   );
 }
 
+const headerStyle = {
+  marginBottom: "var(--space-3)",
+};
+
 const tenantNameStyle = {
   color: "var(--primary)",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 700,
-  marginBottom: "var(--space-1)",
-  lineHeight: 1.35,
-  letterSpacing: "0.04em",
+  marginBottom: "2px",
+  lineHeight: 1.3,
+  letterSpacing: "0.05em",
   textTransform: "uppercase",
 };
 
 const breadcrumbStyle = {
   color: "var(--text-muted)",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: 500,
-  marginBottom: "var(--space-2)",
+  marginBottom: "4px",
   letterSpacing: "0.01em",
 };
 
 const titleStyle = {
   margin: 0,
   color: "var(--text-primary)",
-  fontSize: "26px",
+  fontSize: "22px",
   fontWeight: 800,
   lineHeight: 1.2,
-  letterSpacing: "-0.025em",
+  letterSpacing: "-0.02em",
 };
 
 const descriptionStyle = {
-  margin: "var(--space-2) 0 0",
+  margin: "var(--space-1) 0 0",
   color: "var(--text-secondary)",
-  fontSize: "14px",
-  lineHeight: 1.55,
+  fontSize: "13px",
+  lineHeight: 1.45,
   maxWidth: "640px",
 };
 
 const userCardStyle = {
-  padding: "var(--space-2) var(--space-3)",
+  padding: "6px var(--space-3)",
   background: "var(--surface)",
   border: "1px solid var(--border)",
-  borderRadius: "var(--radius-lg)",
+  borderRadius: "var(--radius-md)",
   boxShadow: "var(--shadow-sm)",
 };
 
 const avatarStyle = {
-  width: "42px",
-  height: "42px",
+  width: "38px",
+  height: "38px",
   borderRadius: "999px",
   background: "var(--primary-subtle)",
   color: "var(--primary)",
-  border: "2px solid rgba(21, 128, 61, 0.18)",
+  border: "2px solid rgba(21, 128, 61, 0.16)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: "13px",
+  fontSize: "12px",
   fontWeight: 700,
   flexShrink: 0,
 };
 
 const userNameStyle = {
   color: "var(--text-primary)",
-  fontSize: "14px",
+  fontSize: "13px",
   fontWeight: 700,
   lineHeight: 1.25,
   whiteSpace: "nowrap",
@@ -138,10 +142,10 @@ const userNameStyle = {
 
 const roleStyle = {
   color: "var(--text-muted)",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: 500,
-  lineHeight: 1.35,
-  marginTop: "2px",
+  lineHeight: 1.3,
+  marginTop: "1px",
 };
 
 export default PageHeader;

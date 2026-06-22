@@ -10,7 +10,11 @@ export function DashboardResponsiveStyles() {
       .dashboard-monitoring-v3 {
         display: flex;
         flex-direction: column;
-        gap: var(--space-5);
+        gap: var(--space-4);
+      }
+
+      .dashboard-section--hero {
+        margin-top: calc(-1 * var(--space-1));
       }
 
       .dashboard-section {
@@ -20,7 +24,7 @@ export function DashboardResponsiveStyles() {
 
       .dashboard-section--kesehatan > * {
         border: 1px solid #E5E7EB;
-        border-radius: 22px;
+        border-radius: 20px;
         box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05);
       }
 
@@ -29,7 +33,7 @@ export function DashboardResponsiveStyles() {
       }
 
       .dashboard-section--chart > * {
-        border-radius: 22px;
+        border-radius: 20px;
       }
 
       .dashboard-role-v3 {

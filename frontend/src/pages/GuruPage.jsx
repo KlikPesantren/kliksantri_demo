@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaSearch } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
-import KpiCard from "../components/ui/KpiCard";
-import KpiGrid from "../components/ui/KpiGrid";
 import SectionHeading from "../components/ui/SectionHeading";
 import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
-import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
 import StatusBadge from "../components/ui/StatusBadge";
+import { OperationalPageStyles } from "../components/shared/OperationalPageStyles";
 import {
   Table,
   TableScroll,
@@ -177,14 +176,25 @@ function GuruPage() {
       description="Kelola data guru dan tenaga pendidik pesantren"
       breadcrumb="Master Data / Master Guru"
     >
-      <KpiGrid>
-        <KpiCard label="Guru Aktif" value={formatNumber(aktifCount)} accent="success" />
-        <KpiCard label="Guru Nonaktif" value={formatNumber(nonaktifCount)} accent="neutral" />
-        <KpiCard label="Total Guru" value={formatNumber(guru.length)} accent="primary" />
-      </KpiGrid>
+      <OperationalPageStyles />
+      <div className="ops-page">
+        <div className="ops-page__summary">
+          <div className="ops-page__stat">
+            <span className="ops-page__stat-label">Guru Aktif</span>
+            <span className="ops-page__stat-value">{formatNumber(aktifCount)}</span>
+          </div>
+          <div className="ops-page__stat">
+            <span className="ops-page__stat-label">Guru Nonaktif</span>
+            <span className="ops-page__stat-value">{formatNumber(nonaktifCount)}</span>
+          </div>
+          <div className="ops-page__stat">
+            <span className="ops-page__stat-label">Total Guru</span>
+            <span className="ops-page__stat-value">{formatNumber(guru.length)}</span>
+          </div>
+        </div>
 
       {showForm && (
-        <div style={{ marginTop: "var(--space-5)" }}>
+        <div className="ops-page__form-card">
         <Card padding="md" shadow="card" border={false} radius="xl">
           <SectionHeading variant="eyebrow" spacing="first">
             {editId ? "Edit Data Guru" : "Tambah Guru Baru"}
@@ -277,32 +287,38 @@ function GuruPage() {
         </div>
       )}
 
-      <div style={{ marginTop: "var(--space-6)" }}>
+      <div className="ops-page__card">
         <DataTableCard
           title="Daftar Guru"
           subtitle="Kelola data guru pesantren"
+          border
           actions={
-            <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+            <span className="ops-page__meta">
               {filteredGuru.length} data
             </span>
           }
         >
-          <TableToolbar
-            search={
+          <div className="ops-page__filter filter-bar-v3 filter-bar-v3--table">
+            <span className="filter-bar-v3__label">
+              <FaSearch size={11} aria-hidden />
+              Cari guru
+            </span>
+            <div className="filter-bar-v3__fields">
               <SearchInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari nama, jabatan, atau email..."
               />
-            }
-            actions={
+            </div>
+            <div className="ops-page__filter-actions">
               <Button variant="primary" onClick={openAdd}>
                 + Tambah Guru
               </Button>
-            }
-          />
+            </div>
+          </div>
 
           {filteredGuru.length === 0 ? (
+            <div className="ops-page__empty">
             <EmptyState
               title={guru.length === 0 ? "Belum ada data" : "Tidak ada hasil pencarian"}
               description={
@@ -318,6 +334,7 @@ function GuruPage() {
                 ) : null
               }
             />
+            </div>
           ) : (
             <>
               <TableScroll>
@@ -391,6 +408,7 @@ function GuruPage() {
             </>
           )}
         </DataTableCard>
+      </div>
       </div>
     </AppShell>
   );

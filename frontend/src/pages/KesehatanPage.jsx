@@ -11,6 +11,11 @@ import EmptyState from "../components/ui/EmptyState";
 import { Table, TableScroll, TableActions, TablePagination } from "../components/ui/table";
 import { LegacyPageStyles } from "../components/shared/PageResponsiveStyles";
 import {
+  OperationalPageStyles,
+  resolveHealthClass,
+} from "../components/shared/OperationalPageStyles";
+import { FaSearch } from "react-icons/fa";
+import {
   FormField,
   Input,
   Select,
@@ -158,8 +163,10 @@ function KesehatanPage() {
   return (
     <AppShell title="Kesehatan Santri" breadcrumb="Keamanan / Kesehatan">
       <LegacyPageStyles />
-      <div className="legacy-page">
+      <OperationalPageStyles />
+      <div className="ops-page">
         {canManage ? (
+          <div className="ops-page__form-card">
           <Card padding="md" shadow="card" border={false} radius="xl">
             <SectionHeading variant="eyebrow" spacing="first">
               {editId ? "Edit Catatan Kesehatan" : "Tambah Catatan Kesehatan"}
@@ -239,13 +246,21 @@ function KesehatanPage() {
               ) : null}
             </FormActionBar>
           </Card>
+          </div>
         ) : null}
 
-        <div style={{ marginTop: "var(--space-6)" }}>
+        <div className="ops-page__card">
           <DataTableCard
             title="Data Kesehatan Santri"
+            subtitle="Pantau kondisi dan penanganan santri"
+            border
             toolbar={
-              <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
+              <div className="ops-page__filter filter-bar-v3 filter-bar-v3--table">
+                <span className="filter-bar-v3__label">
+                  <FaSearch size={11} aria-hidden />
+                  Cari
+                </span>
+                <div className="filter-bar-v3__fields">
                 <SearchInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -255,18 +270,22 @@ function KesehatanPage() {
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   style={{ minWidth: 140 }}
+                  aria-label="Filter status kesehatan"
                 >
                   <option value="">Semua Status</option>
                   <option value="sehat">Sehat</option>
                   <option value="sakit">Sakit</option>
                 </Select>
+                </div>
               </div>
             }
           >
             {loading ? (
-              <p style={{ padding: "var(--space-4)" }}>Memuat data...</p>
+              <p style={{ padding: "var(--space-4)", color: "var(--text-secondary)" }}>Memuat data...</p>
             ) : list.length === 0 ? (
+              <div className="ops-page__empty">
               <EmptyState title="Belum ada data" description="Catatan kesehatan santri akan tampil di sini." />
+              </div>
             ) : (
               <>
                 <TableScroll>
@@ -287,9 +306,11 @@ function KesehatanPage() {
                         <tr key={row.id}>
                           <td>{row.nama_santri || "-"}</td>
                           <td>
-                            <StatusBadge status={row.status_kesehatan === "sakit" ? "danger" : "success"}>
-                              {row.status_kesehatan}
-                            </StatusBadge>
+                            <span className={`ops-health ops-health--${resolveHealthClass(row.status_kesehatan)}`}>
+                              <StatusBadge status={row.status_kesehatan === "sakit" ? "danger" : "success"}>
+                                {row.status_kesehatan}
+                              </StatusBadge>
+                            </span>
                           </td>
                           <td>{row.keluhan || "-"}</td>
                           <td>{row.tindakan_pertama || "-"}</td>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { FaCalendarAlt } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
@@ -8,7 +9,8 @@ import KpiGrid from "../components/ui/KpiGrid";
 import SectionHeading from "../components/ui/SectionHeading";
 import StatusBadge from "../components/ui/StatusBadge";
 import { KeuanganPageStyles } from "../components/shared/PageResponsiveStyles";
-import { FormField, Select, FilterBar } from "../components/ui/form";
+import { OperationalPageStyles } from "../components/shared/OperationalPageStyles";
+import { Select } from "../components/ui/form";
 import { formatCurrency, formatNumber } from "../utils/formatCurrency";
 
 const BULAN_OPTIONS = [
@@ -28,7 +30,146 @@ const BULAN_OPTIONS = [
 
 const TAHUN_OPTIONS = [2025, 2026, 2027, 2028];
 
-function KasCard({ title, subtitle, data, accent = "neutral", badge = null }) {
+function KonsolidasiPageStyles() {
+  return (
+    <style>{`
+      .konsolidasi-page {
+        min-width: 0;
+        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      .konsolidasi-page__toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-3);
+      }
+
+      .konsolidasi-page__filter.filter-bar-v3 {
+        width: fit-content;
+        max-width: 100%;
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 10px var(--space-4);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+        gap: var(--space-3);
+      }
+
+      .konsolidasi-page__filter .filter-bar-v3__label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        margin: 0;
+      }
+
+      .konsolidasi-page__filter .filter-bar-v3__fields {
+        flex: 0 0 auto;
+        gap: var(--space-2);
+      }
+
+      .konsolidasi-page__filter .form-select-v3 {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+      }
+
+      .konsolidasi-page__filter .form-select-v3--bulan {
+        min-width: 148px;
+        max-width: 180px;
+      }
+
+      .konsolidasi-page__filter .form-select-v3--tahun {
+        min-width: 88px;
+        max-width: 108px;
+      }
+
+      .konsolidasi-page__hint {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+        flex: 1 1 220px;
+        min-width: 0;
+      }
+
+      .konsolidasi-page__section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      @media (max-width: 767px) {
+        .konsolidasi-page__toolbar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .konsolidasi-page__filter.filter-bar-v3 {
+          width: 100%;
+        }
+
+        .konsolidasi-page__filter .filter-bar-v3__fields {
+          flex: 1 1 auto;
+        }
+
+        .konsolidasi-page__filter .form-select-v3--bulan,
+        .konsolidasi-page__filter .form-select-v3--tahun {
+          flex: 1 1 calc(50% - var(--space-1));
+          max-width: none;
+        }
+      }
+    `}</style>
+  );
+}
+
+function KonsolidasiPeriodFilter({ bulan, tahun, onBulanChange, onTahunChange }) {
+  return (
+    <div className="konsolidasi-page__filter filter-bar-v3" role="group" aria-label="Filter periode">
+      <span className="filter-bar-v3__label">
+        <FaCalendarAlt size={10} aria-hidden />
+        Periode
+      </span>
+      <div className="filter-bar-v3__fields">
+        <Select
+          id="konsolidasi-bulan"
+          className="form-select-v3--bulan"
+          value={bulan}
+          onChange={(e) => onBulanChange(Number(e.target.value))}
+          aria-label="Bulan"
+        >
+          {BULAN_OPTIONS.map((label, i) => (
+            <option key={label} value={i + 1}>
+              {label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          id="konsolidasi-tahun"
+          className="form-select-v3--tahun"
+          value={tahun}
+          onChange={(e) => onTahunChange(Number(e.target.value))}
+          aria-label="Tahun"
+        >
+          {TAHUN_OPTIONS.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+function KasCard({ title, subtitle, data, badge = null }) {
   if (!data) return null;
 
   return (
@@ -128,58 +269,29 @@ function KasInstansiKonsolidasiPage() {
       breadcrumb="Keuangan / Konsolidasi Yayasan"
     >
       <KeuanganPageStyles />
-      <div className="keuangan-page">
-        <Card padding="md" shadow="card" border={false} radius="xl">
-          <FilterBar label="Periode">
-            <FormField label="Bulan" htmlFor="konsolidasi-bulan">
-              <Select
-                id="konsolidasi-bulan"
-                value={bulan}
-                onChange={(e) => setBulan(Number(e.target.value))}
-                aria-label="Bulan"
-              >
-                {BULAN_OPTIONS.map((label, i) => (
-                  <option key={label} value={i + 1}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField label="Tahun" htmlFor="konsolidasi-tahun">
-              <Select
-                id="konsolidasi-tahun"
-                value={tahun}
-                onChange={(e) => setTahun(Number(e.target.value))}
-                aria-label="Tahun"
-              >
-                {TAHUN_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-          </FilterBar>
-          <p
-            style={{
-              marginTop: "var(--space-3)",
-              fontSize: "13px",
-              color: "var(--text-secondary)",
-            }}
-          >
+      <OperationalPageStyles />
+      <KonsolidasiPageStyles />
+      <div className="konsolidasi-page ops-page">
+        <div className="konsolidasi-page__toolbar">
+          <KonsolidasiPeriodFilter
+            bulan={bulan}
+            tahun={tahun}
+            onBulanChange={setBulan}
+            onTahunChange={setTahun}
+          />
+          <p className="konsolidasi-page__hint">
             Mode lihat saja — agregat Kas Pondok + seluruh unit pendidikan.{" "}
             <Link to="/kas-instansi" style={{ color: "var(--primary)" }}>
               Kelola transaksi unit →
             </Link>
           </p>
-        </Card>
+        </div>
 
         {error && (
           <div
             style={{
-              marginTop: "var(--space-4)",
               padding: "12px 16px",
-              borderRadius: "var(--radius-lg)",
+              borderRadius: "20px",
               background: "rgba(239, 68, 68, 0.08)",
               color: "var(--danger)",
               fontSize: "14px",
@@ -192,21 +304,19 @@ function KasInstansiKonsolidasiPage() {
         {loading ? (
           <div
             style={{
-              marginTop: "var(--space-6)",
               color: "var(--text-secondary)",
-              padding: "var(--space-4)",
+              padding: "var(--space-2) 0",
             }}
           >
             Memuat konsolidasi yayasan...
           </div>
         ) : data ? (
           <>
-            <div style={{ marginTop: "var(--space-6)" }}>
+            <div className="konsolidasi-page__section">
               <SectionHeading variant="eyebrow" spacing="first">
                 KPI Yayasan — {bulanLabel} {tahun}
               </SectionHeading>
-              <div style={{ marginTop: "var(--space-4)" }}>
-                <KpiGrid>
+              <KpiGrid>
                   <KpiCard
                     label="Total Kas Yayasan"
                     value={formatCurrency(data.kpi?.total_kas_yayasan ?? 0)}
@@ -228,10 +338,9 @@ function KasInstansiKonsolidasiPage() {
                     accent="neutral"
                   />
                 </KpiGrid>
-              </div>
             </div>
 
-            <div style={{ marginTop: "var(--space-6)" }}>
+            <div className="konsolidasi-page__section">
               <SectionHeading variant="eyebrow" spacing="first">
                 Kartu Kas
               </SectionHeading>
@@ -239,7 +348,6 @@ function KasInstansiKonsolidasiPage() {
                 style={{
                   display: "grid",
                   gap: "var(--space-4)",
-                  marginTop: "var(--space-4)",
                 }}
               >
                 {allKasCards.map((item) => (
@@ -260,11 +368,10 @@ function KasInstansiKonsolidasiPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: "var(--space-6)" }}>
+            <div className="konsolidasi-page__section">
               <SectionHeading variant="eyebrow" spacing="first">
                 Ringkasan Keuangan per Kas
               </SectionHeading>
-              <div style={{ marginTop: "var(--space-4)" }}>
               <Card padding="md" shadow="card" border={false} radius="xl">
                 <div style={{ overflowX: "auto" }}>
                   <table className="table-v3" style={{ width: "100%", minWidth: "640px" }}>
@@ -293,15 +400,13 @@ function KasInstansiKonsolidasiPage() {
                   </table>
                 </div>
               </Card>
-              </div>
             </div>
 
-            <div style={{ marginTop: "var(--space-6)" }}>
+            <div className="konsolidasi-page__section">
               <SectionHeading variant="eyebrow" spacing="first">
                 Total Yayasan
               </SectionHeading>
-              <div style={{ marginTop: "var(--space-4)" }}>
-                <KpiGrid>
+              <KpiGrid>
                   <KpiCard
                     label="Total Pemasukan Bulan"
                     value={formatCurrency(data.total_yayasan?.pemasukan_bulan ?? 0)}
@@ -323,10 +428,9 @@ function KasInstansiKonsolidasiPage() {
                     accent="neutral"
                   />
                 </KpiGrid>
-              </div>
               <p
                 style={{
-                  marginTop: "var(--space-3)",
+                  margin: 0,
                   fontSize: "12px",
                   color: "var(--text-muted)",
                 }}
