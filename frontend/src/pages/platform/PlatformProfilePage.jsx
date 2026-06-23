@@ -17,11 +17,19 @@ const TEXT_FIELDS = [
 
 function PlatformProfilePage() {
   const [form, setForm] = useState({});
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
   const [updatedAt, setUpdatedAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -54,6 +62,44 @@ function PlatformProfilePage() {
       setError(err.response?.data?.error || "Gagal menyimpan settings platform");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!passwordForm.current_password || !passwordForm.new_password) {
+      setPasswordError("Password lama dan password baru wajib diisi.");
+      return;
+    }
+
+    if (passwordForm.new_password.length < 8) {
+      setPasswordError("Password baru minimal 8 karakter.");
+      return;
+    }
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordError("Konfirmasi password baru tidak sama.");
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await platformApi.patch("/platform/auth/password", {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
+      });
+      setPasswordForm({
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+      setPasswordSuccess("Password platform berhasil diganti.");
+    } catch (err) {
+      setPasswordError(err.response?.data?.error || "Gagal mengganti password platform");
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -131,6 +177,85 @@ function PlatformProfilePage() {
             Terakhir diperbarui: {new Date(updatedAt).toLocaleString("id-ID")}
           </p>
         ) : null}
+      </div>
+
+      <div className="platform-compact-card" style={{ marginTop: 14 }}>
+        <h2 className="theme-section-title">Keamanan Akun Platform</h2>
+        <p className="theme-muted" style={{ marginTop: -4 }}>
+          Ganti password owner/platform tanpa mengubah tenant atau data pesantren.
+        </p>
+
+        {passwordError ? (
+          <div className="theme-alert theme-alert--danger">{passwordError}</div>
+        ) : null}
+        {passwordSuccess ? (
+          <div className="theme-alert theme-alert--success">{passwordSuccess}</div>
+        ) : null}
+
+        <div style={formGridStyle}>
+          <label className="theme-field-label">
+            Password Lama
+            <input
+              className="theme-field"
+              type="password"
+              autoComplete="current-password"
+              value={passwordForm.current_password}
+              onChange={(e) =>
+                setPasswordForm((prev) => ({
+                  ...prev,
+                  current_password: e.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="theme-field-label">
+            Password Baru
+            <input
+              className="theme-field"
+              type="password"
+              autoComplete="new-password"
+              value={passwordForm.new_password}
+              onChange={(e) =>
+                setPasswordForm((prev) => ({
+                  ...prev,
+                  new_password: e.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="theme-field-label">
+            Ulangi Password Baru
+            <input
+              className="theme-field"
+              type="password"
+              autoComplete="new-password"
+              value={passwordForm.confirm_password}
+              onChange={(e) =>
+                setPasswordForm((prev) => ({
+                  ...prev,
+                  confirm_password: e.target.value,
+                }))
+              }
+            />
+          </label>
+        </div>
+
+        <div style={actionsStyle}>
+          <PlatformButton
+            variant="primary"
+            onClick={handlePasswordChange}
+            loading={savingPassword}
+          >
+            Ganti Password
+          </PlatformButton>
+        </div>
+
+        <p className="theme-muted" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+          Kalau lupa password dan tidak bisa login, gunakan recovery server:
+          {" "}
+          <code>node scripts/platform-password-rotate.js</code>.
+          Password baru tampil sekali di terminal.
+        </p>
       </div>
     </div>
   );

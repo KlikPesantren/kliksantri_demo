@@ -86,6 +86,35 @@ function PlatformLayoutStyles() {
         margin-right: -2px;
       }
 
+      .platform-sidebar__footer {
+        flex-shrink: 0;
+        padding: 10px 6px 0;
+        margin-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .platform-sidebar__logout {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+        padding: 0 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(248, 113, 113, 0.28);
+        background: rgba(127, 29, 29, 0.18);
+        color: #FCA5A5;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .platform-sidebar__logout:hover {
+        background: rgba(127, 29, 29, 0.32);
+        color: #FEE2E2;
+      }
+
       .platform-nav__group {
         display: flex;
         flex-direction: column;
@@ -354,6 +383,16 @@ function PlatformLayout() {
               ]}
             />
           </nav>
+
+          <div className="platform-sidebar__footer">
+            <button
+              type="button"
+              className="platform-sidebar__logout"
+              onClick={handleLogout}
+            >
+              Logout Platform
+            </button>
+          </div>
         </aside>
 
         <div className="platform-main">
