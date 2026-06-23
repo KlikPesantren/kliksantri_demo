@@ -14,6 +14,7 @@ function SantriSearchPicker({
   disabled = false,
   required = false,
   selectedSantri = null,
+  className = "",
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -99,7 +100,7 @@ function SantriSearchPicker({
   };
 
   return (
-    <FormField label={label} htmlFor={id} required={required}>
+    <FormField label={label} htmlFor={id} required={required} className={className}>
       <div ref={containerRef} style={{ position: "relative" }}>
         <Input
           id={id}

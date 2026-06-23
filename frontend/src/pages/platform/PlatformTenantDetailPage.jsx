@@ -1,14 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import platformApi from "../../services/platformApi";
 import Badge from "../../components/ui/Badge";
-import Button from "../../components/ui/Button";
+import PlatformButton from "../../components/platform/PlatformButton";
 import Card from "../../components/ui/Card";
 import KpiCard from "../../components/ui/KpiCard";
 import KpiGrid from "../../components/ui/KpiGrid";
 import SectionHeading from "../../components/ui/SectionHeading";
+import Modal from "../../components/Modal";
+import { TENANT_PACKAGES } from "../../constants/tenantPackages";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDateShort } from "../../utils/formatDate";
+import { openTenantAdminPortal } from "../../utils/tenantPortal";
+
+const APPLY_PACKAGE_OPTIONS = TENANT_PACKAGES.filter((pkg) =>
+  ["basic", "standard", "premium"].includes(pkg.id)
+);
+
+const BILLING_STATUS_OPTIONS = [
+  "trial",
+  "active",
+  "overdue",
+  "suspended",
+  "cancelled",
+];
 
 function tenantDisplayName(row) {
   return row?.nama || row?.name || "-";
@@ -21,13 +36,85 @@ function statusBadgeVariant(status) {
   return "neutral";
 }
 
+function billingBadgeVariant(status) {
+  if (status === "active") return "success";
+  if (status === "trial") return "info";
+  if (status === "overdue") return "warning";
+  if (status === "suspended" || status === "cancelled") return "danger";
+  return "neutral";
+}
+
+function featureOnOff(features, key) {
+  return features.find((feature) => feature.key === key)?.enabled === true;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  return `${formatDateShort(value)} ${new Date(value).toLocaleTimeString("id-ID")}`;
+}
+
+function toDateTimeInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 16);
+}
+
+function addDays(value, days) {
+  const base = value ? new Date(value) : new Date();
+  const now = new Date();
+  const start = Number.isNaN(base.getTime()) || base < now ? now : base;
+  start.setDate(start.getDate() + days);
+  return start.toISOString();
+}
+
 function PlatformTenantDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [tenant, setTenant] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [features, setFeatures] = useState([]);
+  const [featuresLoading, setFeaturesLoading] = useState(false);
+  const [featuresSaving, setFeaturesSaving] = useState(false);
+  const [featuresError, setFeaturesError] = useState("");
+  const [currentPackage, setCurrentPackage] = useState({ id: "custom", label: "Custom" });
+  const [selectedPackage, setSelectedPackage] = useState("basic");
+  const [packageSaving, setPackageSaving] = useState(false);
+  const [billing, setBilling] = useState(null);
+  const [billingForm, setBillingForm] = useState({
+    plan_code: "premium",
+    billing_status: "active",
+    subscription_expires_at: "",
+    billing_notes: "",
+  });
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingSaving, setBillingSaving] = useState(false);
+  const [billingError, setBillingError] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteSummary, setDeleteSummary] = useState(null);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [resetAdminOpen, setResetAdminOpen] = useState(false);
+  const [resetAdminLoading, setResetAdminLoading] = useState(false);
+  const [resetAdminError, setResetAdminError] = useState("");
+  const [resetAdminCredential, setResetAdminCredential] = useState(null);
+  const [resetAdminCopied, setResetAdminCopied] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [confirmDefaultSlug, setConfirmDefaultSlug] = useState(false);
+  const [editForm, setEditForm] = useState({
+    nama: "",
+    slug: "",
+    status: "active",
+    alamat: "",
+    telepon: "",
+    tagline: "",
+  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -49,6 +136,219 @@ function PlatformTenantDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const loadFeatures = useCallback(async () => {
+    setFeaturesLoading(true);
+    setFeaturesError("");
+    try {
+      const res = await platformApi.get(`/platform/tenants/${id}/features`);
+      setFeatures(res.data?.features || []);
+      setCurrentPackage(res.data?.current_package || { id: "custom", label: "Custom" });
+      if (["basic", "standard", "premium"].includes(res.data?.current_package?.id)) {
+        setSelectedPackage(res.data.current_package.id);
+      }
+    } catch (err) {
+      setFeaturesError(err.response?.data?.error || "Gagal memuat fitur tenant");
+    } finally {
+      setFeaturesLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadFeatures();
+  }, [loadFeatures]);
+
+  const applyBillingState = (nextBilling) => {
+    const safeBilling = nextBilling || {};
+    setBilling(safeBilling);
+    setBillingForm({
+      plan_code: safeBilling.plan_code || "premium",
+      billing_status: safeBilling.billing_status || "active",
+      subscription_expires_at: toDateTimeInputValue(
+        safeBilling.subscription_expires_at
+      ),
+      billing_notes: safeBilling.billing_notes || "",
+    });
+  };
+
+  const loadBilling = useCallback(async () => {
+    setBillingLoading(true);
+    setBillingError("");
+    try {
+      const res = await platformApi.get(`/platform/tenants/${id}/billing`);
+      applyBillingState(res.data?.data || null);
+    } catch (err) {
+      setBillingError(err.response?.data?.error || "Gagal memuat billing tenant");
+    } finally {
+      setBillingLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadBilling();
+  }, [loadBilling]);
+
+  const handleToggleFeature = (key) => {
+    setFeatures((prev) =>
+      prev.map((f) =>
+        f.key === key && !f.is_core ? { ...f, enabled: !f.enabled } : f
+      )
+    );
+  };
+
+  const handleSaveFeatures = async () => {
+    setFeaturesSaving(true);
+    setFeaturesError("");
+    try {
+      const res = await platformApi.patch(`/platform/tenants/${id}/features`, {
+        features: features.map((f) => ({ key: f.key, enabled: f.enabled })),
+      });
+      setFeatures(res.data?.features || []);
+      setCurrentPackage(res.data?.current_package || { id: "custom", label: "Custom" });
+    } catch (err) {
+      setFeaturesError(err.response?.data?.error || "Gagal menyimpan fitur tenant");
+    } finally {
+      setFeaturesSaving(false);
+    }
+  };
+
+  const handleApplyPackage = async () => {
+    const pkg = APPLY_PACKAGE_OPTIONS.find((item) => item.id === selectedPackage);
+    if (!pkg) return;
+
+    const confirmed = window.confirm(
+      `Apply package ${pkg.label} untuk "${tenantDisplayName(tenant)}"?\n\nFitur tenant akan mengikuti paket ini. Nama tenant, status, user, dan data santri tidak berubah.`
+    );
+    if (!confirmed) return;
+
+    setPackageSaving(true);
+    setFeaturesError("");
+    try {
+      const res = await platformApi.patch(`/platform/tenants/${id}/package`, {
+        package: pkg.id,
+      });
+      setFeatures(res.data?.features || []);
+      setCurrentPackage(res.data?.current_package || { id: pkg.id, label: pkg.label });
+    } catch (err) {
+      setFeaturesError(err.response?.data?.error || "Gagal apply package");
+    } finally {
+      setPackageSaving(false);
+    }
+  };
+
+  const handleOpenTenantPortal = () => {
+    const slug = tenant?.slug || dashboard?.tenant?.slug;
+    const opened = openTenantAdminPortal(slug);
+    if (!opened) {
+      window.alert("Slug tenant tidak valid.");
+    }
+  };
+
+  const openEditModal = () => {
+    setEditError("");
+    setConfirmDefaultSlug(false);
+    setEditForm({
+      nama: tenantDisplayName(tenant),
+      slug: tenant?.slug || "",
+      status: tenant?.status || "active",
+      alamat: tenant?.alamat || "",
+      telepon: tenant?.telepon || "",
+      tagline: tenant?.tagline || "",
+    });
+    setEditOpen(true);
+  };
+
+  const closeEditModal = () => {
+    if (editSaving) return;
+    setEditOpen(false);
+    setEditError("");
+  };
+
+  const handleSaveEditTenant = async () => {
+    setEditSaving(true);
+    setEditError("");
+    try {
+      const payload = {
+        nama: editForm.nama.trim(),
+        slug: editForm.slug.trim(),
+        status: editForm.status,
+        alamat: editForm.alamat.trim() || null,
+        telepon: editForm.telepon.trim() || null,
+        tagline: editForm.tagline.trim() || null,
+      };
+
+      if (tenant?.slug === "default" && payload.slug !== "default") {
+        if (!confirmDefaultSlug) {
+          setEditError(
+            "Tenant default memerlukan konfirmasi khusus untuk mengubah slug."
+          );
+          setEditSaving(false);
+          return;
+        }
+        payload.confirm_default_slug_change = true;
+      }
+
+      const res = await platformApi.patch(`/platform/tenants/${id}`, payload);
+      setTenant((prev) => ({ ...prev, ...(res.data?.data || {}) }));
+      setEditOpen(false);
+      await loadData();
+    } catch (err) {
+      setEditError(err.response?.data?.error || "Gagal menyimpan perubahan tenant");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleResetAdminPassword = async () => {
+    const confirmed = window.confirm(
+      `Reset password admin tenant "${tenantDisplayName(tenant)}"?\n\nPassword baru akan ditampilkan sekali. Data tenant tidak berubah.`
+    );
+    if (!confirmed) return;
+
+    setResetAdminLoading(true);
+    setResetAdminError("");
+    setResetAdminCredential(null);
+    setResetAdminCopied(false);
+    setResetAdminOpen(true);
+
+    try {
+      const res = await platformApi.post(
+        `/platform/tenants/${id}/reset-admin-password`
+      );
+      setResetAdminCredential(res.data?.admin || null);
+    } catch (err) {
+      setResetAdminError(
+        err.response?.data?.error || "Gagal reset password admin tenant"
+      );
+    } finally {
+      setResetAdminLoading(false);
+    }
+  };
+
+  const handleCopyResetAdminCredential = async () => {
+    if (!resetAdminCredential) return;
+    const text = [
+      `Tenant: ${tenantDisplayName(tenant)}`,
+      `Slug: ${tenant?.slug}`,
+      `Username: ${resetAdminCredential.username}`,
+      `Password: ${resetAdminCredential.password}`,
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setResetAdminCopied(true);
+    } catch {
+      window.prompt("Salin kredensial admin tenant:", text);
+    }
+  };
+
+  const closeResetAdminModal = () => {
+    if (resetAdminLoading) return;
+    setResetAdminOpen(false);
+    setResetAdminError("");
+    setResetAdminCredential(null);
+    setResetAdminCopied(false);
+  };
 
   const handleSuspend = async () => {
     const reason = window.prompt(
@@ -99,6 +399,96 @@ function PlatformTenantDetailPage() {
     }
   };
 
+  const saveBilling = async (patch) => {
+    setBillingSaving(true);
+    setBillingError("");
+
+    try {
+      const res = await platformApi.patch(`/platform/tenants/${id}/billing`, patch);
+      applyBillingState(res.data?.data || null);
+      await loadData();
+    } catch (err) {
+      setBillingError(err.response?.data?.error || "Gagal menyimpan billing");
+    } finally {
+      setBillingSaving(false);
+    }
+  };
+
+  const handleSaveBilling = () => {
+    saveBilling({
+      plan_code: billingForm.plan_code,
+      billing_status: billingForm.billing_status,
+      subscription_expires_at: billingForm.subscription_expires_at
+        ? new Date(billingForm.subscription_expires_at).toISOString()
+        : null,
+      billing_notes: billingForm.billing_notes,
+    });
+  };
+
+  const handleMarkBilling = (billing_status) => {
+    saveBilling({ billing_status });
+  };
+
+  const handleExtendBilling = () => {
+    saveBilling({
+      subscription_expires_at: addDays(
+        billing?.subscription_expires_at,
+        30
+      ),
+      billing_status: "active",
+    });
+  };
+
+  const openDeleteModal = async () => {
+    setDeleteOpen(true);
+    setDeleteSummary(null);
+    setDeleteInput("");
+    setDeleteError("");
+    setDeleteLoading(true);
+
+    try {
+      await platformApi.delete(`/platform/tenants/${id}`);
+    } catch (err) {
+      const body = err.response?.data;
+      if (body?.summary) {
+        setDeleteSummary(body);
+      } else {
+        setDeleteError(body?.error || "Gagal memuat summary delete tenant");
+      }
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const closeDeleteModal = () => {
+    if (deleteLoading) return;
+    setDeleteOpen(false);
+    setDeleteSummary(null);
+    setDeleteInput("");
+    setDeleteError("");
+  };
+
+  const handleDeleteTenant = async () => {
+    if (deleteInput !== "DELETE") {
+      setDeleteError("Ketik DELETE untuk melanjutkan.");
+      return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError("");
+
+    try {
+      await platformApi.delete(`/platform/tenants/${id}`, {
+        params: { confirm: "DELETE" },
+      });
+      navigate("/platform/tenants");
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || "Gagal delete tenant");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   if (loading) {
     return <div style={centerStyle}>Memuat detail tenant...</div>;
   }
@@ -121,6 +511,9 @@ function PlatformTenantDetailPage() {
   const keam = dashboard?.keamanan || {};
   const rfid = dashboard?.rfid || {};
   const isActive = info.status === "active";
+  const health = dashboard?.health || tenant.health || {};
+  const featureStatus = health.feature_status || {};
+  const canDeleteTenant = !isActive && tenant.slug !== "default";
 
   return (
     <>
@@ -137,38 +530,63 @@ function PlatformTenantDetailPage() {
         </div>
 
         <div style={actionsStyle}>
+          <PlatformButton variant="primary" onClick={handleOpenTenantPortal}>
+            Buka Portal Tenant
+          </PlatformButton>
+          <PlatformButton
+            variant="secondary"
+            onClick={handleResetAdminPassword}
+            loading={resetAdminLoading}
+          >
+            Reset Admin Password
+          </PlatformButton>
+          {canDeleteTenant && (
+            <PlatformButton
+              variant="danger"
+              onClick={openDeleteModal}
+              loading={deleteLoading && deleteOpen}
+            >
+              Delete Tenant
+            </PlatformButton>
+          )}
           {isActive ? (
-            <Button
+            <PlatformButton
               variant="danger"
               onClick={handleSuspend}
               loading={actionLoading}
             >
               Suspend Tenant
-            </Button>
+            </PlatformButton>
           ) : (
-            <Button
+            <PlatformButton
               variant="success"
               onClick={handleActivate}
               loading={actionLoading}
             >
               Activate Tenant
-            </Button>
+            </PlatformButton>
           )}
-          <Button variant="secondary" onClick={loadData}>
+          <PlatformButton variant="secondary" onClick={loadData}>
             Refresh
-          </Button>
+          </PlatformButton>
         </div>
       </div>
 
       <div style={{ marginBottom: 20 }}>
         <Card padding="md" shadow="card" radius="xl">
-        <SectionHeading spacing="first" variant="divider">
-          Tenant Info
-        </SectionHeading>
+        <div style={sectionHeaderRowStyle}>
+          <SectionHeading spacing="first" variant="divider">
+            Tenant Info
+          </SectionHeading>
+          <PlatformButton variant="secondary" size="sm" onClick={openEditModal}>
+            Edit Tenant
+          </PlatformButton>
+        </div>
         <div style={infoGridStyle}>
           <InfoItem label="Nama" value={tenantDisplayName(info)} />
           <InfoItem label="Slug" value={info.slug} />
           <InfoItem label="Status" value={info.status} />
+          <InfoItem label="Alamat" value={info.alamat || "-"} />
           <InfoItem label="Onboarded" value={formatDateShort(info.onboarded_at)} />
           <InfoItem label="Created" value={formatDateShort(info.created_at)} />
           <InfoItem label="Users" value={tenant.user_count ?? "-"} />
@@ -179,6 +597,315 @@ function PlatformTenantDetailPage() {
             Alasan suspend: {tenant.suspended_reason}
           </p>
         )}
+        </Card>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <Card padding="md" shadow="card" radius="xl">
+          <SectionHeading spacing="first" variant="divider">
+            Tenant Health
+          </SectionHeading>
+          <KpiGrid>
+            <KpiCard label="Total Santri" value={health.total_santri ?? op.total_santri ?? 0} accent="primary" />
+            <KpiCard label="Total Guru" value={health.total_guru ?? op.total_guru ?? 0} accent="info" />
+            <KpiCard label="Total Wali" value={health.total_wali ?? op.total_wali ?? 0} accent="success" />
+            <KpiCard label="Total User" value={health.total_user ?? tenant.user_count ?? 0} accent="neutral" />
+            <KpiCard label="Total Kelas" value={health.total_kelas ?? op.total_kelas ?? 0} accent="success" />
+            <KpiCard label="Status Tenant" value={health.status ?? info.status} accent="neutral" />
+            <KpiCard label="Feature Enabled" value={health.feature_enabled_count ?? features.filter((f) => f.enabled).length} accent="primary" />
+            <KpiCard label="Feature Disabled" value={health.feature_disabled_count ?? features.filter((f) => !f.enabled && !f.is_core).length} accent="warning" />
+          </KpiGrid>
+          <div style={healthMetaGridStyle}>
+            <InfoItem label="Last Activity" value={formatDateTime(health.last_activity_at)} />
+            <InfoItem
+              label="RFID"
+              value={(featureStatus.rfid ?? featureOnOff(features, "rfid")) ? "ON" : "OFF"}
+            />
+            <InfoItem
+              label="Wali App"
+              value={(featureStatus.wali_app ?? featureOnOff(features, "wali_app")) ? "ON" : "OFF"}
+            />
+            <InfoItem
+              label="Sahriyah"
+              value={(featureStatus.sahriyah ?? featureOnOff(features, "sahriyah")) ? "ON" : "OFF"}
+            />
+            <InfoItem
+              label="Kas Instansi"
+              value={(featureStatus.kas_instansi ?? featureOnOff(features, "kas_instansi")) ? "ON" : "OFF"}
+            />
+          </div>
+          {!featuresLoading && features.length > 0 && (
+            <div style={healthFeatureGridStyle}>
+              <div>
+                <div style={healthFeatureTitleStyle}>Feature Enabled</div>
+                <div style={healthFeatureListStyle}>
+                  {features
+                    .filter((f) => f.enabled)
+                    .map((f) => f.label)
+                    .join(", ") || "—"}
+                </div>
+              </div>
+              <div>
+                <div style={healthFeatureTitleStyle}>Feature Disabled</div>
+                <div style={healthFeatureListStyle}>
+                  {features
+                    .filter((f) => !f.enabled && !f.is_core)
+                    .map((f) => f.label)
+                    .join(", ") || "—"}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <Card padding="md" shadow="card" radius="xl">
+          <SectionHeading spacing="first" variant="divider">
+            Billing
+          </SectionHeading>
+          {billingError && <div style={errorBoxStyle}>{billingError}</div>}
+          {billingLoading ? (
+            <p style={featureHintStyle}>Memuat billing tenant...</p>
+          ) : (
+            <>
+              <div style={billingGridStyle}>
+                <div>
+                  <div style={infoLabelStyle}>Plan</div>
+                  <select
+                    value={billingForm.plan_code}
+                    onChange={(e) =>
+                      setBillingForm((form) => ({
+                        ...form,
+                        plan_code: e.target.value,
+                      }))
+                    }
+                    style={billingInputStyle}
+                    disabled={billingSaving}
+                  >
+                    {TENANT_PACKAGES.map((pkg) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={infoLabelStyle}>Billing Status</div>
+                  <select
+                    value={billingForm.billing_status}
+                    onChange={(e) =>
+                      setBillingForm((form) => ({
+                        ...form,
+                        billing_status: e.target.value,
+                      }))
+                    }
+                    style={billingInputStyle}
+                    disabled={billingSaving}
+                  >
+                    {BILLING_STATUS_OPTIONS.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ marginTop: 8 }}>
+                    <Badge
+                      variant={billingBadgeVariant(billingForm.billing_status)}
+                      size="sm"
+                    >
+                      {billingForm.billing_status}
+                    </Badge>
+                  </div>
+                </div>
+                <InfoItem
+                  label="Started At"
+                  value={formatDateTime(billing?.subscription_started_at)}
+                />
+                <div>
+                  <div style={infoLabelStyle}>Expires At</div>
+                  <input
+                    type="datetime-local"
+                    value={billingForm.subscription_expires_at}
+                    onChange={(e) =>
+                      setBillingForm((form) => ({
+                        ...form,
+                        subscription_expires_at: e.target.value,
+                      }))
+                    }
+                    style={billingInputStyle}
+                    disabled={billingSaving}
+                  />
+                </div>
+                <InfoItem
+                  label="Last Payment"
+                  value={formatDateTime(billing?.last_payment_at)}
+                />
+                <InfoItem
+                  label="Next Invoice"
+                  value={formatDateTime(billing?.next_invoice_at)}
+                />
+              </div>
+              <div style={billingNotesStyle}>
+                <div style={infoLabelStyle}>Notes</div>
+                <textarea
+                  value={billingForm.billing_notes}
+                  onChange={(e) =>
+                    setBillingForm((form) => ({
+                      ...form,
+                      billing_notes: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  style={billingTextareaStyle}
+                  disabled={billingSaving}
+                />
+              </div>
+              <div style={billingActionsStyle}>
+                <PlatformButton
+                  variant="success"
+                  onClick={() => handleMarkBilling("active")}
+                  loading={billingSaving}
+                >
+                  Mark Active
+                </PlatformButton>
+                <PlatformButton
+                  variant="secondary"
+                  onClick={() => handleMarkBilling("overdue")}
+                  loading={billingSaving}
+                >
+                  Mark Overdue
+                </PlatformButton>
+                <PlatformButton
+                  variant="danger"
+                  onClick={() => handleMarkBilling("suspended")}
+                  loading={billingSaving}
+                >
+                  Suspend Billing
+                </PlatformButton>
+                <PlatformButton
+                  variant="secondary"
+                  onClick={handleExtendBilling}
+                  loading={billingSaving}
+                >
+                  Extend 30 Days
+                </PlatformButton>
+                <PlatformButton
+                  variant="primary"
+                  onClick={handleSaveBilling}
+                  loading={billingSaving}
+                >
+                  Save Billing Notes
+                </PlatformButton>
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <Card padding="md" shadow="card" radius="xl">
+          <SectionHeading spacing="first" variant="divider">
+            Support Notes
+          </SectionHeading>
+          <p style={featureHintStyle}>
+            Catatan operasional support untuk tenant ini. Simpan isu, follow-up, dan
+            konteks customer tanpa buka VS Code.
+          </p>
+          <div style={supportNotesPlaceholderStyle}>
+            <strong>Coming soon</strong>
+            <span>
+              Support notes per tenant (issue log, assignment) akan ditambahkan di
+              fase berikutnya. Sementara gunakan field Billing Notes di atas atau
+              catatan internal owner.
+            </span>
+          </div>
+        </Card>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <Card padding="md" shadow="card" radius="xl">
+          <SectionHeading spacing="first" variant="divider">
+            Feature Management
+          </SectionHeading>
+          <div style={packageToolbarStyle}>
+            <div style={packageBadgeWrapStyle}>
+              <span style={packageLabelStyle}>Current Package</span>
+              <Badge
+                variant={currentPackage?.id === "custom" ? "warning" : "success"}
+                size="sm"
+              >
+                {currentPackage?.label || "Custom"}
+              </Badge>
+            </div>
+            <div style={packageApplyStyle}>
+              <select
+                value={selectedPackage}
+                onChange={(e) => setSelectedPackage(e.target.value)}
+                style={packageSelectStyle}
+                disabled={packageSaving || featuresLoading}
+              >
+                {APPLY_PACKAGE_OPTIONS.map((pkg) => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {pkg.label}
+                  </option>
+                ))}
+              </select>
+              <PlatformButton
+                variant="secondary"
+                onClick={handleApplyPackage}
+                loading={packageSaving}
+                disabled={featuresLoading || features.length === 0}
+              >
+                Apply Package
+              </PlatformButton>
+            </div>
+          </div>
+          <p style={featureHintStyle}>
+            Aktifkan atau nonaktifkan modul untuk tenant ini. Fitur core tidak bisa dimatikan.
+          </p>
+
+          {featuresError && <div style={errorBoxStyle}>{featuresError}</div>}
+
+          {featuresLoading ? (
+            <p style={featureHintStyle}>Memuat daftar fitur...</p>
+          ) : (
+            <>
+              <div style={featureListStyle}>
+                {features.map((feature) => (
+                  <label key={feature.key} style={featureRowStyle}>
+                    <input
+                      type="checkbox"
+                      checked={feature.enabled}
+                      disabled={feature.is_core}
+                      onChange={() => handleToggleFeature(feature.key)}
+                    />
+                    <span style={featureLabelWrapStyle}>
+                      <span style={featureNameStyle}>
+                        {feature.label}
+                        {feature.is_core ? (
+                          <span style={featureCoreBadgeStyle}>Core</span>
+                        ) : null}
+                      </span>
+                      {feature.description ? (
+                        <span style={featureDescStyle}>{feature.description}</span>
+                      ) : null}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                <PlatformButton
+                  variant="primary"
+                  onClick={handleSaveFeatures}
+                  loading={featuresSaving}
+                  disabled={featuresLoading || features.length === 0}
+                >
+                  Simpan Fitur
+                </PlatformButton>
+              </div>
+            </>
+          )}
         </Card>
       </div>
 
@@ -254,6 +981,180 @@ function PlatformTenantDetailPage() {
           {new Date(dashboard.generated_at).toLocaleTimeString("id-ID")}
         </p>
       )}
+
+      <Modal
+        open={editOpen}
+        title="Edit Tenant"
+        onClose={closeEditModal}
+      >
+        <div style={modalFormStyle}>
+          {editError ? <div style={errorBoxStyle}>{editError}</div> : null}
+          <label style={fieldLabelStyle}>
+            Nama Tenant / Nama Pesantren
+            <input
+              style={fieldInputStyle}
+              value={editForm.nama}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, nama: e.target.value }))}
+            />
+          </label>
+          <label style={fieldLabelStyle}>
+            Slug (kebab-case)
+            <input
+              style={fieldInputStyle}
+              value={editForm.slug}
+              onChange={(e) =>
+                setEditForm((prev) => ({
+                  ...prev,
+                  slug: e.target.value.toLowerCase().replace(/\s+/g, "-"),
+                }))
+              }
+            />
+          </label>
+          {tenant?.slug === "default" && editForm.slug !== "default" ? (
+            <label style={checkboxLabelStyle}>
+              <input
+                type="checkbox"
+                checked={confirmDefaultSlug}
+                onChange={(e) => setConfirmDefaultSlug(e.target.checked)}
+              />
+              Saya mengerti risiko mengubah slug tenant default
+            </label>
+          ) : null}
+          <label style={fieldLabelStyle}>
+            Status
+            <select
+              style={fieldInputStyle}
+              value={editForm.status}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, status: e.target.value }))}
+            >
+              <option value="active">active</option>
+              <option value="suspended">suspended</option>
+              <option value="inactive">inactive</option>
+            </select>
+          </label>
+          <label style={fieldLabelStyle}>
+            Alamat
+            <textarea
+              style={{ ...fieldInputStyle, minHeight: 72, resize: "vertical" }}
+              value={editForm.alamat}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, alamat: e.target.value }))}
+            />
+          </label>
+          <label style={fieldLabelStyle}>
+            Telepon
+            <input
+              style={fieldInputStyle}
+              value={editForm.telepon}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, telepon: e.target.value }))}
+            />
+          </label>
+          <label style={fieldLabelStyle}>
+            Tagline
+            <input
+              style={fieldInputStyle}
+              value={editForm.tagline}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, tagline: e.target.value }))}
+            />
+          </label>
+          <div style={modalActionsStyle}>
+            <PlatformButton variant="secondary" onClick={closeEditModal} disabled={editSaving}>
+              Batal
+            </PlatformButton>
+            <PlatformButton variant="primary" onClick={handleSaveEditTenant} loading={editSaving}>
+              Simpan
+            </PlatformButton>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={resetAdminOpen}
+        title="Reset Admin Tenant Password"
+        onClose={closeResetAdminModal}
+        width={540}
+      >
+        <div>
+          <p style={resetAdminHintStyle}>
+            Password baru hanya ditampilkan sekali. Jangan kirim lewat channel
+            publik.
+          </p>
+          {resetAdminError && <div style={errorBoxStyle}>{resetAdminError}</div>}
+          {resetAdminLoading ? (
+            <p style={featureHintStyle}>Membuat password baru...</p>
+          ) : resetAdminCredential ? (
+            <>
+              <div style={credentialBoxStyle}>
+                <div><strong>Tenant:</strong> {tenantDisplayName(tenant)}</div>
+                <div><strong>Slug:</strong> {tenant.slug}</div>
+                <div><strong>Nama Admin:</strong> {resetAdminCredential.nama || "-"}</div>
+                <div><strong>Username:</strong> {resetAdminCredential.username}</div>
+                <div><strong>Password:</strong> {resetAdminCredential.password}</div>
+              </div>
+              <div style={deleteActionsStyle}>
+                <PlatformButton variant="secondary" onClick={handleCopyResetAdminCredential}>
+                  {resetAdminCopied ? "Tersalin" : "Salin Kredensial"}
+                </PlatformButton>
+                <PlatformButton onClick={closeResetAdminModal}>Tutup</PlatformButton>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Modal>
+
+      <Modal
+        open={deleteOpen}
+        title="Delete Tenant"
+        onClose={closeDeleteModal}
+        width={560}
+      >
+        <div>
+          <p style={deleteWarningStyle}>
+            Delete hanya untuk tenant simulasi/test yang sudah suspended atau inactive.
+          </p>
+          <div style={deleteInfoStyle}>
+            <div><strong>Nama:</strong> {tenantDisplayName(tenant)}</div>
+            <div><strong>Slug:</strong> {tenant.slug}</div>
+            <div><strong>Status:</strong> {tenant.status}</div>
+          </div>
+
+          {deleteError && <div style={errorBoxStyle}>{deleteError}</div>}
+
+          {deleteLoading && !deleteSummary ? (
+            <p style={featureHintStyle}>Memuat data count...</p>
+          ) : deleteSummary?.summary ? (
+            <>
+              <div style={deleteCountGridStyle}>
+                {Object.entries(deleteSummary.summary).map(([key, value]) => (
+                  <InfoItem key={key} label={key.replace(/_/g, " ")} value={value} />
+                ))}
+              </div>
+              <div style={fieldLikeStyle}>
+                <label htmlFor="delete-confirm">Ketik DELETE untuk konfirmasi</label>
+                <input
+                  id="delete-confirm"
+                  value={deleteInput}
+                  onChange={(e) => setDeleteInput(e.target.value)}
+                  style={deleteInputStyle}
+                  placeholder="DELETE"
+                />
+              </div>
+              <div style={deleteActionsStyle}>
+                <PlatformButton variant="secondary" onClick={closeDeleteModal} disabled={deleteLoading}>
+                  Batal
+                </PlatformButton>
+                <PlatformButton
+                  variant="danger"
+                  onClick={handleDeleteTenant}
+                  loading={deleteLoading}
+                  disabled={deleteInput !== "DELETE"}
+                >
+                  Delete Tenant
+                </PlatformButton>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Modal>
     </>
   );
 }
@@ -317,6 +1218,55 @@ const infoGridStyle = {
   marginTop: 8,
 };
 
+const sectionHeaderRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const modalFormStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 14,
+};
+
+const fieldLabelStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  fontSize: "13px",
+  fontWeight: 600,
+  color: "var(--text-primary)",
+};
+
+const fieldInputStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--border)",
+  fontSize: "14px",
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+};
+
+const checkboxLabelStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+  fontSize: "13px",
+  color: "var(--warning)",
+  fontWeight: 600,
+};
+
+const modalActionsStyle = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10,
+  marginTop: 8,
+};
+
 const infoLabelStyle = {
   fontSize: "11px",
   fontWeight: 700,
@@ -356,6 +1306,255 @@ const generatedStyle = {
   marginTop: 24,
   fontSize: "12px",
   color: "var(--text-muted)",
+};
+
+const packageToolbarStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+  marginBottom: 12,
+};
+
+const packageBadgeWrapStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+const packageLabelStyle = {
+  fontSize: "12px",
+  fontWeight: 700,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const packageApplyStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const packageSelectStyle = {
+  minWidth: 140,
+  padding: "9px 10px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--surface)",
+  color: "var(--text-primary)",
+  fontSize: "14px",
+};
+
+const featureHintStyle = {
+  margin: "0 0 12px",
+  fontSize: "13px",
+  color: "var(--text-secondary)",
+  lineHeight: 1.5,
+};
+
+const supportNotesPlaceholderStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  padding: "14px 16px",
+  borderRadius: "var(--radius-md)",
+  background: "var(--success-subtle)",
+  border: "1px dashed #93c5fd",
+  color: "#1e3a8a",
+  fontSize: "13px",
+  lineHeight: 1.5,
+};
+
+const featureListStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: 10,
+};
+
+const featureRowStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 10,
+  padding: "10px 12px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--surface)",
+  cursor: "pointer",
+};
+
+const featureLabelWrapStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+  minWidth: 0,
+};
+
+const featureNameStyle = {
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "var(--text-primary)",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const featureDescStyle = {
+  fontSize: "12px",
+  color: "var(--text-secondary)",
+  lineHeight: 1.4,
+};
+
+const featureCoreBadgeStyle = {
+  display: "inline-flex",
+  padding: "2px 8px",
+  borderRadius: 999,
+  fontSize: "10px",
+  fontWeight: 800,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "#166534",
+  background: "rgba(22, 101, 52, 0.12)",
+};
+
+const healthFeatureGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: 16,
+  marginTop: 16,
+};
+
+const healthMetaGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+  gap: 14,
+  marginTop: 16,
+  paddingTop: 16,
+  borderTop: "1px solid var(--border)",
+};
+
+const healthFeatureTitleStyle = {
+  fontSize: "11px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  color: "var(--text-secondary)",
+  marginBottom: 6,
+};
+
+const healthFeatureListStyle = {
+  fontSize: "13px",
+  color: "var(--text-primary)",
+  lineHeight: 1.5,
+};
+
+const billingGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+  gap: 16,
+};
+
+const billingInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "9px 10px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--surface)",
+  color: "var(--text-primary)",
+  fontSize: "14px",
+};
+
+const billingNotesStyle = {
+  marginTop: 14,
+};
+
+const billingTextareaStyle = {
+  ...billingInputStyle,
+  minHeight: 78,
+  resize: "vertical",
+};
+
+const billingActionsStyle = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10,
+  flexWrap: "wrap",
+  marginTop: 16,
+};
+
+const resetAdminHintStyle = {
+  margin: "0 0 12px",
+  padding: "10px 12px",
+  borderRadius: "var(--radius-sm)",
+  background: "rgba(22, 101, 52, 0.1)",
+  color: "#166534",
+  fontWeight: 700,
+  fontSize: "13px",
+};
+
+const credentialBoxStyle = {
+  display: "grid",
+  gap: 8,
+  padding: 14,
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--neutral-subtle)",
+  color: "var(--text-primary)",
+  fontSize: "14px",
+};
+
+const deleteWarningStyle = {
+  margin: "0 0 12px",
+  padding: "10px 12px",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--danger-subtle)",
+  color: "var(--danger)",
+  fontWeight: 700,
+  fontSize: "13px",
+};
+
+const deleteInfoStyle = {
+  display: "grid",
+  gap: 6,
+  marginBottom: 12,
+  fontSize: "14px",
+  color: "var(--text-primary)",
+};
+
+const deleteCountGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+  gap: 12,
+  marginTop: 14,
+  padding: "12px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+};
+
+const fieldLikeStyle = {
+  marginTop: 14,
+};
+
+const deleteInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  marginTop: 6,
+  padding: "10px 12px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  fontSize: "14px",
+};
+
+const deleteActionsStyle = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10,
+  marginTop: 16,
+  flexWrap: "wrap",
 };
 
 export default PlatformTenantDetailPage;

@@ -338,7 +338,9 @@ async function run() {
   console.log("\n--- Credential tenant test ---");
   console.log(`slug: ${TEST_SLUG}`);
   console.log(`admin: ${ADMIN_USER} / ${ADMIN_PASS}`);
-  console.log("unit users: pimpinan, paud, tk, sd, mi, smp, sma, madinah / 123456");
+  console.log(
+    "unit users: pimpinan, paud, tk, sd, mi, smp, sma, madinah — password unik di response initial_password"
+  );
 
   await pool.end();
   process.exit(failed > 0 ? 1 : 0);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getUser } from "../../utils/storage";
 import { useTenantProfile } from "../../context/TenantProfileContext";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
+import { isBannerVisible } from "../../utils/tenantProfile";
 import "./DashboardHero.css";
 
 const DEFAULT_BANNER = "/uploads/default-banner.jpg";
@@ -31,13 +32,16 @@ function resolveHeroBannerUrl(bannerUrl) {
 
 export function DashboardHero() {
   const user = getUser();
-  const { display } = useTenantProfile();
+  const { display, profile } = useTenantProfile();
   const roleLabel = formatRoleLabel(user?.role);
+  const heroTitle = display?.hasCustomName ? display.name : "Dashboard Pesantren";
 
-  const primaryBannerSrc = useMemo(
-    () => resolveHeroBannerUrl(display?.banner_url),
-    [display?.banner_url],
-  );
+  const primaryBannerSrc = useMemo(() => {
+    if (!isBannerVisible(profile)) {
+      return resolveMediaUrl(DEFAULT_BANNER);
+    }
+    return resolveHeroBannerUrl(display?.banner_url);
+  }, [display?.banner_url, profile]);
 
   const fallbackBannerSrc = useMemo(() => resolveMediaUrl(DEFAULT_BANNER), []);
 
@@ -68,7 +72,7 @@ export function DashboardHero() {
           <p className="dashboard-hero__greeting">
             Assalamu&apos;alaikum, {roleLabel} 👋
           </p>
-          <h1 className="dashboard-hero__title">Dashboard</h1>
+          <h1 className="dashboard-hero__title">{heroTitle}</h1>
           <p className="dashboard-hero__subtext">
             Ringkasan informasi kegiatan dan administrasi pesantren hari ini.
           </p>

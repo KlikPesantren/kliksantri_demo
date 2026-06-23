@@ -5,7 +5,7 @@ import {
   isTenantSuspendedResponse,
 } from '../constants/tenant';
 
-const DEV_API_FALLBACK = 'http://10.25.150.36:3000';
+const DEV_API_FALLBACK = 'http://10.47.175.36:3000';
 
 const API_BASE_URL = (ENV_API_BASE_URL || (__DEV__ ? DEV_API_FALLBACK : '')).replace(
   /\/$/,

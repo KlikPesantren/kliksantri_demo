@@ -8,7 +8,7 @@ from "socket.io-client";
 
 const socket = io(
 
-  "http://10.68.244.56:3000"
+  "http://10.47.175.36:3000"
 
 );
 

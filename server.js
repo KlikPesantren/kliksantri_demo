@@ -50,6 +50,15 @@ const platformStatsRoutes =
 const publicTenantRoutes =
   require("./routes/publicTenantRoutes");
 
+const publicPlatformRoutes =
+  require("./routes/publicPlatformRoutes");
+
+const platformSettingsRoutes =
+  require("./routes/platformSettingsRoutes");
+
+const platformAnnouncementRoutes =
+  require("./routes/platformAnnouncementRoutes");
+
 const santriRoutes =
   require("./routes/santriRoutes");
 
@@ -176,6 +185,9 @@ const tenantMiddleware =
 const requirePermission =
 require("./middleware/requirePermission");
 
+const requireTenantFeature =
+  require("./middleware/requireTenantFeature");
+
 const blockWriteUnlessPermission =
 require("./middleware/blockWriteUnlessPermission");
 
@@ -201,7 +213,7 @@ const io =
         origin:
           process.env.CORS_ORIGIN ||
           process.env.FRONTEND_URL ||
-          "http://localhost:5173",
+          "http://10.47.175.36:5173",
 
         methods: [
 
@@ -283,8 +295,23 @@ app.use(
 );
 
 app.use(
+  "/platform/settings",
+  platformSettingsRoutes
+);
+
+app.use(
+  "/platform/announcements",
+  platformAnnouncementRoutes
+);
+
+app.use(
   "/public/tenants",
   publicTenantRoutes
+);
+
+app.use(
+  "/public/platform",
+  publicPlatformRoutes
 );
 
 app.use(
@@ -478,6 +505,7 @@ app.use(
   "/kas-instansi",
   authMiddleware,
   tenantMiddleware,
+  requireTenantFeature("kas_instansi"),
   kasInstansiRoutes
 );
 
@@ -492,6 +520,7 @@ app.use(
 "/sahriyah",
 authMiddleware,
 tenantMiddleware,
+requireTenantFeature("sahriyah"),
 requirePermission("sahriyah.view"),
 sahriyahRoutes
 );
@@ -500,6 +529,7 @@ app.use(
 "/sahriyah-setting",
 authMiddleware,
 tenantMiddleware,
+requireTenantFeature("sahriyah"),
 requirePermission("sahriyah.manage"),
 sahriyahSettingRoutes
 );

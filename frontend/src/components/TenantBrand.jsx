@@ -94,7 +94,7 @@ const logoStyle = {
   borderRadius: "var(--radius-md)",
   objectFit: "cover",
   border: "1px solid var(--border)",
-  backgroundColor: "#fff",
+  backgroundColor: "var(--card)",
 };
 
 const sidebarLogoStyle = {
@@ -128,7 +128,7 @@ const nameStyle = {
 };
 
 const sidebarNameStyle = {
-  color: "#F8FAFC",
+  color: "var(--sidebar-active-text)",
 };
 
 const largeNameStyle = {
@@ -150,7 +150,7 @@ const locationStyle = {
 };
 
 const sidebarLocationStyle = {
-  color: "#94A3B8",
+  color: "var(--sidebar-text-muted)",
   whiteSpace: "normal",
   display: "-webkit-box",
   WebkitLineClamp: 2,

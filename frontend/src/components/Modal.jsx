@@ -37,10 +37,12 @@ const overlayStyle = {
 };
 
 const panelStyle = {
-  background: "var(--surface)",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: "var(--radius-lg)",
   width: "100%",
   boxShadow: "var(--shadow-lg)",
   maxHeight: "90vh",
   overflowY: "auto",
+  color: "var(--text-primary)",
 };

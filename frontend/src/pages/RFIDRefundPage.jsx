@@ -142,8 +142,8 @@ function RFIDRefundPage() {
 
   return (
     <AppShell title="Refund RFID" breadcrumb="Keamanan / RFID Refund">
-      <Card padding="md" shadow="card" border={false} radius="xl">
-        <FilterBar label="Filter">
+      <Card padding="sm" shadow="card" border={false} radius="xl">
+        <FilterBar label="Filter" className="rfid-filter-compact">
           <SantriSearchPicker
             id="refund-santri-search"
             label="Santri"
@@ -151,9 +151,10 @@ function RFIDRefundPage() {
             onChange={setSantriId}
             onSelect={setSelectedSantri}
             selectedSantri={selectedSantri}
+            className="rfid-filter-santri"
             required
           />
-          <FormField label="Dari" htmlFor="refund-start-date">
+          <FormField label="Dari" htmlFor="refund-start-date" className="rfid-filter-date">
             <Input
               id="refund-start-date"
               type="date"
@@ -161,7 +162,7 @@ function RFIDRefundPage() {
               onChange={(e) => setStartDate(e.target.value)}
             />
           </FormField>
-          <FormField label="Sampai" htmlFor="refund-end-date">
+          <FormField label="Sampai" htmlFor="refund-end-date" className="rfid-filter-date">
             <Input
               id="refund-end-date"
               type="date"

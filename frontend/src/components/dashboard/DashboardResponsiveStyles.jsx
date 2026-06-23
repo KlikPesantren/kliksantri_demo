@@ -10,11 +10,11 @@ export function DashboardResponsiveStyles() {
       .dashboard-monitoring-v3 {
         display: flex;
         flex-direction: column;
-        gap: var(--space-4);
+        gap: 10px;
       }
 
       .dashboard-section--hero {
-        margin-top: calc(-1 * var(--space-1));
+        margin-top: 0;
       }
 
       .dashboard-section {
@@ -22,24 +22,18 @@ export function DashboardResponsiveStyles() {
         max-width: 100%;
       }
 
-      .dashboard-section--kesehatan > * {
-        border: 1px solid #E5E7EB;
-        border-radius: 20px;
-        box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05);
-      }
-
       .dashboard-section--panels .dashboard-row-2 {
-        gap: var(--space-5);
+        gap: 10px;
       }
 
       .dashboard-section--chart > * {
-        border-radius: 20px;
+        border-radius: var(--radius-lg);
       }
 
       .dashboard-role-v3 {
         display: flex;
         flex-direction: column;
-        gap: var(--space-3);
+        gap: 10px;
         min-width: 0;
         max-width: 100%;
       }
@@ -50,7 +44,7 @@ export function DashboardResponsiveStyles() {
 
       .dashboard-monitor-grid {
         display: grid;
-        gap: var(--space-3);
+        gap: 10px;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         min-width: 0;
       }
@@ -128,8 +122,15 @@ export function DashboardResponsiveStyles() {
 
       .dashboard-row-2 {
         display: grid;
-        gap: var(--space-5);
+        gap: 10px;
         grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        align-items: stretch;
+      }
+
+      .dashboard-row-3 {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
         align-items: stretch;
       }
 
@@ -139,11 +140,71 @@ export function DashboardResponsiveStyles() {
         box-sizing: border-box;
       }
 
+      .dashboard-panel > div > div {
+        padding: 12px !important;
+      }
+
+      .dashboard-panel-health .dashboard-section-title,
+      .dashboard-panel-donut .dashboard-section-title,
+      .dashboard-panel-violations .dashboard-section-title {
+        margin-bottom: 8px;
+      }
+
+      .dashboard-health-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .dashboard-health-mini {
+        min-width: 0;
+        padding: 9px 8px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--neutral-subtle);
+      }
+
+      .dashboard-health-mini strong {
+        display: block;
+        font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--text-primary);
+      }
+
+      .dashboard-health-mini span {
+        display: block;
+        margin-top: 5px;
+        color: var(--text-secondary);
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.2;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .dashboard-health-mini--success {
+        background: var(--success-subtle);
+      }
+
+      .dashboard-health-mini--danger {
+        background: var(--danger-subtle);
+      }
+
+      .dashboard-health-mini--warning {
+        background: var(--warning-subtle);
+      }
+
       .dashboard-donut-layout {
         display: flex;
         align-items: center;
-        gap: var(--space-4);
+        gap: 10px;
         min-width: 0;
+      }
+
+      .dashboard-panel-donut .dashboard-donut-chart-ring {
+        width: 92px !important;
+        height: 92px !important;
       }
 
       .dashboard-donut-center {
@@ -183,8 +244,8 @@ export function DashboardResponsiveStyles() {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 4px 0;
-        font-size: 12px;
+        padding: 3px 0;
+        font-size: 11px;
         color: var(--text-primary);
       }
 
@@ -218,8 +279,8 @@ export function DashboardResponsiveStyles() {
         justify-content: space-between;
         align-items: center;
         gap: var(--space-2);
-        padding: 5px 0;
-        font-size: 12px;
+        padding: 4px 0;
+        font-size: 11px;
       }
 
       .dashboard-violation-row--bordered {
@@ -230,7 +291,7 @@ export function DashboardResponsiveStyles() {
         font-weight: 700;
         color: var(--text-secondary);
         flex-shrink: 0;
-        font-size: 11px;
+        font-size: 10px;
       }
 
       .dashboard-empty-note {
@@ -250,7 +311,7 @@ export function DashboardResponsiveStyles() {
 
       .dashboard-cashflow-wrap {
         min-width: 0;
-        max-height: 220px;
+        max-height: 180px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -262,8 +323,8 @@ export function DashboardResponsiveStyles() {
         align-items: flex-end;
         flex: 1;
         min-width: 0;
-        min-height: 130px;
-        max-height: 130px;
+        min-height: 96px;
+        max-height: 96px;
       }
 
       .dashboard-cashflow-month {
@@ -349,7 +410,8 @@ export function DashboardResponsiveStyles() {
       }
 
       @media (max-width: 1024px) {
-        .dashboard-row-2 {
+        .dashboard-row-2,
+        .dashboard-row-3 {
           grid-template-columns: 1fr;
         }
 
@@ -360,11 +422,11 @@ export function DashboardResponsiveStyles() {
 
       @media (max-width: 767px) {
         .dashboard-monitoring-v3 {
-          gap: var(--space-4);
+          gap: 12px;
         }
 
         .dashboard-section--panels .dashboard-row-2 {
-          gap: var(--space-4);
+          gap: 12px;
         }
 
         .dashboard-donut-layout {

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import api from "../services/api";
-import { ROUTE_PERMISSIONS } from "../constants/permissions";
+import { ROUTE_PERMISSIONS, ROUTE_FEATURES } from "../constants/permissions";
 import { hasPermission } from "../utils/hasPermission";
+import { hasFeature } from "../utils/hasFeature";
 import { setUser } from "../utils/storage";
 
 let sessionPermissionsPromise = null;
@@ -82,6 +83,37 @@ function ProtectedRoute({ children }) {
         }}
       >
         AKSES DITOLAK
+      </div>
+    );
+  }
+
+  const requiredFeature = ROUTE_FEATURES[location.pathname];
+  const featureAllowed = !requiredFeature || hasFeature(requiredFeature);
+
+  if (!featureAllowed) {
+    if (location.pathname !== "/dashboard") {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 12,
+          padding: 24,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--text-primary)" }}>
+          FITUR TIDAK AKTIF
+        </div>
+        <p style={{ margin: 0, color: "var(--text-secondary)", maxWidth: 420 }}>
+          Modul ini tidak diaktifkan untuk pesantren Anda. Hubungi operator KlikSantri.
+        </p>
       </div>
     );
   }

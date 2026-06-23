@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
+import TenantModeBanner from "../components/TenantModeBanner";
 
 function AppShell({ children, title, description, breadcrumb }) {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const isDashboard = location.pathname === "/dashboard";
+  const showBanner = !isDashboard;
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -41,11 +44,14 @@ function AppShell({ children, title, description, breadcrumb }) {
       <Sidebar drawerOpen={drawerOpen} onDrawerClose={closeDrawer} />
 
       <main className="app-shell-main">
+        {showBanner ? <TenantModeBanner /> : null}
         <PageHeader
-          title={title}
+          title={isDashboard ? "" : title}
           description={description}
-          breadcrumb={breadcrumb}
+          breadcrumb={isDashboard ? "" : breadcrumb}
           onMenuClick={openDrawer}
+          hideUserCard={isDashboard}
+          compact={isDashboard}
         />
 
         <div className="app-shell-content">{children}</div>

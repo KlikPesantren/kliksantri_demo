@@ -140,8 +140,8 @@ function RFIDTransactionPage() {
           </span>
         }
       >
-        <FilterBar label="Filter">
-          <FormField label="Dari" htmlFor="trx-start-date">
+        <FilterBar label="Filter" className="rfid-filter-compact">
+          <FormField label="Dari" htmlFor="trx-start-date" className="rfid-filter-date">
             <Input
               id="trx-start-date"
               type="date"
@@ -149,7 +149,7 @@ function RFIDTransactionPage() {
               onChange={(e) => setStartDate(e.target.value)}
             />
           </FormField>
-          <FormField label="Sampai" htmlFor="trx-end-date">
+          <FormField label="Sampai" htmlFor="trx-end-date" className="rfid-filter-date">
             <Input
               id="trx-end-date"
               type="date"

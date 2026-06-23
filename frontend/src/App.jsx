@@ -48,6 +48,16 @@ import PlatformLayout from "./components/platform/PlatformLayout";
 import PlatformTenantsPage from "./pages/platform/PlatformTenantsPage";
 import PlatformTenantDetailPage from "./pages/platform/PlatformTenantDetailPage";
 import PlatformDashboardPage from "./pages/platform/PlatformDashboardPage";
+import PlatformConsolePlaceholderPage from "./pages/platform/PlatformConsolePlaceholderPage";
+import PlatformPackagesPage from "./pages/platform/PlatformPackagesPage";
+import PlatformBillingOverviewPage from "./pages/platform/PlatformBillingOverviewPage";
+import PlatformTenantHealthOverviewPage from "./pages/platform/PlatformTenantHealthOverviewPage";
+import PlatformDeploymentChecklistPage from "./pages/platform/PlatformDeploymentChecklistPage";
+import PlatformUploadStoragePage from "./pages/platform/PlatformUploadStoragePage";
+import PlatformProfilePage from "./pages/platform/PlatformProfilePage";
+import PlatformAnnouncementsPage from "./pages/platform/PlatformAnnouncementsPage";
+import AboutKlikSantriPage from "./pages/AboutKlikSantriPage";
+import PlatformInfoAnnouncementsPage from "./pages/PlatformInfoAnnouncementsPage";
 
 function RouteFallback() {
   return null;
@@ -77,7 +87,53 @@ function App() {
           <Route index element={<PlatformDashboardPage />} />
           <Route path="dashboard" element={<PlatformDashboardPage />} />
           <Route path="tenants" element={<PlatformTenantsPage />} />
+          <Route path="tenants/new" element={<PlatformTenantsPage initialCreate />} />
+          <Route
+            path="tenants/health"
+            element={<PlatformTenantHealthOverviewPage />}
+          />
           <Route path="tenants/:id" element={<PlatformTenantDetailPage />} />
+          <Route path="billing" element={<PlatformBillingOverviewPage mode="subscriptions" />} />
+          <Route path="billing/overdue" element={<PlatformBillingOverviewPage mode="overdue" />} />
+          <Route
+            path="billing/expiring-soon"
+            element={<PlatformBillingOverviewPage mode="expiring-soon" />}
+          />
+          <Route path="packages" element={<PlatformPackagesPage />} />
+          <Route
+            path="features"
+            element={<PlatformConsolePlaceholderPage type="features" />}
+          />
+          <Route
+            path="support"
+            element={<PlatformConsolePlaceholderPage type="support" />}
+          />
+          <Route
+            path="support/tools"
+            element={<PlatformConsolePlaceholderPage type="support" />}
+          />
+          <Route
+            path="system"
+            element={<PlatformConsolePlaceholderPage type="system" />}
+          />
+          <Route
+            path="system/global-settings"
+            element={<PlatformConsolePlaceholderPage type="system" />}
+          />
+          <Route
+            path="system/deployment-checklist"
+            element={<PlatformDeploymentChecklistPage />}
+          />
+          <Route path="system/upload-storage" element={<PlatformUploadStoragePage />} />
+          <Route
+            path="system/announcements"
+            element={<PlatformAnnouncementsPage />}
+          />
+          <Route
+            path="system/migration-status"
+            element={<PlatformConsolePlaceholderPage type="system" />}
+          />
+          <Route path="profile" element={<PlatformProfilePage />} />
         </Route>
 
         <Route
@@ -404,6 +460,24 @@ function App() {
           element={
             <ProtectedRoute>
               <DevicePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/about"
+          element={
+            <ProtectedRoute>
+              <AboutKlikSantriPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/platform-announcements"
+          element={
+            <ProtectedRoute>
+              <PlatformInfoAnnouncementsPage />
             </ProtectedRoute>
           }
         />

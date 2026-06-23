@@ -39,12 +39,12 @@ function KpiCard({
 }
 
 const cardStyle = {
-  background: "var(--surface)",
-  borderRadius: "20px",
+  background: "var(--card)",
+  borderRadius: "var(--radius-lg)",
   border: "1px solid var(--border)",
-  boxShadow: "0 2px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04)",
-  padding: "var(--space-4) var(--space-5)",
-  minHeight: "96px",
+  boxShadow: "var(--shadow-kpi)",
+  padding: "18px 20px",
+  minHeight: "110px",
   height: "auto",
   display: "flex",
   flexDirection: "column",

@@ -101,9 +101,9 @@ function RFIDMutasiPage() {
       description="Riwayat saldo RFID santri"
       breadcrumb="Keamanan / RFID Mutasi"
     >
-      <Card padding="md" shadow="card" border={false} radius="xl">
-        <FilterBar label="Filter">
-          <FormField label="Santri" htmlFor="mutasi-santri">
+      <Card padding="sm" shadow="card" border={false} radius="xl">
+        <FilterBar label="Filter" className="rfid-filter-compact">
+          <FormField label="Santri" htmlFor="mutasi-santri" className="rfid-filter-santri">
             <Select
               id="mutasi-santri"
               value={selectedSantri}

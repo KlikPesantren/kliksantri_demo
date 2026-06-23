@@ -1,5 +1,14 @@
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const pool = require("../db");
+const {
+  normalizePackage,
+  VALID_PACKAGES,
+} = require("../config/tenantPackageConfig");
+const {
+  seedTenantFeaturesAllEnabled,
+  seedTenantFeaturesFromPackage,
+} = require("./tenantFeatureService");
 
 const RESERVED_SLUGS = new Set([
   "default",
@@ -34,7 +43,14 @@ const DEFAULT_UNIT_USERS = [
   { username: "madinah", role: "bendahara_unit", unitKode: "MADINAH" },
 ];
 
-const DEFAULT_UNIT_PASSWORD = "123456";
+function generateSecurePassword() {
+  return crypto.randomBytes(16).toString("base64url");
+}
+
+/** One-time credential for bendahara/pimpinan unit — never logged; returned once in API response. */
+function generateUnitUserPassword() {
+  return crypto.randomBytes(12).toString("base64url");
+}
 
 function validateSlug(slug) {
   const normalized = String(slug || "").trim().toLowerCase();
@@ -64,7 +80,85 @@ function sanitizeUser(row) {
   return rest;
 }
 
-async function createTenantWithDefaults(payload, platformUser) {
+function normalizeCreatePayload(body = {}) {
+  const nama =
+    body.nama_pesantren?.trim() ||
+    body.nama?.trim() ||
+    body.name?.trim() ||
+    "";
+
+  const adminPasswordRaw = body.admin_password;
+  const useGeneratedPassword =
+    adminPasswordRaw == null ||
+    String(adminPasswordRaw).trim() === "" ||
+    String(adminPasswordRaw).trim().toLowerCase() === "random";
+
+  const adminPassword = useGeneratedPassword
+    ? generateSecurePassword()
+    : String(adminPasswordRaw);
+
+  const pkg = body.package ? normalizePackage(body.package) : null;
+
+  return {
+    nama_pesantren: nama,
+    slug: body.slug,
+    alamat: body.alamat,
+    telepon: body.telepon,
+    logo_url: body.logo_url,
+    admin_nama: body.admin_nama,
+    admin_username: body.admin_username,
+    admin_password: adminPassword,
+    admin_password_generated: useGeneratedPassword,
+    package: pkg,
+    custom_features: body.custom_features || body.features || [],
+    create_default_unit_users: body.create_default_unit_users === true,
+    admin_role: body.admin_role,
+  };
+}
+
+async function assertUsernameAvailable(client, username, tenantId = null) {
+  const normalized = String(username || "").trim().toLowerCase();
+  if (!normalized) return;
+
+  const { rows } = await client.query(
+    `SELECT id, tenant_id, role FROM users WHERE LOWER(username) = $1 LIMIT 1`,
+    [normalized]
+  );
+
+  if (rows.length === 0) return;
+
+  const existing = rows[0];
+  if (tenantId != null && Number(existing.tenant_id) === Number(tenantId)) {
+    return;
+  }
+
+  const err = new Error("Username admin sudah digunakan");
+  err.status = 409;
+  throw err;
+}
+
+async function writeTenantCreatedAudit(client, tenant, platformUser, packageName) {
+  await client.query(
+    `INSERT INTO audit_logs (device_id, event_type, detail, tenant_id)
+     VALUES ($1, $2, $3, $4)`,
+    [
+      `platform:${platformUser?.id ?? "system"}`,
+      "platform.tenant.created",
+      JSON.stringify({
+        tenant_id: tenant.id,
+        slug: tenant.slug,
+        nama: tenant.nama,
+        package: packageName,
+        created_by: platformUser?.id ?? null,
+        created_by_username: platformUser?.username ?? null,
+      }),
+      tenant.id,
+    ]
+  );
+}
+
+async function createTenantWithDefaults(rawPayload, platformUser) {
+  const payload = normalizeCreatePayload(rawPayload);
   const {
     nama_pesantren,
     slug,
@@ -74,11 +168,15 @@ async function createTenantWithDefaults(payload, platformUser) {
     admin_nama,
     admin_username,
     admin_password,
-    create_default_unit_users = true,
+    admin_password_generated,
+    package: packageName,
+    custom_features,
+    create_default_unit_users,
+    admin_role,
   } = payload;
 
-  if (!nama_pesantren?.trim()) {
-    const err = new Error("nama_pesantren wajib diisi");
+  if (!nama_pesantren) {
+    const err = new Error("Nama pesantren wajib diisi");
     err.status = 400;
     throw err;
   }
@@ -96,8 +194,26 @@ async function createTenantWithDefaults(payload, platformUser) {
     throw err;
   }
 
+  if (String(admin_username).trim().toLowerCase() === "platform") {
+    const err = new Error("Username admin tidak valid");
+    err.status = 400;
+    throw err;
+  }
+
+  if (admin_role === "platform_superadmin") {
+    const err = new Error("Tidak boleh membuat user platform_superadmin");
+    err.status = 403;
+    throw err;
+  }
+
   if (!admin_password || String(admin_password).length < 6) {
     const err = new Error("admin_password minimal 6 karakter");
+    err.status = 400;
+    throw err;
+  }
+
+  if (packageName && !VALID_PACKAGES.has(packageName)) {
+    const err = new Error("Package harus basic, standard, premium, atau custom");
     err.status = 400;
     throw err;
   }
@@ -117,6 +233,8 @@ async function createTenantWithDefaults(payload, platformUser) {
       throw err;
     }
 
+    await assertUsernameAvailable(client, admin_username.trim());
+
     const tenantResult = await client.query(
       `INSERT INTO tenants (
          slug, nama, status, alamat, telepon, logo_url,
@@ -126,7 +244,7 @@ async function createTenantWithDefaults(payload, platformUser) {
        RETURNING *`,
       [
         slugCheck.slug,
-        nama_pesantren.trim(),
+        nama_pesantren,
         alamat?.trim() || null,
         telepon?.trim() || null,
         logo_url ?? null,
@@ -135,13 +253,25 @@ async function createTenantWithDefaults(payload, platformUser) {
     );
     const tenant = tenantResult.rows[0];
 
+    let featuresEnabled = null;
+    if (packageName) {
+      featuresEnabled = await seedTenantFeaturesFromPackage(
+        tenant.id,
+        packageName,
+        custom_features,
+        client
+      );
+    } else {
+      await seedTenantFeaturesAllEnabled(tenant.id, client);
+    }
+
     await client.query(
       `INSERT INTO profil_pesantren (
          nama_pesantren, alamat, telepon, logo_url, tenant_id, updated_at
        )
        VALUES ($1, $2, $3, $4, $5, NOW())`,
       [
-        nama_pesantren.trim(),
+        nama_pesantren,
         alamat?.trim() || null,
         telepon?.trim() || null,
         logo_url ?? null,
@@ -180,9 +310,10 @@ async function createTenantWithDefaults(payload, platformUser) {
     const default_users_created = [];
 
     if (create_default_unit_users) {
-      const unitPasswordHash = await bcrypt.hash(DEFAULT_UNIT_PASSWORD, 10);
-
       for (const spec of DEFAULT_UNIT_USERS) {
+        const initialPassword = generateUnitUserPassword();
+        const unitPasswordHash = await bcrypt.hash(initialPassword, 10);
+
         const userResult = await client.query(
           `INSERT INTO users (nama, username, password, role, status, tenant_id)
            VALUES ($1, $2, $3, $4, 'Aktif', $5)
@@ -196,7 +327,10 @@ async function createTenantWithDefaults(payload, platformUser) {
           ]
         );
 
-        const created = sanitizeUser(userResult.rows[0]);
+        const created = {
+          ...sanitizeUser(userResult.rows[0]),
+          initial_password: initialPassword,
+        };
 
         if (spec.unitKode && unitByKode[spec.unitKode]) {
           await client.query(
@@ -212,11 +346,17 @@ async function createTenantWithDefaults(payload, platformUser) {
       }
     }
 
+    await writeTenantCreatedAudit(client, tenant, platformUser, packageName);
+
     await client.query("COMMIT");
 
     return {
       tenant,
       admin_user: sanitizeUser(admin_user),
+      admin_initial_password: admin_password,
+      admin_password_generated: admin_password_generated,
+      package: packageName,
+      features_enabled: featuresEnabled,
       units,
       default_users_created,
     };
@@ -238,5 +378,7 @@ module.exports = {
   DEFAULT_UNITS,
   DEFAULT_UNIT_USERS,
   validateSlug,
+  normalizeCreatePayload,
   createTenantWithDefaults,
+  generateSecurePassword,
 };

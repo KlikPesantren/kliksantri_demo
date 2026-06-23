@@ -3,25 +3,29 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
+const requireTenantFeature = require("../middleware/requireTenantFeature");
 const deviceAuthMiddleware = require("../middleware/deviceAuthMiddleware");
 const rfidController = require("../controllers/rfidController");
 
 const adminRfidView = [
   authMiddleware,
   tenantMiddleware,
+  requireTenantFeature("rfid"),
   requirePermission("rfid.view"),
 ];
 
 const adminRfidManage = [
   authMiddleware,
   tenantMiddleware,
+  requireTenantFeature("rfid"),
   requirePermission("rfid.manage"),
 ];
 
 router.get("/dashboard", ...adminRfidView, rfidController.getDashboard);
 router.get("/dashboard-summary", ...adminRfidView, rfidController.getDashboardSummary);
 
-router.post("/payment", deviceAuthMiddleware, rfidController.rfidPayment);
+router.post("/card/lookup", deviceAuthMiddleware, requireTenantFeature("rfid"), rfidController.lookupCard);
+router.post("/payment", deviceAuthMiddleware, requireTenantFeature("rfid"), rfidController.rfidPayment);
 
 router.get("/transactions", ...adminRfidView, rfidController.getTransactions);
 router.get("/transactions/export", ...adminRfidView, rfidController.exportTransactions);

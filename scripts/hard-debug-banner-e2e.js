@@ -1,7 +1,7 @@
 /**
  * Hard debug banner E2E — simulates upload → save → wali fetch
  * Usage: node scripts/hard-debug-banner-e2e.js
- * Requires: server running on BASE (default http://10.25.150.36:3000)
+ * Requires: server running on BASE (default http://10.47.175.36:3000)
  */
 require("dotenv").config();
 const fs = require("fs");
@@ -11,7 +11,7 @@ const pool = require("../db");
 const BASE =
   process.env.BANNER_DEBUG_BASE ||
   process.env.SMOKE_BASE_URL ||
-  "http://10.25.150.36:3000";
+  "http://10.47.175.36:3000";
 
 const TENANT_SLUG = process.env.SMOKE_TENANT_SLUG || "default";
 const WALI_HP = process.env.SMOKE_WALI_HP || "085215914881";

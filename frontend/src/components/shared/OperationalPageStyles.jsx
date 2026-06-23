@@ -13,8 +13,9 @@ export function OperationalPageStyles() {
       .ops-page__form-card > div {
         border: 1px solid var(--border) !important;
         border-radius: 20px !important;
-        box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+        box-shadow: var(--shadow-kpi) !important;
         overflow: hidden;
+        background: var(--card) !important;
       }
 
       .ops-page__meta {
@@ -37,11 +38,11 @@ export function OperationalPageStyles() {
       }
 
       .ops-page__stat {
-        background: var(--surface);
+        background: var(--card);
         border: 1px solid var(--border);
         border-radius: 20px;
         padding: var(--space-4) var(--space-5);
-        box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+        box-shadow: var(--shadow-kpi);
         display: flex;
         flex-direction: column;
         gap: var(--space-2);
@@ -91,7 +92,7 @@ export function OperationalPageStyles() {
       .ops-page__empty {
         border: 1px dashed var(--border);
         border-radius: 20px;
-        background: var(--surface);
+        background: var(--card);
       }
 
       .ops-page__empty > div {
@@ -108,7 +109,7 @@ export function OperationalPageStyles() {
       }
 
       .ops-page .table-v3 tbody tr:hover td {
-        background: #F9FAFB;
+        background: var(--surface-muted);
       }
 
       .ops-page .table-v3 tbody td {
@@ -121,8 +122,8 @@ export function OperationalPageStyles() {
       }
 
       .ops-status--keluar span {
-        background: #FEF3C7 !important;
-        color: #B45309 !important;
+        background: var(--warning-subtle) !important;
+        color: var(--warning) !important;
       }
 
       .ops-status--kembali span {
@@ -132,8 +133,8 @@ export function OperationalPageStyles() {
 
       .ops-status--menunggu span,
       .ops-status--pending span {
-        background: #DBEAFE !important;
-        color: #2563EB !important;
+        background: var(--info-subtle) !important;
+        color: var(--info) !important;
       }
 
       .ops-poin {
@@ -154,13 +155,13 @@ export function OperationalPageStyles() {
       }
 
       .ops-poin--mid {
-        background: #FEF3C7;
-        color: #B45309;
+        background: var(--warning-subtle);
+        color: var(--warning);
       }
 
       .ops-poin--high {
-        background: #FEE2E2;
-        color: #DC2626;
+        background: var(--danger-subtle);
+        color: var(--danger);
       }
 
       .ops-kelas-count {
@@ -185,14 +186,14 @@ export function OperationalPageStyles() {
       }
 
       .ops-health--sakit span {
-        background: #FEE2E2 !important;
-        color: #DC2626 !important;
+        background: var(--danger-subtle) !important;
+        color: var(--danger) !important;
       }
 
       .ops-health--observasi span,
       .ops-health--istirahat span {
-        background: #DBEAFE !important;
-        color: #2563EB !important;
+        background: var(--info-subtle) !important;
+        color: var(--info) !important;
       }
 
       .ops-tamu--masuk span {
@@ -208,7 +209,8 @@ export function OperationalPageStyles() {
       .ops-akademik-card > div {
         border: 1px solid var(--border) !important;
         border-radius: 20px !important;
-        box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+        box-shadow: var(--shadow-kpi) !important;
+        background: var(--card) !important;
       }
 
       .ops-akademik-filter.filter-bar-v3 {

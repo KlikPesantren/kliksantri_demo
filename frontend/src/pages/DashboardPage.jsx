@@ -86,12 +86,9 @@ function DashboardPage() {
             <DashboardMetrics summary={summary} />
           </section>
 
-          <section className="dashboard-section dashboard-section--kesehatan">
-            <DashboardKesehatanHariIni summary={summary} />
-          </section>
-
           <section className="dashboard-section dashboard-section--panels">
-            <div className="dashboard-row-2">
+            <div className="dashboard-row-3">
+              <DashboardKesehatanHariIni summary={summary} />
               <DashboardAnnouncement
                 pembayaranTerbaru={pembayaranTerbaru}
                 totalPembayaran={summary.total_pembayaran}

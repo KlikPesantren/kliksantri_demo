@@ -27,6 +27,11 @@ const {
   resolveTenantForLogin,
 } = require("../services/tenantService");
 
+const requireTenantFeature = require("../middleware/requireTenantFeature");
+const { isFeatureEnabled } = require("../services/tenantFeatureService");
+
+const withWaliAuth = [waliAppAuthMiddleware, requireTenantFeature("wali_app")];
+
 // =====================
 // POST /wali-app/login
 // =====================
@@ -37,8 +42,7 @@ router.post(
 
   async (req, res) => {
 
-    console.log("=== LOGIN HIT ===");
-    console.log(req.body);
+    console.log("WALI APP LOGIN HIT");
 
     try {
 
@@ -74,6 +78,15 @@ router.post(
       const tenant =
         tenantResult.tenant;
 
+      if (!(await isFeatureEnabled(tenant.id, "wali_app"))) {
+        return res.status(403).json({
+          success: false,
+          error: "Fitur aplikasi wali tidak aktif untuk pesantren ini",
+          feature: "wali_app",
+          code: "FEATURE_DISABLED",
+        });
+      }
+
       const normalized =
         waliAppService.normalizePhone(
           nomor_hp
@@ -81,7 +94,7 @@ router.post(
 
       if (
         !normalized ||
-        !waliAppService.isValidPin(pin)
+        !waliAppService.isValidPinFormat(pin)
       ) {
 
         return res.status(400).json({
@@ -260,7 +273,7 @@ router.get(
 
   "/me",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   async (req, res) => {
 
@@ -325,7 +338,7 @@ router.get(
 
   "/anak",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   async (req, res) => {
 
@@ -375,7 +388,7 @@ router.get(
 
   "/dashboard",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -672,7 +685,7 @@ router.get(
 
   "/santri/profil",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -768,7 +781,7 @@ router.get(
 
   "/sahriyah",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -882,7 +895,7 @@ router.get(
 
   "/sahriyah/:tagihan_id/riwayat",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -999,7 +1012,7 @@ router.get(
 
   "/rfid/saldo",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -1099,7 +1112,7 @@ router.get(
 
   "/rfid/mutasi",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -1210,7 +1223,7 @@ router.get(
 
   "/hafalan",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -1359,7 +1372,7 @@ router.get(
 
   "/nilai",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -1511,7 +1524,7 @@ router.get(
 
   "/kesehatan",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -1618,7 +1631,7 @@ router.get(
 
   "/pelanggaran",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -1754,7 +1767,7 @@ router.get(
 
   "/perizinan",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -1865,7 +1878,7 @@ router.get(
 
   "/absensi",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   waliSantriGuard,
 
@@ -2039,7 +2052,7 @@ router.put(
 
   "/pin",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   async (req, res) => {
 
@@ -2270,7 +2283,7 @@ router.get(
 
   "/profil-pesantren",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   async (req, res) => {
 
@@ -2348,7 +2361,7 @@ router.get(
 
   "/pengumuman",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   async (req, res) => {
 
@@ -2459,7 +2472,7 @@ router.post(
 
   "/push-token",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   async (req, res) => {
 
@@ -2548,7 +2561,7 @@ router.post(
 
   "/test-notification",
 
-  waliAppAuthMiddleware,
+  ...withWaliAuth,
 
   async (req, res) => {
 

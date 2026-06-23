@@ -46,10 +46,11 @@ function Card({
   const accentColor = resolveAccent(accent);
 
   const style = {
-    background: "var(--surface)",
+    background: "var(--card)",
     borderRadius: RADIUS[radius] || RADIUS.lg,
     boxShadow: SHADOW[shadow] || SHADOW.sm,
     border: border ? "1px solid var(--border)" : "none",
+    color: "var(--text-primary)",
   };
 
   if (accentColor) {

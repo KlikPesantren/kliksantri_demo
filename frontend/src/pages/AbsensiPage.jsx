@@ -212,8 +212,11 @@ function AbsensiPage() {
       <AkademikResponsiveStyles />
       <div className="akademik-page">
       <Card padding="md" shadow="card" border={false} radius="xl">
-        <div className="akademik-filter-panel" style={filterPanelStyle}>
+        <div className="akademik-filter-panel ops-page__filter filter-bar-v3 filter-bar-v3--table">
+          <span className="filter-bar-v3__label">Filter absensi</span>
+          <div className="filter-bar-v3__fields" style={filterPanelStyle}>
           <select
+            className="form-select-v3"
             value={kelasId}
             onChange={(e) => {
               setKelasId(e.target.value);
@@ -229,6 +232,7 @@ function AbsensiPage() {
           </select>
 
           <select
+            className="form-select-v3"
             value={bulan}
             onChange={(e) => setBulan(Number(e.target.value))}
           >
@@ -240,10 +244,12 @@ function AbsensiPage() {
           </select>
 
           <input
+            className="form-control-v3"
             type="number"
             value={tahun}
             onChange={(e) => setTahun(Number(e.target.value))}
           />
+          </div>
         </div>
       </Card>
 

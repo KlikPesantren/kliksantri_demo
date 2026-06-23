@@ -148,7 +148,7 @@ function DevicePageStyles() {
       }
 
       .device-page .table-v3 tbody tr:hover td {
-        background: #F9FAFB;
+        background: var(--surface-muted);
       }
 
       .device-status-badge {

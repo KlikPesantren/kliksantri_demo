@@ -21,7 +21,7 @@ const pickFileButtonStyle = {
   lineHeight: 1.2,
   borderRadius: "var(--radius-sm)",
   border: "1px solid var(--border)",
-  background: "transparent",
+  background: "var(--surface)",
   color: "var(--text-secondary)",
   cursor: "pointer",
   whiteSpace: "nowrap",
@@ -45,6 +45,7 @@ export default function ImageUploadField({
   accept = "image/png,image/jpeg,image/jpg,image/webp",
   pickLabel = "Pilih File",
   previewHeight = 96,
+  uploadFn: uploadFnProp,
 }) {
   const inputRef = useRef(null);
   const ownedBlobsRef = useRef(new Set());
@@ -84,7 +85,8 @@ export default function ImageUploadField({
 
     setUploading(true);
     try {
-      const url = await uploadImage(file);
+      const uploadFn = uploadFnProp || uploadImage;
+      const url = await uploadFn(file);
       if (!url) {
         throw new Error("Upload gagal");
       }
@@ -117,7 +119,7 @@ export default function ImageUploadField({
           height: previewSrc ? previewHeight : 0,
           borderRadius: previewSrc ? "var(--radius-lg)" : 0,
           border: previewSrc ? "1px solid var(--border)" : "none",
-          background: previewSrc ? "var(--surface-soft)" : "transparent",
+          background: previewSrc ? "var(--surface-muted)" : "transparent",
           overflow: "hidden",
           display: "flex",
           alignItems: "center",
@@ -170,7 +172,7 @@ export default function ImageUploadField({
             width: "100%",
             fontSize: 12,
             color: "var(--text-muted)",
-            background: "var(--surface-soft)",
+            background: "var(--surface-muted)",
             border: "1px solid var(--border)",
             borderRadius: "var(--radius-sm)",
             padding: "8px 10px",

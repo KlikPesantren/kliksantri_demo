@@ -9,7 +9,7 @@
 body {
   margin: 0;
   font-family: "Plus Jakarta Sans", sans-serif;
-  background: var(--background);
+  background: var(--bg);
   color: var(--text-primary);
 }
 

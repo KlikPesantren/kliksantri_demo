@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-06-22T08:34:17.393Z",
+  "units": [
+    {
+      "id": 1,
+      "kode": "PAUD",
+      "nama": "PAUD/TK",
+      "is_active": true,
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "kode": "MADIN",
+      "nama": "Madrasah Diniyah",
+      "is_active": true,
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "kode": "SMP",
+      "nama": "SMP",
+      "is_active": true,
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "kode": "SMA",
+      "nama": "SMA",
+      "is_active": true,
+      "sort_order": 4
+    }
+  ]
+}

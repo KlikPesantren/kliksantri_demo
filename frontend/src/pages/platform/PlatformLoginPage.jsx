@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import platformApi from "../../services/platformApi";
-import Button from "../../components/ui/Button";
+import PlatformButton from "../../components/platform/PlatformButton";
 import {
   getPlatformToken,
   setPlatformSession,
@@ -27,6 +27,30 @@ function PlatformLoginStyles() {
         box-sizing: border-box;
       }
 
+      .platform-login-brand__badge {
+        display: inline-flex;
+        align-items: center;
+        margin-bottom: 16px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #BBF7D0;
+        background: rgba(22, 101, 52, 0.22);
+        border: 1px solid rgba(34, 197, 94, 0.28);
+      }
+
+      .platform-login-brand__eyebrow {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #86EFAC;
+      }
+
       .platform-login-brand h1 {
         margin: 0;
         font-size: 32px;
@@ -44,16 +68,30 @@ function PlatformLoginStyles() {
 
       .platform-login-panel {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         padding: 32px 24px;
+        background: #F8FAFC;
+      }
+
+      .platform-login-mobile-banner {
+        display: none;
+        width: 100%;
+        max-width: 400px;
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        background: #0F172A;
+        box-sizing: border-box;
       }
 
       .platform-login-card {
         width: 100%;
         max-width: 400px;
         background: var(--surface);
-        border: 1px solid var(--border);
+        border: 1px solid #E2E8F0;
+        border-top: 3px solid #166534;
         border-radius: var(--radius-xl);
         box-shadow: var(--shadow-card);
         padding: var(--space-6);
@@ -112,6 +150,10 @@ function PlatformLoginStyles() {
 
         .platform-login-brand {
           display: none;
+        }
+
+        .platform-login-mobile-banner {
+          display: block;
         }
       }
     `}</style>
@@ -182,17 +224,23 @@ function PlatformLoginPage() {
       <PlatformLoginStyles />
       <div className="platform-login">
         <div className="platform-login-brand">
-          <h1>KlikSantri Platform</h1>
+          <span className="platform-login-brand__badge">Platform Mode</span>
+          <p className="platform-login-brand__eyebrow">KlikSantri Platform</p>
+          <h1>Platform Console</h1>
           <p>
             Console administrasi multi-tenant untuk operator KlikSantri.
             Kelola pesantren, pantau statistik, dan kontrol status layanan.
+            Bukan panel operasional santri harian.
           </p>
         </div>
 
         <div className="platform-login-panel">
+          <div className="platform-login-mobile-banner">
+            <span style={{ color: "#E2E8F0", fontSize: 12, fontWeight: 700 }}>KlikSantri Platform</span>
+          </div>
           <div className="platform-login-card">
-            <h2>Masuk Platform</h2>
-            <p className="subtitle">Gunakan akun platform_superadmin</p>
+            <h2>Masuk Platform Console</h2>
+            <p className="subtitle">Akun platform — bukan login pesantren</p>
 
             {error && <div className="platform-error">{error}</div>}
 
@@ -221,9 +269,9 @@ function PlatformLoginPage() {
                 />
               </div>
 
-              <Button type="submit" loading={loading} style={{ width: "100%" }}>
+              <PlatformButton type="submit" loading={loading} style={{ width: "100%" }}>
                 Masuk
-              </Button>
+              </PlatformButton>
             </form>
           </div>
         </div>

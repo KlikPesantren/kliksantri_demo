@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import platformApi from "../../services/platformApi";
 import Badge from "../../components/ui/Badge";
-import Button from "../../components/ui/Button";
+import PlatformButton from "../../components/platform/PlatformButton";
 import DataTableCard from "../../components/ui/DataTableCard";
 import Modal from "../../components/Modal";
+import {
+  CUSTOM_FEATURE_OPTIONS,
+  TENANT_PACKAGES,
+  generateClientPassword,
+} from "../../constants/tenantPackages";
 import { formatDateShort } from "../../utils/formatDate";
+import { openTenantAdminPortal } from "../../utils/tenantPortal";
 
 function tenantDisplayName(row) {
   return row?.nama || row?.name || "-";
@@ -18,7 +24,26 @@ function statusBadgeVariant(status) {
   return "neutral";
 }
 
-function PlatformTenantsPage() {
+function billingBadgeVariant(status) {
+  if (status === "active") return "success";
+  if (status === "trial") return "info";
+  if (status === "overdue") return "warning";
+  if (status === "suspended" || status === "cancelled") return "danger";
+  return "neutral";
+}
+
+const EMPTY_FORM = {
+  name: "",
+  slug: "",
+  admin_nama: "",
+  admin_username: "",
+  admin_password: "",
+  package: "basic",
+  custom_features: [],
+};
+
+function PlatformTenantsPage({ initialCreate = false }) {
+  const navigate = useNavigate();
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,12 +53,9 @@ function PlatformTenantsPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [credentials, setCredentials] = useState(null);
-  const [form, setForm] = useState({
-    name: "",
-    slug: "",
-    admin_username: "",
-    admin_password: "",
-  });
+  const [copied, setCopied] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [initialCreateConsumed, setInitialCreateConsumed] = useState(false);
 
   const loadTenants = useCallback(async () => {
     setLoading(true);
@@ -56,10 +78,19 @@ function PlatformTenantsPage() {
     loadTenants();
   }, [loadTenants]);
 
+  useEffect(() => {
+    if (initialCreate && !initialCreateConsumed) {
+      resetCreateForm();
+      setCreateOpen(true);
+      setInitialCreateConsumed(true);
+    }
+  }, [initialCreate, initialCreateConsumed]);
+
   const resetCreateForm = () => {
-    setForm({ name: "", slug: "", admin_username: "", admin_password: "" });
+    setForm(EMPTY_FORM);
     setCreateError("");
     setCredentials(null);
+    setCopied(false);
   };
 
   const openCreate = () => {
@@ -70,6 +101,22 @@ function PlatformTenantsPage() {
   const closeCreate = () => {
     setCreateOpen(false);
     resetCreateForm();
+    if (initialCreate) {
+      navigate("/platform/tenants", { replace: true });
+    }
+  };
+
+  const handleGeneratePassword = () => {
+    setForm((f) => ({ ...f, admin_password: generateClientPassword() }));
+  };
+
+  const toggleCustomFeature = (key) => {
+    setForm((f) => {
+      const set = new Set(f.custom_features);
+      if (set.has(key)) set.delete(key);
+      else set.add(key);
+      return { ...f, custom_features: [...set] };
+    });
   };
 
   const handleCreate = async (e) => {
@@ -77,20 +124,40 @@ function PlatformTenantsPage() {
     setCreating(true);
     setCreateError("");
 
+    if (!form.package) {
+      setCreateError("Package wajib dipilih");
+      setCreating(false);
+      return;
+    }
+
+    const password = form.admin_password.trim() || generateClientPassword();
+
     try {
-      const res = await platformApi.post("/platform/tenants", {
-        nama_pesantren: form.name.trim(),
+      const payload = {
+        nama: form.name.trim(),
         slug: form.slug.trim().toLowerCase(),
+        admin_nama: form.admin_nama.trim() || `Admin ${form.name.trim()}`,
         admin_username: form.admin_username.trim(),
-        admin_password: form.admin_password,
-        admin_nama: `Admin ${form.name.trim()}`,
+        admin_password: password,
+        package: form.package,
         create_default_unit_users: false,
-      });
+      };
+
+      if (form.package === "custom") {
+        payload.custom_features = form.custom_features;
+      }
+
+      const res = await platformApi.post("/platform/tenants", payload);
+
+      const tenant = res.data?.tenant || res.data?.data?.tenant;
+      const admin = res.data?.admin || res.data?.data?.admin_user;
 
       setCredentials({
-        slug: res.data?.data?.tenant?.slug,
-        admin_username: res.data?.data?.admin_user?.username || form.admin_username,
-        admin_password: form.admin_password,
+        nama: tenant?.nama || form.name.trim(),
+        slug: tenant?.slug || form.slug.trim().toLowerCase(),
+        admin_username: admin?.username || form.admin_username.trim(),
+        admin_password: res.data?.admin?.password || password,
+        package: res.data?.package || form.package,
       });
 
       await loadTenants();
@@ -101,6 +168,24 @@ function PlatformTenantsPage() {
     }
   };
 
+  const handleCopyCredentials = async () => {
+    if (!credentials) return;
+    const text = [
+      `Nama: ${credentials.nama}`,
+      `Slug: ${credentials.slug}`,
+      `Username: ${credentials.admin_username}`,
+      `Password: ${credentials.admin_password}`,
+      `Package: ${credentials.package}`,
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      window.prompt("Salin kredensial:", text);
+    }
+  };
+
   return (
     <>
       <div style={toolbarStyle}>
@@ -108,7 +193,7 @@ function PlatformTenantsPage() {
           <h1 style={pageTitleStyle}>Tenants</h1>
           <p style={pageSubtitleStyle}>Kelola pesantren terdaftar di KlikSantri</p>
         </div>
-        <Button onClick={openCreate}>+ Buat Tenant</Button>
+        <PlatformButton onClick={openCreate}>+ Create Tenant</PlatformButton>
       </div>
 
       <div style={filterRowStyle}>
@@ -130,9 +215,9 @@ function PlatformTenantsPage() {
           <option value="trial">Trial</option>
           <option value="inactive">Inactive</option>
         </select>
-        <Button variant="secondary" size="sm" onClick={loadTenants}>
+        <PlatformButton variant="secondary" size="sm" onClick={loadTenants}>
           Refresh
-        </Button>
+        </PlatformButton>
       </div>
 
       {error && <div style={errorBoxStyle}>{error}</div>}
@@ -150,8 +235,13 @@ function PlatformTenantsPage() {
                   <th style={thStyle}>Nama</th>
                   <th style={thStyle}>Slug</th>
                   <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Package</th>
+                  <th style={thStyle}>Plan</th>
+                  <th style={thStyle}>Billing</th>
+                  <th style={thStyle}>Expires</th>
+                  <th style={thStyle}>Santri</th>
                   <th style={thStyle}>Users</th>
-                  <th style={thStyle}>Units</th>
+                  <th style={thStyle}>Features</th>
                   <th style={thStyle}>Onboarded</th>
                   <th style={thStyle} />
                 </tr>
@@ -168,15 +258,45 @@ function PlatformTenantsPage() {
                         {t.status}
                       </Badge>
                     </td>
+                    <td style={tdStyle}>
+                      <Badge
+                        variant={t.current_package?.id === "custom" ? "warning" : "success"}
+                        size="sm"
+                      >
+                        {t.current_package?.label || "Custom"}
+                      </Badge>
+                    </td>
+                    <td style={tdStyle}>{t.plan_code || "-"}</td>
+                    <td style={tdStyle}>
+                      <Badge
+                        variant={billingBadgeVariant(t.billing_status)}
+                        size="sm"
+                      >
+                        {t.billing_status || "-"}
+                      </Badge>
+                    </td>
+                    <td style={tdStyle}>
+                      {formatDateShort(t.subscription_expires_at)}
+                    </td>
+                    <td style={tdStyle}>{t.santri_count ?? 0}</td>
                     <td style={tdStyle}>{t.user_count ?? 0}</td>
-                    <td style={tdStyle}>{t.unit_count ?? 0}</td>
+                    <td style={tdStyle}>{t.feature_enabled_count ?? 0} ON</td>
                     <td style={tdStyle}>
                       {formatDateShort(t.onboarded_at || t.created_at)}
                     </td>
                     <td style={tdStyle}>
-                      <Link to={`/platform/tenants/${t.id}`} style={linkStyle}>
-                        Detail
-                      </Link>
+                      <div style={rowActionsStyle}>
+                        <Link to={`/platform/tenants/${t.id}`} style={linkStyle}>
+                          Detail
+                        </Link>
+                        <button
+                          type="button"
+                          style={portalPlatformButtonStyle}
+                          onClick={() => openTenantAdminPortal(t.slug)}
+                        >
+                          Buka Portal
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -188,22 +308,28 @@ function PlatformTenantsPage() {
 
       <Modal
         open={createOpen}
-        title={credentials ? "Tenant Berhasil Dibuat" : "Buat Tenant Baru"}
+        title={credentials ? "Tenant Berhasil Dibuat" : "Create Tenant"}
         onClose={closeCreate}
-        width={520}
+        width={credentials ? 520 : 600}
       >
         {credentials ? (
           <div>
+            <p style={successBannerStyle}>Tenant berhasil dibuat</p>
             <p style={modalTextStyle}>
-              Simpan kredensial admin tenant berikut. Password tidak ditampilkan lagi.
+              Simpan kredensial admin berikut. Password hanya ditampilkan sekali.
             </p>
             <div style={credentialBoxStyle}>
+              <div><strong>Nama:</strong> {credentials.nama}</div>
               <div><strong>Slug:</strong> {credentials.slug}</div>
-              <div><strong>Admin username:</strong> {credentials.admin_username}</div>
-              <div><strong>Admin password:</strong> {credentials.admin_password}</div>
+              <div><strong>Username Admin:</strong> {credentials.admin_username}</div>
+              <div><strong>Password:</strong> {credentials.admin_password}</div>
+              <div><strong>Package:</strong> {credentials.package}</div>
             </div>
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
-              <Button onClick={closeCreate}>Tutup</Button>
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <PlatformButton variant="secondary" onClick={handleCopyCredentials}>
+                {copied ? "Tersalin" : "Salin Kredensial"}
+              </PlatformButton>
+              <PlatformButton onClick={closeCreate}>Tutup</PlatformButton>
             </div>
           </div>
         ) : (
@@ -233,13 +359,26 @@ function PlatformTenantsPage() {
                   }))
                 }
                 required
-                placeholder="al-hikmah"
+                placeholder="al-falah"
                 style={inputStyle}
               />
             </div>
 
             <div style={fieldStyle}>
-              <label htmlFor="admin-user">Admin Username</label>
+              <label htmlFor="admin-nama">Nama Admin</label>
+              <input
+                id="admin-nama"
+                value={form.admin_nama}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, admin_nama: e.target.value }))
+                }
+                placeholder="Admin Pesantren"
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={fieldStyle}>
+              <label htmlFor="admin-user">Username Admin</label>
               <input
                 id="admin-user"
                 value={form.admin_username}
@@ -252,27 +391,78 @@ function PlatformTenantsPage() {
             </div>
 
             <div style={fieldStyle}>
-              <label htmlFor="admin-pass">Admin Password</label>
-              <input
-                id="admin-pass"
-                type="password"
-                value={form.admin_password}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, admin_password: e.target.value }))
-                }
-                required
-                minLength={6}
-                style={inputStyle}
-              />
+              <label htmlFor="admin-pass">Password Admin</label>
+              <div style={passwordRowStyle}>
+                <input
+                  id="admin-pass"
+                  type="text"
+                  value={form.admin_password}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, admin_password: e.target.value }))
+                  }
+                  placeholder="Kosongkan untuk generate otomatis"
+                  minLength={6}
+                  style={{ ...inputStyle, marginTop: 0, flex: 1 }}
+                />
+                <PlatformButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleGeneratePassword}
+                >
+                  Generate
+                </PlatformButton>
+              </div>
             </div>
 
+            <div style={fieldStyle}>
+              <label>Package</label>
+              <div style={packageGridStyle}>
+                {TENANT_PACKAGES.map((pkg) => (
+                  <label key={pkg.id} style={packageOptionStyle}>
+                    <input
+                      type="radio"
+                      name="package"
+                      value={pkg.id}
+                      checked={form.package === pkg.id}
+                      onChange={() =>
+                        setForm((f) => ({ ...f, package: pkg.id }))
+                      }
+                    />
+                    <span>
+                      <strong>{pkg.label}</strong>
+                      <span style={packageDescStyle}>{pkg.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {form.package === "custom" && (
+              <div style={fieldStyle}>
+                <label>Fitur Custom</label>
+                <div style={customFeatureGridStyle}>
+                  {CUSTOM_FEATURE_OPTIONS.map((feat) => (
+                    <label key={feat.key} style={customFeatureItemStyle}>
+                      <input
+                        type="checkbox"
+                        checked={form.custom_features.includes(feat.key)}
+                        onChange={() => toggleCustomFeature(feat.key)}
+                      />
+                      {feat.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={modalActionsStyle}>
-              <Button variant="secondary" type="button" onClick={closeCreate}>
+              <PlatformButton variant="secondary" type="button" onClick={closeCreate}>
                 Batal
-              </Button>
-              <Button type="submit" loading={creating}>
+              </PlatformButton>
+              <PlatformButton type="submit" loading={creating}>
                 Buat Tenant
-              </Button>
+              </PlatformButton>
             </div>
           </form>
         )}
@@ -358,9 +548,28 @@ const codeStyle = {
 };
 
 const linkStyle = {
-  color: "var(--primary)",
+  color: "#166534",
   fontWeight: 600,
   textDecoration: "none",
+};
+
+const rowActionsStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 6,
+};
+
+const portalPlatformButtonStyle = {
+  padding: 0,
+  border: "none",
+  background: "none",
+  color: "#166534",
+  fontWeight: 600,
+  fontSize: "13px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  textDecoration: "underline",
 };
 
 const emptyStyle = {
@@ -379,6 +588,16 @@ const errorBoxStyle = {
   fontWeight: 600,
 };
 
+const successBannerStyle = {
+  margin: "0 0 12px",
+  padding: "10px 12px",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--success-subtle)",
+  color: "var(--success)",
+  fontWeight: 700,
+  fontSize: "14px",
+};
+
 const fieldStyle = {
   marginBottom: 14,
 };
@@ -391,6 +610,53 @@ const inputStyle = {
   fontSize: "14px",
   boxSizing: "border-box",
   marginTop: 6,
+};
+
+const passwordRowStyle = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  marginTop: 6,
+};
+
+const packageGridStyle = {
+  display: "grid",
+  gap: 8,
+  marginTop: 8,
+};
+
+const packageOptionStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 10,
+  padding: "10px 12px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  cursor: "pointer",
+  fontSize: "14px",
+};
+
+const packageDescStyle = {
+  display: "block",
+  fontSize: "12px",
+  color: "var(--text-secondary)",
+  marginTop: 2,
+  fontWeight: 400,
+};
+
+const customFeatureGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+  gap: 8,
+  marginTop: 8,
+};
+
+const customFeatureItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  fontSize: "13px",
+  cursor: "pointer",
 };
 
 const modalActionsStyle = {

@@ -1,14 +1,37 @@
 const express = require("express");
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const pool = require("../db");
 const platformAuthMiddleware = require("../middleware/platformAuthMiddleware");
 const requirePermission = require("../middleware/requirePermission");
 const { createTenantWithDefaults } = require("../services/tenantOnboardingService");
+const { getPackageOptions } = require("../config/tenantPackageConfig");
 const { getTenantById } = require("../services/tenantService");
+const {
+  getTenantBilling,
+  updateTenantBilling,
+} = require("../services/tenantBillingService");
 const { getTenantPlatformDashboard } = require("../services/tenantPlatformStatsService");
+const {
+  attachTenantListHealth,
+  deleteTenantSafely,
+  getTenantCleanupSummary,
+  getTenantHealth,
+} = require("../services/tenantHealthService");
+const {
+  applyTenantPackage,
+  getTenantFeatureManagementState,
+  updateTenantFeatures,
+} = require("../services/tenantFeatureService");
+const { updateTenantFromPlatform } = require("../services/tenantPlatformUpdateService");
 
 const router = express.Router();
 
 router.use(platformAuthMiddleware);
+
+function generateTenantAdminPassword() {
+  return crypto.randomBytes(18).toString("base64url");
+}
 
 router.get(
   "/",
@@ -44,20 +67,33 @@ router.get(
         `SELECT
            t.id, t.slug, t.nama, t.status, t.alamat, t.telepon, t.logo_url,
            t.tagline, t.onboarded_at, t.suspended_at, t.suspended_reason,
-           t.created_at,
+           t.created_at, t.plan_code, t.billing_status,
+           t.subscription_started_at, t.subscription_expires_at,
+           t.last_payment_at, t.next_invoice_at, t.billing_notes,
            (SELECT COUNT(*)::int FROM users u WHERE u.tenant_id = t.id) AS user_count,
-           (SELECT COUNT(*)::int FROM unit_pendidikan up WHERE up.tenant_id = t.id) AS unit_count
+           (SELECT COUNT(*)::int FROM unit_pendidikan up WHERE up.tenant_id = t.id) AS unit_count,
+           (SELECT COUNT(*)::int FROM santri s WHERE s.tenant_id = t.id AND LOWER(s.status) = 'aktif') AS santri_count
          FROM tenants t
          ${where}
          ORDER BY t.onboarded_at DESC NULLS LAST, t.id DESC`,
         params
       );
 
-      res.json({ success: true, data: result.rows });
+      const data = await attachTenantListHealth(result.rows);
+
+      res.json({ success: true, data });
     } catch (err) {
       console.error(err);
       res.status(500).json({ success: false, error: err.message });
     }
+  }
+);
+
+router.get(
+  "/packages",
+  requirePermission("platform.tenant.view"),
+  async (_req, res) => {
+    res.json({ success: true, packages: getPackageOptions() });
   }
 );
 
@@ -66,13 +102,55 @@ router.post(
   requirePermission("platform.tenant.create"),
   async (req, res) => {
     try {
-      const result = await createTenantWithDefaults(
-        req.body,
-        req.platformUser
-      );
+      const body = req.body || {};
+
+      const nama = body.nama_pesantren?.trim() || body.nama?.trim();
+      if (!nama) {
+        return res.status(400).json({
+          success: false,
+          error: "Nama pesantren wajib diisi",
+        });
+      }
+
+      if (!body.slug?.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: "Slug wajib diisi",
+        });
+      }
+
+      if (!body.admin_username?.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: "admin_username wajib diisi",
+        });
+      }
+
+      if (body.package && !["basic", "standard", "premium", "custom"].includes(String(body.package).toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          error: "Package harus basic, standard, premium, atau custom",
+        });
+      }
+
+      const result = await createTenantWithDefaults(body, req.platformUser);
 
       res.status(201).json({
         success: true,
+        tenant_id: result.tenant.id,
+        tenant: {
+          id: result.tenant.id,
+          slug: result.tenant.slug,
+          nama: result.tenant.nama,
+          status: result.tenant.status,
+        },
+        admin: {
+          nama: result.admin_user?.nama,
+          username: result.admin_user?.username,
+          password: result.admin_initial_password,
+        },
+        package: result.package,
+        features_enabled: result.features_enabled,
         data: result,
       });
     } catch (err) {
@@ -81,6 +159,362 @@ router.post(
         success: false,
         error: err.message,
       });
+    }
+  }
+);
+
+router.post(
+  "/:id/reset-admin-password",
+  requirePermission("platform.tenant.update"),
+  async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+      if (req.platformUser?.role !== "platform_superadmin") {
+        return res.status(403).json({
+          success: false,
+          error: "Hanya platform_superadmin yang boleh reset password admin tenant",
+        });
+      }
+
+      const tenant = await getTenantById(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant tidak ditemukan",
+        });
+      }
+
+      const adminResult = await client.query(
+        `SELECT id, nama, username, role
+         FROM users
+         WHERE tenant_id = $1
+           AND role = 'superadmin'
+         ORDER BY id ASC
+         LIMIT 1`,
+        [tenant.id]
+      );
+
+      const admin = adminResult.rows[0];
+      if (!admin) {
+        return res.status(404).json({
+          success: false,
+          error: "Admin tenant tidak ditemukan",
+        });
+      }
+
+      const password = generateTenantAdminPassword();
+      const hash = await bcrypt.hash(password, 10);
+
+      await client.query("BEGIN");
+      await client.query(
+        `UPDATE users
+         SET password = $1
+         WHERE id = $2
+           AND tenant_id = $3`,
+        [hash, admin.id, tenant.id]
+      );
+      await client.query(
+        `INSERT INTO audit_logs (device_id, event_type, detail, tenant_id)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          `platform:${req.platformUser?.id ?? "system"}`,
+          "platform.tenant.admin_password_reset",
+          JSON.stringify({
+            tenant_id: tenant.id,
+            tenant_slug: tenant.slug,
+            admin_user_id: admin.id,
+            admin_username: admin.username,
+            reset_by: req.platformUser?.id ?? null,
+            reset_by_username: req.platformUser?.username ?? null,
+          }),
+          tenant.id,
+        ]
+      );
+      await client.query("COMMIT");
+
+      res.json({
+        success: true,
+        tenant_id: tenant.id,
+        admin: {
+          id: admin.id,
+          nama: admin.nama,
+          username: admin.username,
+          password,
+        },
+      });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (_) {
+        /* ignore rollback error */
+      }
+      console.error(err);
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message,
+      });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+router.get(
+  "/:id/features",
+  requirePermission("platform.tenant.view"),
+  async (req, res) => {
+    try {
+      const tenant = await getTenantById(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant tidak ditemukan",
+        });
+      }
+
+      const featureState = await getTenantFeatureManagementState(tenant.id);
+
+      res.json({
+        success: true,
+        tenant_id: tenant.id,
+        ...featureState,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+router.patch(
+  "/:id/features",
+  requirePermission("platform.tenant.update"),
+  async (req, res) => {
+    try {
+      const tenant = await getTenantById(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant tidak ditemukan",
+        });
+      }
+
+      const featureState = await updateTenantFeatures(
+        tenant.id,
+        req.body?.features
+      );
+
+      res.json({
+        success: true,
+        tenant_id: tenant.id,
+        ...featureState,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message,
+      });
+    }
+  }
+);
+
+router.patch(
+  "/:id/package",
+  requirePermission("platform.tenant.update"),
+  async (req, res) => {
+    try {
+      const tenant = await getTenantById(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant tidak ditemukan",
+        });
+      }
+
+      const featureState = await applyTenantPackage(
+        tenant.id,
+        req.body?.package
+      );
+
+      res.json({
+        success: true,
+        tenant_id: tenant.id,
+        ...featureState,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message,
+      });
+    }
+  }
+);
+
+router.get(
+  "/:id/billing",
+  requirePermission("platform.tenant.view"),
+  async (req, res) => {
+    try {
+      const tenant = await getTenantById(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant tidak ditemukan",
+        });
+      }
+
+      const billing = await getTenantBilling(tenant.id);
+
+      res.json({
+        success: true,
+        tenant_id: tenant.id,
+        data: billing,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message,
+      });
+    }
+  }
+);
+
+router.patch(
+  "/:id/billing",
+  requirePermission("platform.tenant.update"),
+  async (req, res) => {
+    try {
+      if (req.platformUser?.role !== "platform_superadmin") {
+        return res.status(403).json({
+          success: false,
+          error: "Hanya platform_superadmin yang boleh mengubah billing",
+        });
+      }
+
+      const tenant = await getTenantById(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant tidak ditemukan",
+        });
+      }
+
+      const billing = await updateTenantBilling(
+        tenant,
+        req.body || {},
+        req.platformUser
+      );
+
+      res.json({
+        success: true,
+        tenant_id: tenant.id,
+        data: billing,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message,
+      });
+    }
+  }
+);
+
+router.delete(
+  "/:id",
+  async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+      if (req.platformUser?.role !== "platform_superadmin") {
+        return res.status(403).json({
+          success: false,
+          error: "Hanya platform_superadmin yang boleh delete tenant",
+        });
+      }
+
+      const tenant = await getTenantById(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant tidak ditemukan",
+        });
+      }
+
+      const summary = await getTenantCleanupSummary(tenant.id, client);
+
+      if (tenant.slug === "default") {
+        return res.status(403).json({
+          success: false,
+          error: "Tenant default tidak boleh dihapus",
+          tenant,
+          summary,
+        });
+      }
+
+      if (tenant.status === "active") {
+        return res.status(400).json({
+          success: false,
+          error: "Tenant active tidak boleh dihapus. Suspend atau nonaktifkan tenant dulu.",
+          tenant,
+          summary,
+        });
+      }
+
+      if (!["suspended", "inactive"].includes(tenant.status)) {
+        return res.status(400).json({
+          success: false,
+          error: "Tenant hanya boleh dihapus jika status suspended atau inactive",
+          tenant,
+          summary,
+        });
+      }
+
+      if (req.query.confirm !== "DELETE") {
+        return res.status(400).json({
+          success: false,
+          error: "Ketik confirm=DELETE untuk menghapus tenant",
+          requires_confirm: "DELETE",
+          tenant,
+          summary,
+        });
+      }
+
+      await client.query("BEGIN");
+      const deleted = await deleteTenantSafely(tenant, req.platformUser, client);
+      await client.query("COMMIT");
+
+      res.json({
+        success: true,
+        deleted_tenant: {
+          id: tenant.id,
+          slug: tenant.slug,
+          nama: tenant.nama,
+        },
+        summary,
+        deleted,
+      });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (_) {
+        /* ignore rollback error */
+      }
+
+      const isFkError = err.code === "23503";
+      res.status(err.status || (isFkError ? 409 : 500)).json({
+        success: false,
+        error: isFkError
+          ? "Delete tenant gagal karena masih ada relasi data yang belum tertangani"
+          : err.message,
+        detail: isFkError ? err.detail : undefined,
+      });
+    } finally {
+      client.release();
     }
   }
 );
@@ -119,12 +553,15 @@ router.get(
         });
       }
 
-      const counts = await pool.query(
+      const [counts, health] = await Promise.all([
+        pool.query(
         `SELECT
            (SELECT COUNT(*)::int FROM users WHERE tenant_id = $1) AS user_count,
            (SELECT COUNT(*)::int FROM unit_pendidikan WHERE tenant_id = $1) AS unit_count`,
         [tenant.id]
-      );
+        ),
+        getTenantHealth(tenant.id),
+      ]);
 
       const profil = await pool.query(
         `SELECT id, nama_pesantren, alamat, telepon, logo_url
@@ -140,6 +577,7 @@ router.get(
           ...tenant,
           user_count: counts.rows[0].user_count,
           unit_count: counts.rows[0].unit_count,
+          health,
           profil: profil.rows[0] || null,
         },
       });
@@ -201,62 +639,15 @@ router.patch(
   requirePermission("platform.tenant.update"),
   async (req, res) => {
     try {
-      const { nama, alamat, telepon, logo_url, tagline } = req.body;
-
-      const result = await pool.query(
-        `UPDATE tenants
-         SET
-           nama = COALESCE($1, nama),
-           alamat = COALESCE($2, alamat),
-           telepon = COALESCE($3, telepon),
-           logo_url = COALESCE($4, logo_url),
-           tagline = COALESCE($5, tagline),
-           updated_at = NOW()
-         WHERE id = $6
-         RETURNING *`,
-        [
-          nama?.trim() || null,
-          alamat?.trim() || null,
-          telepon?.trim() || null,
-          logo_url ?? null,
-          tagline?.trim() || null,
-          req.params.id,
-        ]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: "Tenant tidak ditemukan",
-        });
-      }
-
-      const tenant = result.rows[0];
-
-      if (nama || alamat || telepon || logo_url !== undefined) {
-        await pool.query(
-          `UPDATE profil_pesantren
-           SET
-             nama_pesantren = COALESCE($1, nama_pesantren),
-             alamat = COALESCE($2, alamat),
-             telepon = COALESCE($3, telepon),
-             logo_url = COALESCE($4, logo_url),
-             updated_at = NOW()
-           WHERE tenant_id = $5`,
-          [
-            nama?.trim() || null,
-            alamat?.trim() || null,
-            telepon?.trim() || null,
-            logo_url ?? null,
-            tenant.id,
-          ]
-        );
-      }
-
+      const tenant = await updateTenantFromPlatform(req.params.id, req.body || {});
       res.json({ success: true, data: tenant });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ success: false, error: err.message });
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message,
+        code: err.code || undefined,
+      });
     }
   }
 );

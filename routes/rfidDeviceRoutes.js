@@ -4,12 +4,14 @@ const pool = require("../db");
 const authMiddleware = require("../middleware/authMiddleware");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
+const requireTenantFeature = require("../middleware/requireTenantFeature");
 const deviceAuthMiddleware = require("../middleware/deviceAuthMiddleware");
 const deviceController = require("../controllers/rfidDeviceController");
 
 const adminDevice = [
   authMiddleware,
   tenantMiddleware,
+  requireTenantFeature("rfid"),
   requirePermission.requireAnyPermission(["device.view", "rfid.view", "device.manage", "rfid.manage"]),
 ];
 
@@ -18,6 +20,7 @@ router.post(
   "/provision",
   authMiddleware,
   tenantMiddleware,
+  requireTenantFeature("rfid"),
   requirePermission("rfid.manage"),
   deviceController.provision
 );
@@ -30,9 +33,10 @@ router.put(
   "/assign",
   authMiddleware,
   tenantMiddleware,
+  requireTenantFeature("rfid"),
   requirePermission("rfid.manage"),
   deviceController.assignMerchant
 );
-router.post("/heartbeat", deviceAuthMiddleware, deviceController.heartbeat);
+router.post("/heartbeat", deviceAuthMiddleware, requireTenantFeature("rfid"), deviceController.heartbeat);
 
 module.exports = router;

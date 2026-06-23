@@ -10,3 +10,15 @@ export async function uploadImage(file) {
   console.log("[ADMIN BANNER UPLOAD RESPONSE]", url);
   return url;
 }
+
+/** Platform branding upload — uses existing /upload/image via active tenant session. */
+export async function uploadImageForPlatform(file) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error(
+      "Upload logo memerlukan sesi tenant aktif. Buka portal tenant, login, lalu kembali ke Platform Console."
+    );
+  }
+
+  return uploadImage(file);
+}

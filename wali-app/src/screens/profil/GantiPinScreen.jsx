@@ -20,7 +20,7 @@ import {
 import { colors } from '../../constants/colors';
 import { spacing, radius } from '../../constants/theme';
 
-const BLOCKED = ['000000', '123456', '111111', '654321'];
+const BLOCKED = ['000000', '123456', '111111', '456789', '654321'];
 
 function validateLocal(pinLama, pinBaru, konfirmasi) {
   if (!pinLama) return 'PIN lama wajib diisi';

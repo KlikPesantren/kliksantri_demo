@@ -31,10 +31,38 @@ function AkademikResponsiveStyles() {
       }
 
       .akademik-filter-panel select,
-      .akademik-filter-panel input[type="number"] {
+      .akademik-filter-panel input[type="number"],
+      .absensi-guru-input {
         min-width: 0;
         flex: 1 1 140px;
         max-width: 100%;
+        height: 40px;
+        box-sizing: border-box;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--card);
+        color: var(--text-primary);
+        padding: 8px 10px;
+        font: inherit;
+      }
+
+      .akademik-filter-panel select:focus,
+      .akademik-filter-panel input[type="number"]:focus,
+      .absensi-guru-input:focus {
+        outline: 2px solid color-mix(in srgb, var(--primary) 28%, transparent);
+        outline-offset: 1px;
+        border-color: var(--primary);
+      }
+
+      .akademik-filter-panel select option {
+        background: var(--card);
+        color: var(--text-primary);
+      }
+
+      .absensi-guru-input {
+        width: 92px;
+        flex: initial;
+        text-align: center;
       }
 
       @media (max-width: 767px) {
@@ -299,6 +327,7 @@ function AbsensiGuruPage() {
                   {STATUS_COLUMNS.map((col) => (
                     <td key={col.key}>
                       <input
+                        className="absensi-guru-input"
                         type="number"
                         value={data[g.id]?.[col.key] || ""}
                         onChange={(e) =>

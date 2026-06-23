@@ -130,7 +130,7 @@ export function DonutChart({ slices, size = 120, centerLabel }) {
           position: "absolute",
           inset: `${size * 0.21}px`,
           borderRadius: "50%",
-          background: "var(--surface)",
+          background: "var(--card)",
         }}
       />
       {centerLabel && (

@@ -6,10 +6,10 @@ const pool = require("../db");
 const requirePermission = require("../middleware/requirePermission");
 const bcrypt = require("bcryptjs");
 const { resolveTenantForLogin, getTenantById, buildInactiveTenantPayload } = require("../services/tenantService");
+const { getEnabledFeatureKeys } = require("../services/tenantFeatureService");
+const { JWT_SECRET } = require("../config/authSecrets");
 
 const router = express.Router();
-
-const SECRET_KEY = process.env.JWT_SECRET;
 
 function buildJwtPayload(user, tenant) {
   return {
@@ -22,7 +22,8 @@ function buildJwtPayload(user, tenant) {
   };
 }
 
-function buildUserResponse(user, tenant, permissions) {
+async function buildUserResponse(user, tenant, permissions) {
+  const tenant_features = await getEnabledFeatureKeys(tenant.id);
   return {
     id: user.id,
     nama: user.nama,
@@ -33,6 +34,7 @@ function buildUserResponse(user, tenant, permissions) {
     tenant_slug: tenant.slug,
     tenant_nama: tenant.nama,
     tenant_name: tenant.nama,
+    tenant_features,
   };
 }
 
@@ -98,7 +100,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const token = jwt.sign(buildJwtPayload(user, tenant), SECRET_KEY, {
+    const token = jwt.sign(buildJwtPayload(user, tenant), JWT_SECRET, {
       expiresIn: "7d",
     });
 
@@ -109,7 +111,7 @@ router.post("/login", async (req, res) => {
     res.json({
       success: true,
       token,
-      user: buildUserResponse(user, tenant, permissions),
+      user: await buildUserResponse(user, tenant, permissions),
     });
   } catch (err) {
     console.log(err);
@@ -137,7 +139,7 @@ router.get("/me", async (req, res) => {
 
     const token = authHeader.split(" ")[1];
 
-    const decoded = jwt.verify(token, SECRET_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     const result = await pool.query(
       `
@@ -189,6 +191,10 @@ router.get("/me", async (req, res) => {
       tenantScoped: Boolean(me.tenant_id),
     });
 
+    const tenant_features = me.tenant_id
+      ? await getEnabledFeatureKeys(me.tenant_id)
+      : [];
+
     res.json({
       success: true,
       user: {
@@ -201,6 +207,7 @@ router.get("/me", async (req, res) => {
         tenant_slug: me.tenant_slug,
         tenant_nama: me.tenant_nama,
         tenant_name: me.tenant_nama,
+        tenant_features,
       },
     });
   } catch (err) {

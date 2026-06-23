@@ -86,7 +86,7 @@ function AuditPageStyles() {
       }
 
       .audit-page .table-v3 tbody tr:hover td {
-        background: #F9FAFB;
+        background: var(--surface-muted);
       }
 
       .audit-event-badge span {

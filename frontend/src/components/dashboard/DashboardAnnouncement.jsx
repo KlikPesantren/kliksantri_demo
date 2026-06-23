@@ -24,7 +24,7 @@ function DashboardAnnouncement({ pembayaranTerbaru, totalPembayaran, totalTungga
         <div className="dashboard-donut-layout">
           <DonutChart
             slices={sahriyahDonut.slices}
-            size={120}
+            size={92}
             centerLabel={{
               value: `${sahriyahDonut.lunasPct}%`,
               subtitle: "Lunas",

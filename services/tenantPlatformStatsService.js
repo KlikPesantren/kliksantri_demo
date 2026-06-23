@@ -1,5 +1,6 @@
 const pool = require("../db");
 const { getTenantById } = require("./tenantService");
+const { getTenantHealth } = require("./tenantHealthService");
 
 function getDateRanges(now = new Date()) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -244,12 +245,13 @@ async function getTenantPlatformDashboard(tenantId) {
   const ranges = getDateRanges();
   const tid = Number(tenantId);
 
-  const [operasional, keuangan, pendidikan, keamanan, rfid] = await Promise.all([
+  const [operasional, keuangan, pendidikan, keamanan, rfid, health] = await Promise.all([
     getOperasionalStats(tid),
     getKeuanganStats(tid, ranges),
     getPendidikanStats(tid, ranges),
     getKeamananStats(tid, ranges),
     getRfidStats(tid, ranges),
+    getTenantHealth(tid),
   ]);
 
   return {
@@ -266,6 +268,7 @@ async function getTenantPlatformDashboard(tenantId) {
     pendidikan,
     keamanan,
     rfid,
+    health,
     generated_at: new Date().toISOString(),
   };
 }

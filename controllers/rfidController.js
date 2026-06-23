@@ -13,6 +13,62 @@ const XLSX = require("xlsx");
 // RFID PAYMENT
 // ==========================
 
+exports.lookupCard = async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const { uid_rfid } = req.body || {};
+
+    if (!uid_rfid) {
+      return res.status(400).json({
+        success: false,
+        error: "uid_rfid wajib",
+      });
+    }
+
+    const { rows } = await pool.query(
+      `
+      SELECT id, nama, uid_rfid, saldo, limit_harian, status
+      FROM santri
+      WHERE uid_rfid = $1
+        AND tenant_id = $2
+      LIMIT 1
+      `,
+      [uid_rfid, tenantId]
+    );
+
+    if (rows.length === 0) {
+      return res.json({
+        success: false,
+        error: "Santri tidak ditemukan",
+      });
+    }
+
+    const santri = rows[0];
+    if (!isSantriAktif(santri.status)) {
+      return res.status(409).json({
+        success: false,
+        error: "Santri nonaktif",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        uid_rfid: santri.uid_rfid,
+        nama: santri.nama,
+        saldo: Number(santri.saldo || 0),
+        limit_harian: Number(santri.limit_harian || 0),
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
 exports.rfidPayment = async (req, res) => {
   try {
     const tenantId = req.tenantId;

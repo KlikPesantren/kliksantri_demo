@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL } from "../services/api";
 import api from "../services/api";
 import Button from "../components/ui/Button";
 import TenantBrand from "../components/TenantBrand";
-import { setUser } from "../utils/storage";
+import { setUser, getUser, clearSession } from "../utils/storage";
 import { TENANT_SUSPEND_SESSION_KEY } from "../constants/tenant";
 import {
   KLIKSANTRI_LOGIN_BRANDING,
@@ -12,6 +13,7 @@ import {
   normalizeTenantSlugInput,
   resolvePublicTenantDisplay,
 } from "../utils/tenantProfile";
+import { TENANT_LOGIN_QUERY_KEY } from "../utils/tenantPortal";
 
 const SLUG_DEBOUNCE_MS = 500;
 
@@ -178,6 +180,7 @@ function LoginPageStyles() {
 }
 
 function LoginPage() {
+  const [searchParams] = useSearchParams();
   const [tenantSlug, setTenantSlug] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -186,6 +189,16 @@ function LoginPage() {
   const [slugMessage, setSlugMessage] = useState("");
   const [publicProfile, setPublicProfile] = useState(null);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [tenantSessionConflict, setTenantSessionConflict] = useState(null);
+
+  const slugFromUrl = useMemo(
+    () =>
+      normalizeTenantSlugInput(
+        searchParams.get(TENANT_LOGIN_QUERY_KEY) ||
+          searchParams.get("tenant_slug")
+      ),
+    [searchParams]
+  );
 
   const display = useMemo(() => {
     const normalized = normalizeTenantSlugInput(tenantSlug);
@@ -264,22 +277,51 @@ function LoginPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
+    const user = getUser();
+
+    if (token && user?.tenant_slug) {
+      if (slugFromUrl && slugFromUrl !== user.tenant_slug) {
+        setTenantSessionConflict({
+          currentSlug: user.tenant_slug,
+          currentName: user.tenant_nama || user.tenant_name || user.tenant_slug,
+          requestedSlug: slugFromUrl,
+        });
+        return;
+      }
+
       window.location.href = "/dashboard";
       return;
     }
+
+    setTenantSessionConflict(null);
 
     const suspendMsg = sessionStorage.getItem(TENANT_SUSPEND_SESSION_KEY);
     if (suspendMsg) {
       setLoginError(suspendMsg);
       sessionStorage.removeItem(TENANT_SUSPEND_SESSION_KEY);
     }
+  }, [slugFromUrl]);
+
+  useEffect(() => {
+    if (slugFromUrl) {
+      setTenantSlug(slugFromUrl);
+      return;
+    }
 
     const savedSlug = localStorage.getItem(LAST_TENANT_SLUG_KEY);
     if (savedSlug) {
       setTenantSlug(savedSlug);
     }
-  }, []);
+  }, [slugFromUrl]);
+
+  const handleLogoutTenantSession = () => {
+    clearSession();
+    setTenantSessionConflict(null);
+    setLoginError("");
+    if (slugFromUrl) {
+      setTenantSlug(slugFromUrl);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -370,6 +412,23 @@ function LoginPage() {
             <p className="login-form-subtitle">
               Masuk ke panel administrasi pesantren Anda.
             </p>
+
+            {tenantSessionConflict ? (
+              <div
+                className="login-preview-hint login-preview-hint--warn"
+                style={{ marginBottom: "var(--space-4)" }}
+              >
+                Anda masih login sebagai{" "}
+                <strong>{tenantSessionConflict.currentName}</strong> (
+                {tenantSessionConflict.currentSlug}). Logout tenant untuk masuk
+                ke <strong>{tenantSessionConflict.requestedSlug}</strong>.
+                <div style={{ marginTop: 12 }}>
+                  <Button variant="secondary" size="sm" onClick={handleLogoutTenantSession}>
+                    Logout Tenant
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             {loginError ? (
               <div

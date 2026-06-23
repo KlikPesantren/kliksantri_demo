@@ -6,9 +6,9 @@ const bcrypt = require("bcryptjs");
 const pool = require("../db");
 const requirePermission = require("../middleware/requirePermission");
 const platformAuthMiddleware = require("../middleware/platformAuthMiddleware");
+const { JWT_SECRET } = require("../config/authSecrets");
 
 const router = express.Router();
-const SECRET_KEY = process.env.JWT_SECRET;
 
 function buildPlatformJwtPayload(user) {
   return {
@@ -79,7 +79,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const token = jwt.sign(buildPlatformJwtPayload(user), SECRET_KEY, {
+    const token = jwt.sign(buildPlatformJwtPayload(user), JWT_SECRET, {
       expiresIn: "7d",
     });
 

@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
 import { hasPermission } from "../utils/hasPermission";
+import { hasFeature } from "../utils/hasFeature";
 import { PERMISSIONS_UPDATED_EVENT } from "../utils/storage";
 import TenantBrand from "./TenantBrand";
 import { useTenantProfile } from "../context/TenantProfileContext";
@@ -22,52 +23,54 @@ const SCROLL_KEY = "kliksantri_sidebar_scroll";
 const COLLAPSE_KEY = "kliksantri_sidebar_collapsed";
 
 const SIDEBAR = {
-  bg: "var(--dark)",
-  border: "rgba(148, 163, 184, 0.12)",
-  text: "#E2E8F0",
-  textMuted: "var(--text-muted)",
+  bg: "var(--sidebar-bg)",
+  border: "var(--sidebar-border)",
+  text: "var(--sidebar-text)",
+  textMuted: "var(--sidebar-text-muted)",
   textFaint: "#64748B",
-  hoverBg: "rgba(21, 128, 61, 0.08)",
+  hoverBg: "rgba(21, 128, 61, 0.12)",
   activeBg: "var(--sidebar-active-bg)",
-  activeBorder: "var(--primary)",
-  activeText: "#ECFDF5",
+  activeBorder: "var(--sidebar-active-border)",
+  activeText: "var(--sidebar-active-text)",
 };
 
 const MENU = [
-  { name: "Dashboard", path: "/dashboard", perm: "dashboard.view", icon: <FaHome /> },
-  { name: "Santri", path: "/santri", perm: "santri.view", icon: <FaUsers /> },
-  { name: "Wali Santri", path: "/wali", perm: "wali.view", icon: <FaUsers /> },
-  { name: "Guru", path: "/guru", perm: "guru.view", icon: <FaUsers /> },
-  { name: "Kelas", path: "/kelas", perm: "kelas.view", icon: <FaSchool /> },
-  { name: "Profil Pesantren", path: "/profil-pesantren", perm: "profil.view", icon: <FaSchool /> },
-  { name: "Pengumuman", path: "/pengumuman", perm: "pengumuman.view", icon: <FaClipboardList /> },
-  { name: "Nilai", path: "/nilai", perm: "nilai.view", icon: <FaClipboardList /> },
-  { name: "Hafalan", path: "/hafalan", perm: "hafalan.view", icon: <FaClipboardList /> },
-  { name: "Program Unit", path: "/program-unit", perm: "program_unit.view", icon: <FaClipboardList /> },
-  { name: "Absensi", path: "/absensi", perm: "absensi.view", icon: <FaClipboardList /> },
-  { name: "Absensi Guru", path: "/absensi-guru", perm: "absensi_guru.view", icon: <FaClipboardList /> },
-  { name: "Pembayaran", path: "/pembayaran", perm: "pembayaran.view", icon: <FaMoneyBill /> },
-  { name: "Buku Kas", path: "/buku-kas", perm: "bukukas.view", icon: <FaMoneyBill /> },
-  { name: "Kas Instansi", path: "/kas-instansi", perm: "kas_instansi.view", icon: <FaMoneyBill /> },
-  { name: "Konsolidasi Yayasan", path: "/kas-instansi/konsolidasi", perm: "kas_instansi.konsolidasi", icon: <FaMoneyBill /> },
-  { name: "Sahriyah", path: "/sahriyah", perm: "sahriyah.view", icon: <FaMoneyBill /> },
-  { name: "Setting Sahriyah", path: "/sahriyah-setting", perm: "sahriyah.manage", icon: <FaMoneyBill /> },
-  { name: "RFID Dashboard", path: "/rfid-dashboard", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "RFID Monitor", path: "/rfid-monitor", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "RFID Transaksi", path: "/rfid-transactions", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "RFID Topup", path: "/rfid-topup", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "RFID Refund", path: "/rfid-refund", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "RFID Mutasi", path: "/rfid-mutasi", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "RFID Merchant", path: "/rfid-merchant", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "RFID Device", path: "/rfid-devices", perm: "rfid.view", icon: <FaWifi /> },
-  { name: "Perizinan", path: "/perizinan", perm: "perizinan.view", icon: <FaClipboardList /> },
-  { name: "Kesehatan Santri", path: "/kesehatan", perm: "kesehatan.view", icon: <FaHeartbeat /> },
-  { name: "Pelanggaran", path: "/pelanggaran", perm: "pelanggaran.view", icon: <FaClipboardList /> },
-  { name: "Tamu", path: "/tamu", perm: "tamu.view", icon: <FaClipboardList /> },
-  { name: "Users", path: "/users", perm: "user.view", icon: <FaUserShield /> },
-  { name: "Roles", path: "/roles", perm: "role.manage", icon: <FaUserShield /> },
-  { name: "Audit", path: "/audit", perm: "audit.view", icon: <FaClipboardList /> },
-  { name: "Devices", path: "/devices", perm: "device.view", icon: <FaMicrochip /> },
+  { name: "Dashboard", path: "/dashboard", perm: "dashboard.view", feature: "dashboard", icon: <FaHome /> },
+  { name: "Santri", path: "/santri", perm: "santri.view", feature: "santri", icon: <FaUsers /> },
+  { name: "Wali Santri", path: "/wali", perm: "wali.view", feature: "wali", icon: <FaUsers /> },
+  { name: "Guru", path: "/guru", perm: "guru.view", feature: "guru", icon: <FaUsers /> },
+  { name: "Kelas", path: "/kelas", perm: "kelas.view", feature: "kelas", icon: <FaSchool /> },
+  { name: "Profil Pesantren", path: "/profil-pesantren", perm: "profil.view", feature: "profil", icon: <FaSchool /> },
+  { name: "Pengumuman", path: "/pengumuman", perm: "pengumuman.view", feature: "pengumuman", icon: <FaClipboardList /> },
+  { name: "Nilai", path: "/nilai", perm: "nilai.view", feature: "pendidikan", icon: <FaClipboardList /> },
+  { name: "Hafalan", path: "/hafalan", perm: "hafalan.view", feature: "pendidikan", icon: <FaClipboardList /> },
+  { name: "Program Unit", path: "/program-unit", perm: "program_unit.view", feature: "program_unit", icon: <FaClipboardList /> },
+  { name: "Absensi", path: "/absensi", perm: "absensi.view", feature: "pendidikan", icon: <FaClipboardList /> },
+  { name: "Absensi Guru", path: "/absensi-guru", perm: "absensi_guru.view", feature: "pendidikan", icon: <FaClipboardList /> },
+  { name: "Pembayaran", path: "/pembayaran", perm: "pembayaran.view", feature: "pembayaran", icon: <FaMoneyBill /> },
+  { name: "Buku Kas", path: "/buku-kas", perm: "bukukas.view", feature: "buku_kas", icon: <FaMoneyBill /> },
+  { name: "Kas Instansi", path: "/kas-instansi", perm: "kas_instansi.view", feature: "kas_instansi", icon: <FaMoneyBill /> },
+  { name: "Konsolidasi Yayasan", path: "/kas-instansi/konsolidasi", perm: "kas_instansi.konsolidasi", feature: "kas_instansi", icon: <FaMoneyBill /> },
+  { name: "Sahriyah", path: "/sahriyah", perm: "sahriyah.view", feature: "sahriyah", icon: <FaMoneyBill /> },
+  { name: "Setting Sahriyah", path: "/sahriyah-setting", perm: "sahriyah.manage", feature: "sahriyah", icon: <FaMoneyBill /> },
+  { name: "RFID Dashboard", path: "/rfid-dashboard", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "RFID Monitor", path: "/rfid-monitor", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "RFID Transaksi", path: "/rfid-transactions", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "RFID Topup", path: "/rfid-topup", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "RFID Refund", path: "/rfid-refund", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "RFID Mutasi", path: "/rfid-mutasi", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "RFID Merchant", path: "/rfid-merchant", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "RFID Device", path: "/rfid-devices", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "Perizinan", path: "/perizinan", perm: "perizinan.view", feature: "perizinan", icon: <FaClipboardList /> },
+  { name: "Kesehatan Santri", path: "/kesehatan", perm: "kesehatan.view", feature: "keamanan", icon: <FaHeartbeat /> },
+  { name: "Pelanggaran", path: "/pelanggaran", perm: "pelanggaran.view", feature: "pelanggaran", icon: <FaClipboardList /> },
+  { name: "Tamu", path: "/tamu", perm: "tamu.view", feature: "keamanan", icon: <FaClipboardList /> },
+  { name: "Users", path: "/users", perm: "user.view", feature: "sistem", icon: <FaUserShield /> },
+  { name: "Roles", path: "/roles", perm: "role.manage", feature: "sistem", icon: <FaUserShield /> },
+  { name: "Audit", path: "/audit", perm: "audit.view", feature: "audit", icon: <FaClipboardList /> },
+  { name: "Devices", path: "/devices", perm: "device.view", feature: "rfid", icon: <FaMicrochip /> },
+  { name: "Info dari KlikSantri", path: "/platform-announcements", perm: null, feature: null, icon: <FaClipboardList /> },
+  { name: "Tentang KlikSantri", path: "/about", perm: null, feature: null, icon: <FaSchool /> },
 ];
 
 const MENU_GROUPS = [
@@ -120,7 +123,7 @@ const MENU_GROUPS = [
     id: "sistem",
     title: "Sistem",
     collapsible: true,
-    items: ["Users", "Roles", "Audit", "Devices"],
+    items: ["Users", "Roles", "Audit", "Devices", "Info dari KlikSantri", "Tentang KlikSantri"],
   },
 ];
 
@@ -176,22 +179,31 @@ function SidebarBrandStyles() {
     <style>{`
       .sidebar-brand-wrap {
         width: 100%;
-        min-height: 132px;
+        min-height: 0;
         box-sizing: border-box;
         align-items: stretch !important;
       }
 
       .sidebar-brand-wrap > div {
         display: flex !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
+        flex-direction: row !important;
+        align-items: center !important;
         width: 100%;
-        gap: var(--space-3) !important;
+        gap: var(--space-2) !important;
         min-width: 0;
       }
 
       .sidebar-brand-wrap > div > div:first-child {
         flex-shrink: 0;
+        width: 40px !important;
+        height: 40px !important;
+      }
+
+      .sidebar-brand-wrap > div > div:first-child > div,
+      .sidebar-brand-wrap > div > div:first-child > img {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 13px !important;
       }
 
       .sidebar-brand-wrap .sidebar-brand-text {
@@ -199,7 +211,7 @@ function SidebarBrandStyles() {
         flex-direction: column;
         width: 100%;
         min-width: 0;
-        gap: var(--space-2);
+        gap: 2px;
       }
 
       .sidebar-brand-wrap .sidebar-brand-text > div:first-child {
@@ -209,12 +221,12 @@ function SidebarBrandStyles() {
         -webkit-box-orient: vertical !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        line-height: 1.5 !important;
-        font-size: 14px !important;
+        line-height: 1.35 !important;
+        font-size: 13px !important;
         font-weight: 700 !important;
-        color: #F8FAFC !important;
+        color: var(--sidebar-active-text) !important;
         margin: 0 !important;
-        max-height: calc(1.5em * 2);
+        max-height: calc(1.35em * 2);
         word-break: break-word;
       }
 
@@ -225,13 +237,13 @@ function SidebarBrandStyles() {
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: normal !important;
-        line-height: 1.45 !important;
-        font-size: 11px !important;
+        line-height: 1.35 !important;
+        font-size: 10px !important;
         font-weight: 500 !important;
-        color: #94A3B8 !important;
-        opacity: 0.82 !important;
+        color: var(--sidebar-text-muted) !important;
+        opacity: 0.9 !important;
         margin: 0 !important;
-        max-height: calc(1.45em * 2);
+        max-height: calc(1.35em * 2);
         word-break: break-word;
       }
     `}</style>
@@ -247,7 +259,7 @@ function SidebarBrand() {
       <div className="sidebar-brand-wrap" style={brandContainerStyle}>
         <TenantBrand
           variant="sidebar"
-          size="lg"
+          size="md"
           logo={display.logo}
           name={display.name}
           location={display.address}
@@ -276,7 +288,7 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
   }, []);
 
   const menus = useMemo(
-    () => MENU.filter((m) => hasPermission(m.perm)),
+    () => MENU.filter((m) => hasPermission(m.perm) && hasFeature(m.feature)),
     [permissionsVersion],
   );
 
@@ -500,9 +512,9 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
           <FaSignOutAlt /> <span className="sidebar-logout-text">Logout</span>
         </button>
 
-        <div style={platformMarkWrapStyle} className="sidebar-platform">
+        <Link to="/about" style={platformMarkWrapStyle} className="sidebar-platform">
           Powered by KlikSantri
-        </div>
+        </Link>
       </div>
     </div>
   );
@@ -525,10 +537,10 @@ const brandContainerStyle = {
 };
 
 const brandWrapperStyle = {
-  paddingTop: "var(--space-3)",
-  paddingBottom: "var(--space-5)",
-  marginBottom: "var(--space-5)",
-  minHeight: "148px",
+  paddingTop: "var(--space-2)",
+  paddingBottom: "var(--space-3)",
+  marginBottom: "var(--space-3)",
+  minHeight: 0,
   borderBottom: `1px solid ${SIDEBAR.border}`,
   flexShrink: 0,
   boxSizing: "border-box",
@@ -652,6 +664,7 @@ const platformMarkWrapStyle = {
   fontSize: "11px",
   lineHeight: 1.45,
   fontWeight: 500,
+  textDecoration: "none",
 };
 
 export default Sidebar;

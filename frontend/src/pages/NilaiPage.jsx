@@ -184,6 +184,7 @@ function NilaiPage() {
           </span>
           <div className="filter-bar-v3__fields" style={filterPanelStyle}>
           <select
+            className="form-select-v3"
             value={kelasId}
             onChange={(e) => {
               setKelasId(e.target.value);
@@ -198,7 +199,7 @@ function NilaiPage() {
             ))}
           </select>
 
-          <select value={bulan} onChange={(e) => setBulan(e.target.value)}>
+          <select className="form-select-v3" value={bulan} onChange={(e) => setBulan(e.target.value)}>
             {Array.from({ length: 12 }).map((_, i) => (
               <option key={i + 1} value={i + 1}>
                 Bulan {i + 1}
@@ -207,6 +208,7 @@ function NilaiPage() {
           </select>
 
           <input
+            className="form-control-v3"
             type="number"
             value={tahun}
             onChange={(e) => setTahun(e.target.value)}

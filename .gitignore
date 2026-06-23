@@ -4,6 +4,8 @@ uploads/pesantren/*
 !uploads/pesantren/.gitkeep
 
 .env
+.mt4b-railway-secrets.local
+*.secrets.local
 
 dist
 build

@@ -2,8 +2,7 @@ require("dotenv").config();
 
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
-
-const SECRET_KEY = process.env.JWT_SECRET;
+const { JWT_SECRET } = require("../config/authSecrets");
 
 /**
  * Authenticate platform superadmin JWT (tenant_id must be null).
@@ -24,7 +23,7 @@ async function platformAuthMiddleware(req, res, next) {
     let decoded;
 
     try {
-      decoded = jwt.verify(token, SECRET_KEY);
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch {
       return res.status(401).json({
         success: false,

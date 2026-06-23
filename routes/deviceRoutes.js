@@ -4,10 +4,11 @@ const pool = require("../db");
 const authMiddleware = require("../middleware/authMiddleware");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
+const requireTenantFeature = require("../middleware/requireTenantFeature");
 const deviceAuthMiddleware = require("../middleware/deviceAuthMiddleware");
 
 // Device ping — requires valid device credentials
-router.post("/ping", deviceAuthMiddleware, async (req, res) => {
+router.post("/ping", deviceAuthMiddleware, requireTenantFeature("rfid"), async (req, res) => {
   try {
     const { device_id: deviceId } = req.body;
     const ip = req.ip;
@@ -30,6 +31,7 @@ router.get(
   "/",
   authMiddleware,
   tenantMiddleware,
+  requireTenantFeature("rfid"),
   requirePermission.requireAnyPermission(["device.view", "rfid.view"]),
   async (req, res) => {
     try {

@@ -1,6 +1,6 @@
 import { FaBars } from "react-icons/fa";
+import ThemeToggle from "./ThemeToggle";
 import { getUser } from "../utils/storage";
-import { useTenantProfile } from "../context/TenantProfileContext";
 
 function getInitials(name = "") {
   const words = name
@@ -27,14 +27,20 @@ function formatRole(role = "") {
     .join(" ");
 }
 
-function PageHeader({ title, description, breadcrumb, onMenuClick }) {
+function PageHeader({
+  title,
+  description,
+  breadcrumb,
+  onMenuClick,
+  hideUserCard = false,
+  compact = false,
+}) {
   const user = getUser();
-  const { display } = useTenantProfile();
   const userName = user?.nama || user?.username || "Admin Sistem";
   const role = formatRole(user?.role);
 
   return (
-    <header className="page-header" style={headerStyle}>
+    <header className="page-header" style={compact ? compactHeaderStyle : headerStyle}>
       <div className="page-header-leading">
         {onMenuClick && (
           <button
@@ -48,21 +54,23 @@ function PageHeader({ title, description, breadcrumb, onMenuClick }) {
         )}
 
         <div className="page-header-copy">
-          {display.hasCustomName && (
-            <div style={tenantNameStyle}>{display.name}</div>
-          )}
           {breadcrumb && <div style={breadcrumbStyle}>{breadcrumb}</div>}
           {title && <h1 style={titleStyle}>{title}</h1>}
           {description && <p style={descriptionStyle}>{description}</p>}
         </div>
       </div>
 
-      <div className="page-header-user" style={userCardStyle}>
-        <div style={avatarStyle}>{getInitials(userName)}</div>
-        <div style={{ minWidth: 0 }}>
-          <div style={userNameStyle}>{userName}</div>
-          <div style={roleStyle}>{role}</div>
-        </div>
+      <div className="page-header-actions">
+        <ThemeToggle size="sm" />
+        {!hideUserCard && (
+          <div className="page-header-user" style={userCardStyle}>
+            <div style={avatarStyle}>{getInitials(userName)}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={userNameStyle}>{userName}</div>
+              <div style={roleStyle}>{role}</div>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
@@ -72,14 +80,8 @@ const headerStyle = {
   marginBottom: "var(--space-3)",
 };
 
-const tenantNameStyle = {
-  color: "var(--primary)",
-  fontSize: "10px",
-  fontWeight: 700,
-  marginBottom: "2px",
-  lineHeight: 1.3,
-  letterSpacing: "0.05em",
-  textTransform: "uppercase",
+const compactHeaderStyle = {
+  marginBottom: "var(--space-1)",
 };
 
 const breadcrumbStyle = {
@@ -109,7 +111,7 @@ const descriptionStyle = {
 
 const userCardStyle = {
   padding: "6px var(--space-3)",
-  background: "var(--surface)",
+  background: "var(--card)",
   border: "1px solid var(--border)",
   borderRadius: "var(--radius-md)",
   boxShadow: "var(--shadow-sm)",

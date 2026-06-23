@@ -3,16 +3,14 @@ require("dotenv").config();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
-
-const WALI_JWT_SECRET =
-  process.env.WALI_JWT_SECRET || "WALI_DEV_SECRET_CHANGE_IN_PRODUCTION";
+const { WALI_JWT_SECRET } = require("../config/authSecrets");
 
 const WALI_JWT_EXPIRES = process.env.WALI_JWT_EXPIRES || "30d";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
-const BLOCKED_PINS = ["000000", "123456", "111111", "654321"];
+const BLOCKED_PINS = ["000000", "123456", "111111", "456789", "654321"];
 
 const normalizePhone = (raw) => {
   if (raw === undefined || raw === null || raw === "") {
@@ -48,6 +46,14 @@ const isValidPin = (pin) => {
   }
 
   return true;
+};
+
+const isValidPinFormat = (pin) => {
+  if (typeof pin !== "string" && typeof pin !== "number") {
+    return false;
+  }
+
+  return /^\d{6}$/.test(String(pin));
 };
 
 const hashPin = async (pin) => bcrypt.hash(String(pin), 10);
@@ -291,6 +297,7 @@ async function getStatistikPesantren(tenantId) {
 module.exports = {
   normalizePhone,
   isValidPin,
+  isValidPinFormat,
   hashPin,
   verifyPin,
   findAkunByPhone,

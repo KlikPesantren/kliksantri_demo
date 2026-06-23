@@ -7,7 +7,7 @@ import {
 
 } from "react";
 
-import api
+import api, { API_BASE_URL }
 from "../../services/api";
 
 import Sidebar
@@ -195,7 +195,7 @@ function TransaksiPage() {
       const response =
         await fetch(
 
-          "http://localhost:3000/transaksi/export/excel",
+          `${API_BASE_URL}/transaksi/export/excel`,
 
           {
 
