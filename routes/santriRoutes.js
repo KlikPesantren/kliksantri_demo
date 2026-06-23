@@ -104,8 +104,8 @@ router.get("/", ...withTenant, async (req, res) => {
          to_char(santri.tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
          to_char(santri.tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren,
          kelas.nama_kelas,
-         wali_santri.nama AS nama_wali,
-         wali_santri.nomor_hp
+         santri.orang_tua AS nama_wali,
+         santri.nomor_hp_ortu AS nomor_hp
        FROM santri
        LEFT JOIN kelas
          ON santri.kelas_id = kelas.id
@@ -406,8 +406,8 @@ router.get("/:id", ...withTenant, requirePermission("santri.view"), async (req, 
          to_char(santri.tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
          to_char(santri.tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren,
          kelas.nama_kelas,
-         wali_santri.nama AS nama_wali,
-         wali_santri.nomor_hp
+         santri.orang_tua AS nama_wali,
+         santri.nomor_hp_ortu AS nomor_hp
        FROM santri
        LEFT JOIN kelas
          ON santri.kelas_id = kelas.id
