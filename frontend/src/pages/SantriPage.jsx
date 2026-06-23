@@ -488,8 +488,8 @@ function SantriPage() {
                         <td>{item.jenis_kelamin || "-"}</td>
                         <td>{formatDateIndonesia(item.tanggal_masuk_pesantren) || "-"}</td>
                         <td>{item.nama_kelas || "—"}</td>
-                        <td>{item.nama_wali || "—"}</td>
-                        <td>{item.nomor_hp || "—"}</td>
+                        <td>{item.orang_tua || "—"}</td>
+                        <td>{item.nomor_hp_ortu || "—"}</td>
                         <td className="table-v3__cell--mono">{item.uid_rfid || "—"}</td>
                         <td>Rp {Number(item.saldo || 0).toLocaleString()}</td>
                         <td>{item.status || "aktif"}</td>
@@ -542,8 +542,8 @@ function SantriPage() {
               value={formatDateIndonesia(detailSantri.tanggal_masuk_pesantren) || "-"}
             />
             <DetailItem label="Kelas" value={detailSantri.nama_kelas || "-"} />
-            <DetailItem label="Wali" value={detailSantri.nama_wali || "-"} />
-            <DetailItem label="Nomor HP Wali" value={detailSantri.nomor_hp || "-"} />
+            <DetailItem label="Wali" value={detailSantri.orang_tua || "-"} />
+            <DetailItem label="Nomor HP Wali" value={detailSantri.nomor_hp_ortu || "-"} />
             <DetailItem label="UID RFID" value={detailSantri.uid_rfid || "-"} />
             <DetailItem label="Status" value={detailSantri.status || "aktif"} />
             <DetailItem label="Alamat Lengkap" value={detailSantri.alamat || "-"} fullWidth />
