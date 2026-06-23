@@ -18,10 +18,12 @@ import {
   FormField,
   Input,
   Select,
+  Textarea,
   FormGrid,
   FormSection,
   FormActionBar,
 } from "../components/ui/form";
+import Modal from "../components/Modal";
 import { exportExcel } from "../utils/exportExcel";
 import SantriImportModal from "../components/santri/SantriImportModal";
 import SantriOperationalChecklist from "../components/santri/SantriOperationalChecklist";
@@ -45,16 +47,39 @@ function formatExitSummary(summary) {
   return lines.join("\n");
 }
 
+function formatDateIndonesia(value) {
+  if (!value) return "";
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatTempatTanggalLahir(item) {
+  const tempat = item?.tempat_lahir || "";
+  const tanggal = formatDateIndonesia(item?.tanggal_lahir);
+  if (tempat && tanggal) return `${tempat}, ${tanggal}`;
+  return tempat || tanggal || "-";
+}
+
 function SantriPage() {
   const [santri, setSantri] = useState([]);
   const [kelas, setKelas] = useState([]);
   const [editId, setEditId] = useState(null);
   const [originalStatus, setOriginalStatus] = useState("aktif");
   const [importOpen, setImportOpen] = useState(false);
+  const [detailSantri, setDetailSantri] = useState(null);
   const [tableSearch, setTableSearch] = useState("");
   const [form, setForm] = useState({
     nis: "",
     nama: "",
+    tempat_lahir: "",
+    tanggal_lahir: "",
+    jenis_kelamin: "",
+    tanggal_masuk_pesantren: "",
     uid_rfid: "",
     alamat: "",
     orang_tua: "",
@@ -91,7 +116,19 @@ function SantriPage() {
     const q = tableSearch.trim().toLowerCase();
     if (!q) return santri;
     return santri.filter((item) =>
-      [item.nis, item.nama, item.nama_kelas, item.nama_wali, item.nomor_hp, item.uid_rfid]
+      [
+        item.nis,
+        item.nama,
+        item.tempat_lahir,
+        item.tanggal_lahir,
+        item.jenis_kelamin,
+        item.tanggal_masuk_pesantren,
+        item.alamat,
+        item.nama_kelas,
+        item.nama_wali,
+        item.nomor_hp,
+        item.uid_rfid,
+      ]
         .some((field) => String(field || "").toLowerCase().includes(q)),
     );
   }, [santri, tableSearch]);
@@ -125,6 +162,12 @@ function SantriPage() {
     setForm({
       nis: item.nis || "",
       nama: item.nama || "",
+      tempat_lahir: item.tempat_lahir || "",
+      tanggal_lahir: item.tanggal_lahir ? String(item.tanggal_lahir).slice(0, 10) : "",
+      jenis_kelamin: item.jenis_kelamin || "",
+      tanggal_masuk_pesantren: item.tanggal_masuk_pesantren
+        ? String(item.tanggal_masuk_pesantren).slice(0, 10)
+        : "",
       uid_rfid: item.uid_rfid || "",
       alamat: item.alamat || "",
       orang_tua: item.nama_wali || "",
@@ -180,6 +223,10 @@ function SantriPage() {
     setForm({
       nis: "",
       nama: "",
+      tempat_lahir: "",
+      tanggal_lahir: "",
+      jenis_kelamin: "",
+      tanggal_masuk_pesantren: "",
       uid_rfid: "",
       alamat: "",
       orang_tua: "",
@@ -196,11 +243,16 @@ function SantriPage() {
     const rows = santri.map((item) => ({
       NIS: item.nis,
       Nama: item.nama,
+      TempatLahir: item.tempat_lahir,
+      TanggalLahir: item.tanggal_lahir,
+      JenisKelamin: item.jenis_kelamin,
+      TanggalMasukPesantren: item.tanggal_masuk_pesantren,
       Kelas: item.nama_kelas,
       Wali: item.nama_wali,
       NomorHP: item.nomor_hp,
       RFID: item.uid_rfid,
       Saldo: item.saldo,
+      Alamat: item.alamat,
     }));
 
     exportExcel(rows, "Santri");
@@ -236,6 +288,45 @@ function SantriPage() {
               </FormField>
               <FormField label="Nama Lengkap" htmlFor="santri-nama" required>
                 <Input id="santri-nama" type="text" name="nama" value={form.nama} onChange={handleChange} />
+              </FormField>
+              <FormField label="Tempat Lahir" htmlFor="santri-tempat-lahir">
+                <Input
+                  id="santri-tempat-lahir"
+                  type="text"
+                  name="tempat_lahir"
+                  value={form.tempat_lahir}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Tanggal Lahir" htmlFor="santri-tanggal-lahir">
+                <Input
+                  id="santri-tanggal-lahir"
+                  type="date"
+                  name="tanggal_lahir"
+                  value={form.tanggal_lahir}
+                  onChange={handleChange}
+                />
+              </FormField>
+              <FormField label="Jenis Kelamin" htmlFor="santri-jenis-kelamin">
+                <Select
+                  id="santri-jenis-kelamin"
+                  name="jenis_kelamin"
+                  value={form.jenis_kelamin}
+                  onChange={handleChange}
+                >
+                  <option value="">Pilih Jenis Kelamin</option>
+                  <option value="Laki-laki">Laki-laki</option>
+                  <option value="Perempuan">Perempuan</option>
+                </Select>
+              </FormField>
+              <FormField label="Tanggal Masuk Pesantren" htmlFor="santri-tanggal-masuk">
+                <Input
+                  id="santri-tanggal-masuk"
+                  type="date"
+                  name="tanggal_masuk_pesantren"
+                  value={form.tanggal_masuk_pesantren}
+                  onChange={handleChange}
+                />
               </FormField>
               <FormField label="Kelas" htmlFor="santri-kelas">
                 <Select id="santri-kelas" name="kelas_id" value={form.kelas_id} onChange={handleChange}>
@@ -279,8 +370,14 @@ function SantriPage() {
 
           <FormSection title="Data Administrasi">
             <FormGrid>
-              <FormField label="Alamat" htmlFor="santri-alamat" fullWidth>
-                <Input id="santri-alamat" type="text" name="alamat" value={form.alamat} onChange={handleChange} />
+              <FormField label="Alamat Lengkap" htmlFor="santri-alamat" fullWidth>
+                <Textarea
+                  id="santri-alamat"
+                  name="alamat"
+                  rows={3}
+                  value={form.alamat}
+                  onChange={handleChange}
+                />
               </FormField>
               <FormField label="Upload Foto" htmlFor="santri-foto" fullWidth>
                 <ImageUploadField
@@ -355,6 +452,9 @@ function SantriPage() {
                       <th>Foto</th>
                       <th>NIS</th>
                       <th>Nama</th>
+                      <th>TTL</th>
+                      <th>JK</th>
+                      <th>Tanggal Masuk</th>
                       <th>Kelas</th>
                       <th>Wali</th>
                       <th>No Telepon</th>
@@ -384,6 +484,9 @@ function SantriPage() {
                         </td>
                         <td>{item.nis}</td>
                         <td className="table-v3__cell--strong">{item.nama}</td>
+                        <td>{formatTempatTanggalLahir(item)}</td>
+                        <td>{item.jenis_kelamin || "-"}</td>
+                        <td>{formatDateIndonesia(item.tanggal_masuk_pesantren) || "-"}</td>
                         <td>{item.nama_kelas || "—"}</td>
                         <td>{item.nama_wali || "—"}</td>
                         <td>{item.nomor_hp || "—"}</td>
@@ -393,6 +496,7 @@ function SantriPage() {
                         <td className="table-v3__cell--actions">
                           <TableActions
                             items={[
+                              { type: "detail", onClick: () => setDetailSantri(item) },
                               { type: "edit", onClick: () => editSantri(item) },
                               { type: "delete", onClick: () => deleteSantri(item.id) },
                             ]}
@@ -420,8 +524,69 @@ function SantriPage() {
         onClose={() => setImportOpen(false)}
         onImported={getSantri}
       />
+
+      <Modal
+        open={Boolean(detailSantri)}
+        title="Detail Santri"
+        onClose={() => setDetailSantri(null)}
+        width={680}
+      >
+        {detailSantri ? (
+          <div style={detailGridStyle}>
+            <DetailItem label="Nama Lengkap" value={detailSantri.nama || "-"} />
+            <DetailItem label="NIS" value={detailSantri.nis || "-"} />
+            <DetailItem label="Tempat, Tanggal Lahir" value={formatTempatTanggalLahir(detailSantri)} />
+            <DetailItem label="Jenis Kelamin" value={detailSantri.jenis_kelamin || "-"} />
+            <DetailItem
+              label="Tanggal Masuk Pesantren"
+              value={formatDateIndonesia(detailSantri.tanggal_masuk_pesantren) || "-"}
+            />
+            <DetailItem label="Kelas" value={detailSantri.nama_kelas || "-"} />
+            <DetailItem label="Wali" value={detailSantri.nama_wali || "-"} />
+            <DetailItem label="Nomor HP Wali" value={detailSantri.nomor_hp || "-"} />
+            <DetailItem label="UID RFID" value={detailSantri.uid_rfid || "-"} />
+            <DetailItem label="Status" value={detailSantri.status || "aktif"} />
+            <DetailItem label="Alamat Lengkap" value={detailSantri.alamat || "-"} fullWidth />
+          </div>
+        ) : null}
+      </Modal>
     </AppShell>
   );
 }
+
+function DetailItem({ label, value, fullWidth = false }) {
+  return (
+    <div style={{ ...detailItemStyle, ...(fullWidth ? { gridColumn: "1 / -1" } : {}) }}>
+      <span style={detailLabelStyle}>{label}</span>
+      <strong style={detailValueStyle}>{value}</strong>
+    </div>
+  );
+}
+
+const detailGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 12,
+};
+
+const detailItemStyle = {
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-md)",
+  padding: "12px 14px",
+  background: "var(--surface-muted)",
+};
+
+const detailLabelStyle = {
+  display: "block",
+  marginBottom: 5,
+  fontSize: 12,
+  color: "var(--text-secondary)",
+  fontWeight: 700,
+};
+
+const detailValueStyle = {
+  color: "var(--text-primary)",
+  whiteSpace: "pre-wrap",
+};
 
 export default SantriPage;

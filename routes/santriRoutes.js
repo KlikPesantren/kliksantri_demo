@@ -101,6 +101,8 @@ router.get("/", ...withTenant, async (req, res) => {
     const result = await pool.query(
       `SELECT
          santri.*,
+         to_char(santri.tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
+         to_char(santri.tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren,
          kelas.nama_kelas,
          wali_santri.nama AS nama_wali,
          wali_santri.nomor_hp
@@ -134,6 +136,10 @@ router.post(
       const {
         nis,
         nama,
+        tempat_lahir,
+        tanggal_lahir,
+        jenis_kelamin,
+        tanggal_masuk_pesantren,
         uid_rfid,
         alamat,
         orang_tua,
@@ -151,14 +157,21 @@ router.post(
 
       const result = await client.query(
         `INSERT INTO santri (
-           nis, nama, uid_rfid, alamat, orang_tua,
+           nis, nama, tempat_lahir, tanggal_lahir, jenis_kelamin,
+           tanggal_masuk_pesantren, uid_rfid, alamat, orang_tua,
            nomor_hp_ortu, kelas_id, foto, tenant_id
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          RETURNING *,
+            to_char(tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
+            to_char(tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren`,
         [
           nis,
           nama,
+          tempat_lahir || null,
+          tanggal_lahir || null,
+          jenis_kelamin || null,
+          tanggal_masuk_pesantren || null,
           uid_rfid,
           alamat,
           orang_tua,
@@ -230,6 +243,10 @@ router.put(
       const {
         nis,
         nama,
+        tempat_lahir,
+        tanggal_lahir,
+        jenis_kelamin,
+        tanggal_masuk_pesantren,
         uid_rfid,
         alamat,
         orang_tua,
@@ -266,18 +283,28 @@ router.put(
         `UPDATE santri
          SET nis = $1,
              nama = $2,
-             uid_rfid = $3,
-             alamat = $4,
-             orang_tua = $5,
-             nomor_hp_ortu = $6,
-             kelas_id = $7,
-             foto = $8,
-             status = $9
-         WHERE id = $10 AND tenant_id = $11
-         RETURNING *`,
+             tempat_lahir = $3,
+             tanggal_lahir = $4,
+             jenis_kelamin = $5,
+             tanggal_masuk_pesantren = $6,
+             uid_rfid = $7,
+             alamat = $8,
+             orang_tua = $9,
+             nomor_hp_ortu = $10,
+             kelas_id = $11,
+             foto = $12,
+             status = $13
+         WHERE id = $14 AND tenant_id = $15
+          RETURNING *,
+            to_char(tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
+            to_char(tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren`,
         [
           nis,
           nama,
+          tempat_lahir || null,
+          tanggal_lahir || null,
+          jenis_kelamin || null,
+          tanggal_masuk_pesantren || null,
           uid_rfid,
           alamat,
           orang_tua,
@@ -365,6 +392,39 @@ router.get("/rfid/:uid", ...withTenant, requirePermission("santri.view"), async 
     }
 
     res.json(result.rows[0]);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/:id", ...withTenant, requirePermission("santri.view"), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         santri.*,
+         to_char(santri.tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
+         to_char(santri.tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren,
+         kelas.nama_kelas,
+         wali_santri.nama AS nama_wali,
+         wali_santri.nomor_hp
+       FROM santri
+       LEFT JOIN kelas
+         ON santri.kelas_id = kelas.id
+        AND kelas.tenant_id = santri.tenant_id
+       LEFT JOIN wali_santri
+         ON santri.id = wali_santri.santri_id
+        AND wali_santri.tenant_id = santri.tenant_id
+       WHERE santri.id = $1
+         AND santri.tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Santri tidak ditemukan" });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, error: err.message });
