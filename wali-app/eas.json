@@ -13,6 +13,15 @@
       }
     },
     "production": {
+      "distribution": "internal",
+      "env": {
+        "API_BASE_URL": "https://kliksantridemo-production-1930.up.railway.app"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "store": {
       "env": {
         "API_BASE_URL": "https://kliksantridemo-production-1930.up.railway.app"
       },
