@@ -125,8 +125,8 @@ function SantriPage() {
         item.tanggal_masuk_pesantren,
         item.alamat,
         item.nama_kelas,
-        item.nama_wali,
-        item.nomor_hp,
+        item.orang_tua,
+        item.nomor_hp_ortu,
         item.uid_rfid,
       ]
         .some((field) => String(field || "").toLowerCase().includes(q)),
@@ -170,8 +170,8 @@ function SantriPage() {
         : "",
       uid_rfid: item.uid_rfid || "",
       alamat: item.alamat || "",
-      orang_tua: item.nama_wali || "",
-      nomor_hp_ortu: item.nomor_hp || "",
+      orang_tua: item.orang_tua || "",
+      nomor_hp_ortu: item.nomor_hp_ortu || "",
       kelas_id: item.kelas_id || "",
       foto: item.foto || "",
       status: item.status || "aktif",
@@ -248,8 +248,8 @@ function SantriPage() {
       JenisKelamin: item.jenis_kelamin,
       TanggalMasukPesantren: item.tanggal_masuk_pesantren,
       Kelas: item.nama_kelas,
-      Wali: item.nama_wali,
-      NomorHP: item.nomor_hp,
+      OrangTua: item.orang_tua,
+      NomorHPWali: item.nomor_hp_ortu,
       RFID: item.uid_rfid,
       Saldo: item.saldo,
       Alamat: item.alamat,
@@ -457,7 +457,7 @@ function SantriPage() {
                       <th>Tanggal Masuk</th>
                       <th>Kelas</th>
                       <th>Wali</th>
-                      <th>No Telepon</th>
+                      <th>No HP Wali</th>
                       <th>RFID</th>
                       <th>Saldo</th>
                       <th>Status</th>
