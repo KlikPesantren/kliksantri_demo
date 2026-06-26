@@ -77,10 +77,11 @@ function SearchableSantriSelect({
     onChange(String(item.id));
     setQuery(getSantriLabel(item));
     setOpen(false);
+    setFocused(false);
   };
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div ref={containerRef} className="santri-search-select">
       <Input
         id={id}
         type="search"
@@ -96,7 +97,7 @@ function SearchableSantriSelect({
       />
 
       {open ? (
-        <div style={dropdownStyle}>
+        <div className="santri-search-select__dropdown">
           {matches.length > 0 ? (
             matches.map((item) => (
               <button
@@ -104,65 +105,21 @@ function SearchableSantriSelect({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => handleSelect(item)}
-                style={optionStyle}
+                className="santri-search-select__option"
               >
-                <span style={nameStyle}>{item.nama}</span>
-                {getSantriMeta(item) ? <span style={metaStyle}>{getSantriMeta(item)}</span> : null}
+                <span className="santri-search-select__name">{item.nama}</span>
+                {getSantriMeta(item) ? (
+                  <span className="santri-search-select__meta">{getSantriMeta(item)}</span>
+                ) : null}
               </button>
             ))
           ) : (
-            <div style={emptyStyle}>Santri tidak ditemukan</div>
+            <div className="santri-search-select__empty">Santri tidak ditemukan</div>
           )}
         </div>
       ) : null}
     </div>
   );
 }
-
-const dropdownStyle = {
-  position: "absolute",
-  top: "calc(100% + 4px)",
-  left: 0,
-  right: 0,
-  zIndex: 30,
-  maxHeight: 240,
-  overflowY: "auto",
-  background: "var(--surface-card, #fff)",
-  border: "1px solid var(--border-subtle, #e5e7eb)",
-  borderRadius: 8,
-  boxShadow: "0 10px 24px rgba(15, 23, 42, 0.14)",
-  padding: 4,
-};
-
-const optionStyle = {
-  display: "block",
-  width: "100%",
-  border: "none",
-  borderRadius: 6,
-  background: "transparent",
-  cursor: "pointer",
-  padding: "9px 10px",
-  textAlign: "left",
-};
-
-const nameStyle = {
-  display: "block",
-  color: "var(--text-primary)",
-  fontSize: 14,
-  fontWeight: 700,
-};
-
-const metaStyle = {
-  display: "block",
-  marginTop: 2,
-  color: "var(--text-secondary)",
-  fontSize: 12,
-};
-
-const emptyStyle = {
-  padding: "10px 12px",
-  color: "var(--text-secondary)",
-  fontSize: 13,
-};
 
 export default SearchableSantriSelect;
