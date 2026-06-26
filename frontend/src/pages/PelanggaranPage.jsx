@@ -8,6 +8,7 @@ import Button from "../components/ui/Button";
 import DataTableCard from "../components/ui/DataTableCard";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import SearchableSantriSelect from "../components/santri/SearchableSantriSelect";
 import {
   OperationalPageStyles,
   resolvePoinTone,
@@ -140,18 +141,12 @@ function PelanggaranPage() {
 
           <FormGrid>
             <FormField label="Santri" htmlFor="pel-santri" required>
-              <Select
+              <SearchableSantriSelect
                 id="pel-santri"
+                santri={santri}
                 value={form.santri_id}
-                onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
-              >
-                <option value="">Pilih Santri</option>
-                {santri.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nama}
-                  </option>
-                ))}
-              </Select>
+                onChange={(santriId) => setForm({ ...form, santri_id: santriId })}
+              />
             </FormField>
             <FormField label="Tanggal" htmlFor="pel-tgl">
               <Input

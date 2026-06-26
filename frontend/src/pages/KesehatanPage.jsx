@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
@@ -8,6 +8,7 @@ import StatusBadge from "../components/ui/StatusBadge";
 import DataTableCard from "../components/ui/DataTableCard";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
+import SearchableSantriSelect from "../components/santri/SearchableSantriSelect";
 import { Table, TableScroll, TableActions, TablePagination } from "../components/ui/table";
 import { LegacyPageStyles } from "../components/shared/PageResponsiveStyles";
 import {
@@ -17,7 +18,6 @@ import {
 import { FaSearch } from "react-icons/fa";
 import {
   FormField,
-  Input,
   Select,
   Textarea,
   FormGrid,
@@ -173,18 +173,12 @@ function KesehatanPage() {
             </SectionHeading>
             <FormGrid>
               <FormField label="Santri" htmlFor="kes-santri" required>
-                <Select
+                <SearchableSantriSelect
                   id="kes-santri"
+                  santri={santri}
                   value={form.santri_id}
-                  onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
-                >
-                  <option value="">Pilih Santri</option>
-                  {santri.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nama}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(santriId) => setForm({ ...form, santri_id: santriId })}
+                />
               </FormField>
               <FormField label="Status Kesehatan" htmlFor="kes-status">
                 <Select

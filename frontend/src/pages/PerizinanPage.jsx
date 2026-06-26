@@ -9,6 +9,7 @@ import DataTableCard from "../components/ui/DataTableCard";
 import SearchInput from "../components/ui/SearchInput";
 import EmptyState from "../components/ui/EmptyState";
 import StatusBadge from "../components/ui/StatusBadge";
+import SearchableSantriSelect from "../components/santri/SearchableSantriSelect";
 import {
   OperationalPageStyles,
   resolveStatusClass,
@@ -17,7 +18,6 @@ import { Table, TableScroll, TableActions, TablePagination, useClientPagination 
 import {
   FormField,
   Input,
-  Select,
   Textarea,
   FormGrid,
   FormActionBar,
@@ -154,18 +154,12 @@ function PerizinanPage() {
 
           <FormGrid>
             <FormField label="Santri" htmlFor="izin-santri" required>
-              <Select
+              <SearchableSantriSelect
                 id="izin-santri"
+                santri={santri}
                 value={form.santri_id}
-                onChange={(e) => setForm({ ...form, santri_id: e.target.value })}
-              >
-                <option value="">Pilih Santri</option>
-                {santri.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nama}
-                  </option>
-                ))}
-              </Select>
+                onChange={(santriId) => setForm({ ...form, santri_id: santriId })}
+              />
             </FormField>
             <FormField label="Tanggal Keluar" htmlFor="izin-tgl">
               <Input
