@@ -212,11 +212,19 @@ router.get("/", async (req, res) => {
     const total = countResult.rows[0]?.total || 0;
 
     let listSql = `
-      SELECT p.*, s.nama, s.nis
+      SELECT p.*, s.nama, s.nis, lpd.latest_invoice_id
       FROM pembayaran p
       LEFT JOIN santri s
         ON p.santri_id = s.id
        AND s.tenant_id = p.tenant_id
+      LEFT JOIN LATERAL (
+        SELECT pd.id AS latest_invoice_id
+        FROM pembayaran_detail pd
+        WHERE pd.pembayaran_id = p.id
+          AND pd.tenant_id = p.tenant_id
+        ORDER BY pd.tanggal DESC, pd.id DESC
+        LIMIT 1
+      ) lpd ON true
       WHERE ${whereSql}
       ORDER BY p.id DESC
     `;
@@ -525,11 +533,13 @@ router.put("/bayar/:id", async (req, res) => {
       ]
     );
 
-    await pool.query(
+    const detailResult = await pool.query(
       `INSERT INTO pembayaran_detail (pembayaran_id, nominal, petugas, tenant_id)
-       VALUES ($1, $2, $3, $4)`,
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
       [req.params.id, nominal, petugas, req.tenantId]
     );
+    const invoiceId = detailResult.rows[0]?.id;
 
     await pool.query(
       `INSERT INTO buku_kas (
@@ -541,7 +551,7 @@ router.put("/bayar/:id", async (req, res) => {
       [`${data.nama_tagihan} - ${data.nama}`, nominal, petugas, req.tenantId]
     );
 
-    res.json({ success: true });
+    res.json({ success: true, invoice_id: invoiceId });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, error: err.message });

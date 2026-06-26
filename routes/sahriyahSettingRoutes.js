@@ -23,6 +23,59 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.put("/bulk", async (req, res) => {
+  try {
+    const { nominal_uang, nominal_beras, keterangan } = req.body;
+
+    if (nominal_uang === undefined || nominal_beras === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: "nominal_uang dan nominal_beras wajib diisi",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO sahriyah_setting (
+        santri_id,
+        nominal_uang,
+        nominal_beras,
+        keterangan,
+        tenant_id
+      )
+      SELECT
+        s.id,
+        $1,
+        $2,
+        $3,
+        $4
+      FROM santri s
+      WHERE s.tenant_id = $4
+      ON CONFLICT (tenant_id, santri_id)
+      DO UPDATE SET
+        nominal_uang = EXCLUDED.nominal_uang,
+        nominal_beras = EXCLUDED.nominal_beras,
+        keterangan = EXCLUDED.keterangan
+      RETURNING id
+      `,
+      [
+        Number(nominal_uang || 0),
+        Number(nominal_beras || 0),
+        keterangan || "",
+        req.tenantId,
+      ]
+    );
+
+    res.json({
+      success: true,
+      updated_count: result.rowCount,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.put("/:id", async (req, res) => {
   try {
     const { nominal_uang, nominal_beras, keterangan } = req.body;

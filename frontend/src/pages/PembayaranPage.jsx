@@ -7,6 +7,7 @@ import GenerateTagihanForm from "../components/pembayaran/GenerateTagihanForm";
 import TagihanTable from "../components/pembayaran/TagihanTable";
 import BayarModal from "../components/pembayaran/BayarModal";
 import HistoriModal from "../components/pembayaran/HistoriModal";
+import SahriyahInvoiceModal from "../components/sahriyah/SahriyahInvoiceModal";
 import { DEFAULT_PAGE_SIZE } from "../hooks/useClientPagination";
 import {
   KeuanganResponsiveStyles,
@@ -75,6 +76,9 @@ function PembayaranPage() {
   const [nominalBayar, setNominalBayar] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingBayar, setIsSavingBayar] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [invoice, setInvoice] = useState(null);
+  const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
 
   const searchDebounceRef = useRef(null);
 
@@ -306,7 +310,7 @@ function PembayaranPage() {
     setIsSavingBayar(true);
 
     try {
-      await api.put(`/pembayaran/bayar/${selectedTagihan.id}`, {
+      const response = await api.put(`/pembayaran/bayar/${selectedTagihan.id}`, {
         nominal: Number(nominalBayar),
         petugas: user?.nama || user?.username || "Admin",
       });
@@ -316,6 +320,10 @@ function PembayaranPage() {
       setShowBayar(false);
       setSelectedTagihan(null);
       setNominalBayar("");
+
+      if (response.data?.invoice_id) {
+        await lihatInvoice(response.data.invoice_id);
+      }
     } catch (err) {
       console.error(err);
       alert(getApiError(err, "Gagal menyimpan pembayaran"));
@@ -346,6 +354,64 @@ function PembayaranPage() {
       console.error(err);
       alert(getApiError(err, "Gagal memuat riwayat pembayaran"));
     }
+  };
+
+  const lihatInvoice = async (invoiceId) => {
+    if (!invoiceId) return;
+    setShowInvoice(true);
+    setIsLoadingInvoice(true);
+
+    try {
+      const response = await api.get(`/invoice/pembayaran/${invoiceId}`);
+      setInvoice(response.data.data);
+    } catch (err) {
+      console.error(err);
+      setShowInvoice(false);
+      alert(getApiError(err, "Gagal memuat invoice"));
+    } finally {
+      setIsLoadingInvoice(false);
+    }
+  };
+
+  const tutupInvoice = () => {
+    setShowInvoice(false);
+    setInvoice(null);
+    setIsLoadingInvoice(false);
+  };
+
+  const printInvoice = async () => {
+    if (!invoice?.invoice_id) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Popup print diblokir browser");
+      return;
+    }
+
+    try {
+      const response = await api.get(`/invoice/pembayaran/${invoice.invoice_id}/print`, {
+        responseType: "text",
+      });
+      printWindow.document.open();
+      printWindow.document.write(response.data);
+      printWindow.document.close();
+      printWindow.focus();
+    } catch (err) {
+      console.error(err);
+      printWindow.close();
+      alert(getApiError(err, "Gagal membuka print invoice"));
+    }
+  };
+
+  const shareInvoiceWhatsApp = () => {
+    const number = invoice?.wali?.whatsapp_number;
+    if (!number) {
+      alert("Nomor WhatsApp wali belum tersedia");
+      return;
+    }
+
+    const text = encodeURIComponent(invoice.whatsapp_text || "");
+    window.open(`https://wa.me/${number}?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   const handleExport = async () => {
@@ -424,6 +490,7 @@ function PembayaranPage() {
             onExport={handleExport}
             onBayar={bukaBayar}
             onHistori={lihatRiwayat}
+            onInvoice={lihatInvoice}
             onHapus={hapusTagihan}
           />
         </div>
@@ -443,6 +510,16 @@ function PembayaranPage() {
           open={showRiwayat}
           riwayat={riwayat}
           onClose={() => setShowRiwayat(false)}
+          onInvoice={lihatInvoice}
+        />
+
+        <SahriyahInvoiceModal
+          open={showInvoice}
+          invoice={invoice}
+          loading={isLoadingInvoice}
+          onClose={tutupInvoice}
+          onPrint={printInvoice}
+          onWhatsApp={shareInvoiceWhatsApp}
         />
       </div>
     </AppShell>

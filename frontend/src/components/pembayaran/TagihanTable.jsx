@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FaMoneyBillWave } from "react-icons/fa";
+import { FaFileInvoice, FaMoneyBillWave } from "react-icons/fa";
 import Button from "../ui/Button";
 import DataTableCard from "../ui/DataTableCard";
 import TableToolbar from "../ui/TableToolbar";
@@ -44,6 +44,7 @@ function TagihanTable({
   onExport,
   onBayar,
   onHistori,
+  onInvoice,
   onHapus,
 }) {
   const pageSize = pagination?.limit || DEFAULT_PAGE_SIZE;
@@ -151,6 +152,13 @@ function TagihanTable({
                     <td className="table-v3__cell--actions">
                       <TableActions
                         items={[
+                          {
+                            type: "custom",
+                            icon: FaFileInvoice,
+                            title: "Lihat Invoice",
+                            hidden: !p.latest_invoice_id || !onInvoice,
+                            onClick: () => onInvoice(p.latest_invoice_id),
+                          },
                           {
                             type: "custom",
                             icon: FaMoneyBillWave,

@@ -206,7 +206,7 @@ function renderSahriyahPrintHtml(invoice) {
           <td>${escapeHtml(item.description || "Sahriyah")}</td>
           <td>${escapeHtml(`${item.bulan_label || "-"} ${item.tahun || ""}`.trim())}</td>
           <td class="right">${escapeHtml(item.nominal_label || invoice.total_label || "-")}</td>
-          <td class="right">${escapeHtml(Number(item.nominal_beras || 0))} Kg</td>
+          <td class="right">${item.nominal_beras == null ? "-" : `${escapeHtml(Number(item.nominal_beras || 0))} Kg`}</td>
         </tr>
       </tbody>
     </table>
@@ -249,6 +249,42 @@ router.get("/sahriyah/:id", async (req, res) => {
 router.get("/sahriyah/:id/print", async (req, res) => {
   try {
     const invoice = await invoiceService.getSahriyahInvoice(
+      req.tenantId,
+      Number(req.params.id)
+    );
+    const html = renderSahriyahPrintHtml(withAbsoluteAssetUrl(req, invoice));
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (err) {
+    res.status(err.statusCode || 500).send(
+      `<!doctype html><html><body><h1>${escapeHtml(err.message)}</h1></body></html>`
+    );
+  }
+});
+
+router.get("/pembayaran/:id", async (req, res) => {
+  try {
+    const invoice = await invoiceService.getPembayaranInvoice(
+      req.tenantId,
+      Number(req.params.id)
+    );
+
+    res.json({
+      success: true,
+      data: withAbsoluteAssetUrl(req, invoice),
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+router.get("/pembayaran/:id/print", async (req, res) => {
+  try {
+    const invoice = await invoiceService.getPembayaranInvoice(
       req.tenantId,
       Number(req.params.id)
     );

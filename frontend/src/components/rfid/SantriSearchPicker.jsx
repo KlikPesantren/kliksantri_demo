@@ -87,8 +87,8 @@ function SantriSearchPicker({
     setMatches([]);
   };
 
-  const handleInputChange = (e) => {
-    const next = e.target.value;
+  const handleInputChange = (event) => {
+    const next = event.target.value;
     setQuery(next);
     setOpen(true);
     if (value && selectedSantri && next !== selectedSantri.nama) {
@@ -101,7 +101,7 @@ function SantriSearchPicker({
 
   return (
     <FormField label={label} htmlFor={id} required={required} className={className}>
-      <div ref={containerRef} style={{ position: "relative" }}>
+      <div ref={containerRef} className="santri-search-picker">
         <Input
           id={id}
           type="text"
@@ -113,94 +113,34 @@ function SantriSearchPicker({
           autoComplete="off"
         />
 
-        {open && query.trim() && matches.length > 0 && (
-          <ul
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 20,
-              margin: "4px 0 0",
-              padding: 0,
-              listStyle: "none",
-              background: "var(--surface-card, #fff)",
-              border: "1px solid var(--border-subtle, #e5e7eb)",
-              borderRadius: "8px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-              maxHeight: "240px",
-              overflowY: "auto",
-            }}
-          >
-            {matches.map((s) => (
-              <li key={s.id}>
+        {open && query.trim() && matches.length > 0 ? (
+          <ul className="santri-search-picker__dropdown">
+            {matches.map((santri) => (
+              <li key={santri.id}>
                 <button
                   type="button"
-                  onClick={() => handleSelect(s)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                  }}
+                  onClick={() => handleSelect(santri)}
+                  className="santri-search-picker__option"
                 >
-                  <strong>{s.nama}</strong>
-                  <span style={{ display: "block", fontSize: "12px", color: "var(--text-secondary)" }}>
-                    {[s.nis && `NIS: ${s.nis}`, s.uid_rfid && `UID: ${s.uid_rfid}`]
+                  <strong className="santri-search-picker__name">{santri.nama}</strong>
+                  <span className="santri-search-picker__meta">
+                    {[santri.nis && `NIS: ${santri.nis}`, santri.uid_rfid && `UID: ${santri.uid_rfid}`]
                       .filter(Boolean)
-                      .join(" · ") || "—"}
+                      .join(" - ") || "-"}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
 
-        {open && query.trim() && !isSearching && matches.length === 0 && (
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 20,
-              marginTop: "4px",
-              padding: "10px 12px",
-              background: "var(--surface-card, #fff)",
-              border: "1px solid var(--border-subtle, #e5e7eb)",
-              borderRadius: "8px",
-              fontSize: "13px",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Tidak ada santri yang cocok
-          </div>
-        )}
+        {open && query.trim() && !isSearching && matches.length === 0 ? (
+          <div className="santri-search-picker__status">Tidak ada santri yang cocok</div>
+        ) : null}
 
-        {open && query.trim() && isSearching && (
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 20,
-              marginTop: "4px",
-              padding: "10px 12px",
-              background: "var(--surface-card, #fff)",
-              border: "1px solid var(--border-subtle, #e5e7eb)",
-              borderRadius: "8px",
-              fontSize: "13px",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Mencari...
-          </div>
-        )}
+        {open && query.trim() && isSearching ? (
+          <div className="santri-search-picker__status">Mencari...</div>
+        ) : null}
       </div>
     </FormField>
   );

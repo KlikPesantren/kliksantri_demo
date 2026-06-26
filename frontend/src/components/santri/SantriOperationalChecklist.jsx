@@ -87,8 +87,8 @@ function SantriOperationalChecklist({ santriId }) {
         marginTop: 16,
         padding: 16,
         borderRadius: 12,
-        border: "1px solid var(--border-subtle, #e5e7eb)",
-        background: "var(--surface-muted, #f9fafb)",
+        border: "1px solid var(--border)",
+        background: "var(--surface-muted)",
       }}
     >
       <p style={{ margin: "0 0 12px", fontWeight: 700, fontSize: 14 }}>

@@ -287,7 +287,7 @@ function RolesPage() {
             return (
               <div key={grup} style={groupCard}>
                 <div style={groupHeader}>
-                  <span style={{ fontWeight: 600, textTransform: "capitalize", color: "var(--dark)" }}>
+                  <span style={{ fontWeight: 600, textTransform: "capitalize", color: "var(--text-primary)" }}>
                     {grup.replace(/_/g, " ")}
                   </span>
                   <Button

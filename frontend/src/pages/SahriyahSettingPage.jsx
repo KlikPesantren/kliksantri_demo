@@ -23,6 +23,9 @@ function SahriyahSettingPage() {
   const [editModal, setEditModal] = useState(false);
   const [editRow, setEditRow] = useState(null);
   const [form, setForm] = useState({ nominal_uang: "", nominal_beras: "", keterangan: "" });
+  const [bulkModal, setBulkModal] = useState(false);
+  const [bulkForm, setBulkForm] = useState({ nominal_uang: "", nominal_beras: "", keterangan: "" });
+  const [isSavingBulk, setIsSavingBulk] = useState(false);
 
   const getData = async () => {
     try {
@@ -74,6 +77,39 @@ function SahriyahSettingPage() {
     }
   };
 
+  const saveBulkSetting = async () => {
+    if (isSavingBulk) return;
+
+    if (bulkForm.nominal_uang === "" || bulkForm.nominal_beras === "") {
+      alert("Nominal uang dan nominal beras wajib diisi");
+      return;
+    }
+
+    const yakin = window.confirm(
+      "Terapkan setting sahriyah ini ke seluruh santri? Setting individual yang sudah ada akan ikut diperbarui.",
+    );
+    if (!yakin) return;
+
+    setIsSavingBulk(true);
+
+    try {
+      const response = await api.put("/sahriyah-setting/bulk", {
+        nominal_uang: Number(bulkForm.nominal_uang),
+        nominal_beras: Number(bulkForm.nominal_beras),
+        keterangan: bulkForm.keterangan,
+      });
+      setBulkModal(false);
+      setBulkForm({ nominal_uang: "", nominal_beras: "", keterangan: "" });
+      await getData();
+      alert(`Setting berhasil diterapkan ke ${response.data.updated_count || 0} santri`);
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.error || "Gagal menerapkan setting semua santri");
+    } finally {
+      setIsSavingBulk(false);
+    }
+  };
+
   return (
     <AppShell title="Setting Sahriyah" breadcrumb="Keuangan / Setting Sahriyah">
       <KeuanganPageStyles />
@@ -82,9 +118,14 @@ function SahriyahSettingPage() {
         title="Pengaturan Nominal Sahriyah"
         subtitle="Kelola tarif uang dan beras per kategori"
         actions={
-          <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-            {filteredData.length} setting
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+              {filteredData.length} setting
+            </span>
+            <Button size="sm" onClick={() => setBulkModal(true)}>
+              Set Semua Santri
+            </Button>
+          </div>
         }
       >
         <TableToolbar
@@ -173,6 +214,59 @@ function SahriyahSettingPage() {
             Simpan
           </Button>
           <Button variant="outline" onClick={() => setEditModal(false)}>
+            Batal
+          </Button>
+        </FormActionBar>
+      </Modal>
+
+      <Modal
+        open={bulkModal}
+        title="Set Sahriyah Semua Santri"
+        onClose={() => {
+          if (!isSavingBulk) setBulkModal(false);
+        }}
+        width={460}
+      >
+        <div className="form-modal-summary-v3">
+          <p>
+            Setting ini akan diterapkan ke seluruh santri. Setelah itu, santri tertentu
+            tetap bisa diedit satu per satu untuk dispensasi.
+          </p>
+        </div>
+        <FormGrid columns="modal">
+          <FormField label="Nominal Uang" htmlFor="bulk-setting-uang" required>
+            <Input
+              id="bulk-setting-uang"
+              type="number"
+              value={bulkForm.nominal_uang}
+              onChange={(e) => setBulkForm({ ...bulkForm, nominal_uang: e.target.value })}
+              disabled={isSavingBulk}
+            />
+          </FormField>
+          <FormField label="Nominal Beras (Kg)" htmlFor="bulk-setting-beras" required>
+            <Input
+              id="bulk-setting-beras"
+              type="number"
+              value={bulkForm.nominal_beras}
+              onChange={(e) => setBulkForm({ ...bulkForm, nominal_beras: e.target.value })}
+              disabled={isSavingBulk}
+            />
+          </FormField>
+          <FormField label="Keterangan" htmlFor="bulk-setting-ket" fullWidth>
+            <Textarea
+              id="bulk-setting-ket"
+              value={bulkForm.keterangan}
+              onChange={(e) => setBulkForm({ ...bulkForm, keterangan: e.target.value })}
+              rows={3}
+              disabled={isSavingBulk}
+            />
+          </FormField>
+        </FormGrid>
+        <FormActionBar className="form-action-bar-v3--compact">
+          <Button variant="primary" onClick={saveBulkSetting} disabled={isSavingBulk}>
+            {isSavingBulk ? "Menyimpan..." : "Terapkan ke Semua"}
+          </Button>
+          <Button variant="outline" onClick={() => setBulkModal(false)} disabled={isSavingBulk}>
             Batal
           </Button>
         </FormActionBar>
