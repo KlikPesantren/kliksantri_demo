@@ -64,7 +64,7 @@ router.post("/", async (req, res) => {
 
     if (PUSH_PENGUMUMAN_PRIORITIES.has(prioritasKey)) {
       try {
-        await notificationService.sendPushToAllWaliInTenant({
+        await notificationService.sendInAppToAllWaliInTenant({
           tenantId: req.tenantId,
           title:
             prioritasKey === "urgent"
@@ -75,10 +75,12 @@ router.post("/", async (req, res) => {
           data: {
             type: "pengumuman",
             pengumuman_id: Number(pengumumanRow.id),
+            ref_table: "pengumuman",
+            ref_id: Number(pengumumanRow.id),
           },
         });
-      } catch (pushErr) {
-        console.log("PENGUMUMAN PUSH ERROR:", pushErr.message);
+      } catch (notifErr) {
+        console.log("PENGUMUMAN IN-APP NOTIFICATION ERROR:", notifErr.message);
       }
     }
 

@@ -21,15 +21,43 @@ function Avatar({ foto }) {
   );
 }
 
-function HeaderIcon({ icon }) {
-  return (
-    <View style={styles.headerIcon}>
+function HeaderIcon({ icon, onPress, badgeCount = 0 }) {
+  const content = (
+    <>
       <Ionicons name={icon} size={21} color={colors.surface} />
-    </View>
+      {badgeCount > 0 ? (
+        <View style={styles.badge}>
+          <AppText variant="caption" color="inverse" style={styles.badgeText}>
+            {badgeCount > 9 ? '9+' : badgeCount}
+          </AppText>
+        </View>
+      ) : null}
+    </>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        style={styles.headerIcon}
+        activeOpacity={interaction.activeOpacity}
+        onPress={onPress}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={styles.headerIcon}>{content}</View>;
 }
 
-export function SantriHeroCard({ activeChild, dashboardProfil, wali, onGantiPress }) {
+export function SantriHeroCard({
+  activeChild,
+  dashboardProfil,
+  wali,
+  onGantiPress,
+  onNotificationPress,
+  unreadNotificationCount = 0,
+}) {
   const insets = useSafeAreaInsets();
   const profil = dashboardProfil ?? activeChild ?? {};
   const santriName = profil.nama ?? activeChild?.nama ?? 'Ananda';
@@ -69,7 +97,11 @@ export function SantriHeroCard({ activeChild, dashboardProfil, wali, onGantiPres
         </TouchableOpacity>
 
         <View style={styles.actions}>
-          <HeaderIcon icon="notifications-outline" />
+          <HeaderIcon
+            icon="notifications-outline"
+            onPress={onNotificationPress}
+            badgeCount={unreadNotificationCount}
+          />
           <HeaderIcon icon="scan-outline" />
         </View>
       </View>
@@ -158,11 +190,31 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerIcon: {
+    position: 'relative',
     width: 40,
     height: 40,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  badge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.surface,
+  },
+  badgeText: {
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '800',
   },
 });

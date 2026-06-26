@@ -374,6 +374,7 @@ function PlatformLayout() {
               items={[
                 { to: "/platform/system/deployment-checklist", label: "Deployment Checklist" },
                 { to: "/platform/system/upload-storage", label: "Upload Storage" },
+                { to: "/platform/system/backup-restore", label: "Backup & Restore" },
                 { to: "/platform/system/announcements", label: "Pengumuman Platform" },
               ]}
             />

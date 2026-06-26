@@ -76,7 +76,7 @@ router.post("/", async (req, res) => {
 
     if (perizinanStatus === "keluar") {
       try {
-        await notificationService.sendPushToWaliBySantriId({
+        await notificationService.sendInAppToWaliBySantriId({
           tenantId: req.tenantId,
           santriId: perizinanRow.santri_id,
           title: "Izin Keluar",
@@ -84,10 +84,12 @@ router.post("/", async (req, res) => {
           data: {
             type: "perizinan",
             santri_id: Number(perizinanRow.santri_id),
+            ref_table: "perizinan",
+            ref_id: Number(perizinanRow.id),
           },
         });
-      } catch (pushErr) {
-        console.log("PERIZINAN PUSH ERROR:", pushErr.message);
+      } catch (notifErr) {
+        console.log("PERIZINAN IN-APP NOTIFICATION ERROR:", notifErr.message);
       }
     }
 
@@ -114,7 +116,27 @@ router.put("/kembali/:id", async (req, res) => {
       [id, req.tenantId]
     );
 
-    res.json({ success: true, data: result.rows[0] });
+    const perizinanRow = result.rows[0];
+
+    try {
+      await notificationService.sendInAppToWaliBySantriId({
+        tenantId: req.tenantId,
+        santriId: perizinanRow.santri_id,
+        title: "Santri Kembali",
+        body: "Status perizinan santri sudah tercatat kembali.",
+        type: "perizinan",
+        data: {
+          type: "perizinan",
+          santri_id: Number(perizinanRow.santri_id),
+          ref_table: "perizinan",
+          ref_id: Number(perizinanRow.id),
+        },
+      });
+    } catch (notifErr) {
+      console.log("PERIZINAN STATUS IN-APP NOTIFICATION ERROR:", notifErr.message);
+    }
+
+    res.json({ success: true, data: perizinanRow });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, error: err.message });
@@ -128,6 +150,14 @@ router.put("/:id", async (req, res) => {
     if (!owned.ok) {
       return res.status(404).json({ success: false, error: owned.error });
     }
+
+    const existing = await pool.query(
+      `SELECT id, santri_id, status
+       FROM perizinan
+       WHERE id = $1 AND tenant_id = $2
+       LIMIT 1`,
+      [id, req.tenantId]
+    );
 
     const {
       tanggal,
@@ -158,7 +188,31 @@ router.put("/:id", async (req, res) => {
       ]
     );
 
-    res.json({ success: true, data: result.rows[0] });
+    const perizinanRow = result.rows[0];
+    const oldStatus = String(existing.rows[0]?.status || "").toLowerCase();
+    const newStatus = String(perizinanRow.status || "").toLowerCase();
+
+    if (newStatus && oldStatus !== newStatus) {
+      try {
+        await notificationService.sendInAppToWaliBySantriId({
+          tenantId: req.tenantId,
+          santriId: perizinanRow.santri_id,
+          title: "Status Perizinan Berubah",
+          body: `Status perizinan santri berubah menjadi ${perizinanRow.status}.`,
+          type: "perizinan",
+          data: {
+            type: "perizinan",
+            santri_id: Number(perizinanRow.santri_id),
+            ref_table: "perizinan",
+            ref_id: Number(perizinanRow.id),
+          },
+        });
+      } catch (notifErr) {
+        console.log("PERIZINAN UPDATE IN-APP NOTIFICATION ERROR:", notifErr.message);
+      }
+    }
+
+    res.json({ success: true, data: perizinanRow });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, error: err.message });

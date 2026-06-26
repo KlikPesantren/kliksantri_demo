@@ -254,7 +254,7 @@ router.post("/", async (req, res) => {
 
     if (kesehatanRow.status_kesehatan === "sakit") {
       try {
-        await notificationService.sendPushToWaliBySantriId({
+        await notificationService.sendInAppToWaliBySantriId({
           tenantId: req.tenantId,
           santriId: kesehatanRow.santri_id,
           title: "Kesehatan Santri",
@@ -262,10 +262,12 @@ router.post("/", async (req, res) => {
           data: {
             type: "kesehatan",
             santri_id: Number(kesehatanRow.santri_id),
+            ref_table: "kesehatan_santri",
+            ref_id: Number(kesehatanRow.id),
           },
         });
-      } catch (pushErr) {
-        console.log("KESEHATAN PUSH ERROR:", pushErr.message);
+      } catch (notifErr) {
+        console.log("KESEHATAN IN-APP NOTIFICATION ERROR:", notifErr.message);
       }
     }
 

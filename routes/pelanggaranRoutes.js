@@ -74,7 +74,7 @@ router.post("/", async (req, res) => {
     const pelanggaranRow = result.rows[0];
 
     try {
-      await notificationService.sendPushToWaliBySantriId({
+      await notificationService.sendInAppToWaliBySantriId({
         tenantId: req.tenantId,
         santriId: pelanggaranRow.santri_id,
         title: "Pelanggaran Baru",
@@ -82,10 +82,12 @@ router.post("/", async (req, res) => {
         data: {
           type: "pelanggaran",
           santri_id: Number(pelanggaranRow.santri_id),
+          ref_table: "pelanggaran",
+          ref_id: Number(pelanggaranRow.id),
         },
       });
-    } catch (pushErr) {
-      console.log("PELANGGARAN PUSH ERROR:", pushErr.message);
+    } catch (notifErr) {
+      console.log("PELANGGARAN IN-APP NOTIFICATION ERROR:", notifErr.message);
     }
 
     res.json({ success: true, data: pelanggaranRow });

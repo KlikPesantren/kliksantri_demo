@@ -7,7 +7,10 @@ import React, {
 import { authApi } from '../api/auth.api';
 import { storage } from '../utils/storage';
 import { setLogoutCallback } from '../api/client';
-import { registerPushTokenBackground } from '../services/pushNotificationService';
+import {
+  registerPushTokenBackground,
+  unregisterPushToken,
+} from '../services/pushNotificationService';
 
 const AuthContext = createContext(null);
 
@@ -55,6 +58,7 @@ export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   const logout = useCallback(async () => {
+    await unregisterPushToken();
     await storage.clearSession();
     dispatch({ type: 'LOGOUT' });
   }, []);
@@ -88,8 +92,8 @@ export function AuthProvider({ children }) {
         anak,
         santriIds,
       });
-
       registerPushTokenBackground();
+
     } catch {
       await storage.clearSession();
       dispatch({ type: 'SET_LOADING', value: false });
@@ -111,7 +115,6 @@ export function AuthProvider({ children }) {
     await storage.saveSession(token, wali, anak, santriIds, slug);
 
     dispatch({ type: 'LOGIN', token, wali, anak, santriIds });
-
     registerPushTokenBackground();
 
     return { anak, santriIds, tenant };

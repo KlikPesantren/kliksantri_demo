@@ -3,7 +3,6 @@ import { CommonActions } from '@react-navigation/native';
 export function navigateFromNotification(navigationRef, payload, { anak, setActiveSantri }) {
   if (!navigationRef?.isReady?.()) return;
 
-  const type = payload?.type;
   const santriId = payload?.santri_id != null ? Number(payload.santri_id) : null;
 
   if (santriId && Array.isArray(anak) && anak.length > 0 && setActiveSantri) {
@@ -15,75 +14,9 @@ export function navigateFromNotification(navigationRef, payload, { anak, setActi
     }
   }
 
-  if (type === 'pelanggaran') {
-    navigationRef.dispatch(
-      CommonActions.navigate({
-        name: 'MainTabs',
-        params: {
-          screen: 'Monitoring',
-          params: { screen: 'Pelanggaran' },
-        },
-      }),
-    );
-    return;
-  }
-
-  if (type === 'perizinan') {
-    navigationRef.dispatch(
-      CommonActions.navigate({
-        name: 'MainTabs',
-        params: {
-          screen: 'Monitoring',
-          params: { screen: 'Perizinan' },
-        },
-      }),
-    );
-    return;
-  }
-
-  if (type === 'pengumuman') {
-    navigationRef.dispatch(
-      CommonActions.navigate({
-        name: 'MainTabs',
-        params: {
-          screen: 'Pengumuman',
-          params: { screen: 'PengumumanHome' },
-        },
-      }),
-    );
-    return;
-  }
-
-  if (type === 'kesehatan') {
-    navigationRef.dispatch(
-      CommonActions.navigate({
-        name: 'MainTabs',
-        params: {
-          screen: 'Monitoring',
-          params: { screen: 'Kesehatan' },
-        },
-      }),
-    );
-    return;
-  }
-
-  if (type === 'sahriyah') {
-    navigationRef.dispatch(
-      CommonActions.navigate({
-        name: 'MainTabs',
-        params: {
-          screen: 'Keuangan',
-          params: { screen: 'Sahriyah' },
-        },
-      }),
-    );
-    return;
-  }
-
   navigationRef.dispatch(
     CommonActions.navigate({
-      name: 'MainTabs',
-      params: { screen: 'Beranda' },
+      name: 'Notifications',
     }),
   );
 }

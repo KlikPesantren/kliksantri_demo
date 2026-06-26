@@ -11,6 +11,7 @@ import { MonitoringStack } from './MonitoringStack';
 import { KeuanganStack } from './KeuanganStack';
 import { ProfilStack } from './ProfilStack';
 import { AnakPilihScreen } from '../screens/anak/AnakPilihScreen';
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -46,6 +47,11 @@ function MainStack() {
         name="AnakPilih"
         component={AnakPilihScreen}
         options={{ title: 'Pilih Anak' }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: 'Notifikasi' }}
       />
     </Stack.Navigator>
   );

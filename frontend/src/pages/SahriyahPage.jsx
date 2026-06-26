@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FaMoneyBillWave } from "react-icons/fa";
+import { FaFileInvoice, FaMoneyBillWave } from "react-icons/fa";
 import api from "../services/api";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
@@ -8,6 +8,7 @@ import KpiGrid from "../components/ui/KpiGrid";
 import Modal from "../components/Modal";
 import Button from "../components/ui/Button";
 import SahriyahHistoriModal from "../components/sahriyah/SahriyahHistoriModal";
+import SahriyahInvoiceModal from "../components/sahriyah/SahriyahInvoiceModal";
 import DataTableCard from "../components/ui/DataTableCard";
 import TableToolbar from "../components/ui/TableToolbar";
 import SearchInput from "../components/ui/SearchInput";
@@ -95,6 +96,9 @@ function SahriyahPage() {
   const [tahun, setTahun] = useState(new Date().getFullYear());
   const [isSavingBayar, setIsSavingBayar] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [invoice, setInvoice] = useState(null);
+  const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
 
   const searchDebounceRef = useRef(null);
 
@@ -222,6 +226,64 @@ function SahriyahPage() {
     }
   };
 
+  const lihatInvoice = async (invoiceId) => {
+    if (!invoiceId) return;
+    setShowInvoice(true);
+    setIsLoadingInvoice(true);
+
+    try {
+      const response = await api.get(`/invoice/sahriyah/${invoiceId}`);
+      setInvoice(response.data.data);
+    } catch (err) {
+      console.error(err);
+      setShowInvoice(false);
+      alert(getApiError(err, "Gagal memuat invoice"));
+    } finally {
+      setIsLoadingInvoice(false);
+    }
+  };
+
+  const tutupInvoice = () => {
+    setShowInvoice(false);
+    setInvoice(null);
+    setIsLoadingInvoice(false);
+  };
+
+  const printInvoice = async () => {
+    if (!invoice?.invoice_no) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Popup print diblokir browser");
+      return;
+    }
+
+    try {
+      const response = await api.get(`/invoice/sahriyah/${invoice.invoice_id}/print`, {
+        responseType: "text",
+      });
+      printWindow.document.open();
+      printWindow.document.write(response.data);
+      printWindow.document.close();
+      printWindow.focus();
+    } catch (err) {
+      console.error(err);
+      printWindow.close();
+      alert(getApiError(err, "Gagal membuka print invoice"));
+    }
+  };
+
+  const shareInvoiceWhatsApp = () => {
+    const number = invoice?.wali?.whatsapp_number;
+    if (!number) {
+      alert("Nomor WhatsApp wali belum tersedia");
+      return;
+    }
+
+    const text = encodeURIComponent(invoice.whatsapp_text || "");
+    window.open(`https://wa.me/${number}?text=${text}`, "_blank", "noopener,noreferrer");
+  };
+
   const simpanPembayaran = async () => {
     if (isSavingBayar || !selectedTagihan) return;
 
@@ -233,7 +295,7 @@ function SahriyahPage() {
     setIsSavingBayar(true);
 
     try {
-      await api.put(`/sahriyah/bayar/${selectedTagihan.id}`, {
+      const response = await api.put(`/sahriyah/bayar/${selectedTagihan.id}`, {
         nominal: Number(formBayar.nominal || 0),
         beras: Number(formBayar.beras || 0),
         petugas: formBayar.petugas,
@@ -245,6 +307,9 @@ function SahriyahPage() {
 
       alert("Pembayaran berhasil disimpan");
       await fetchSahriyah(page);
+      if (response.data?.invoice_id) {
+        await lihatInvoice(response.data.invoice_id);
+      }
     } catch (err) {
       console.error(err);
       alert(getApiError(err, "Pembayaran gagal"));
@@ -422,6 +487,13 @@ function SahriyahPage() {
                             items={[
                               {
                                 type: "custom",
+                                icon: FaFileInvoice,
+                                title: "Lihat Invoice",
+                                hidden: !d.latest_invoice_id,
+                                onClick: () => lihatInvoice(d.latest_invoice_id),
+                              },
+                              {
+                                type: "custom",
                                 icon: FaMoneyBillWave,
                                 title: "Bayar",
                                 variant: "success",
@@ -503,7 +575,20 @@ function SahriyahPage() {
         ) : null}
       </Modal>
 
-      <SahriyahHistoriModal open={showRiwayat} riwayat={riwayat} onClose={() => setShowRiwayat(false)} />
+      <SahriyahHistoriModal
+        open={showRiwayat}
+        riwayat={riwayat}
+        onClose={() => setShowRiwayat(false)}
+        onInvoice={lihatInvoice}
+      />
+      <SahriyahInvoiceModal
+        open={showInvoice}
+        invoice={invoice}
+        loading={isLoadingInvoice}
+        onClose={tutupInvoice}
+        onPrint={printInvoice}
+        onWhatsApp={shareInvoiceWhatsApp}
+      />
       </div>
     </AppShell>
   );

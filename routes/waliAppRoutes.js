@@ -23,6 +23,9 @@ const waliSantriGuard =
 const notificationService =
   require("../services/notificationService");
 
+const pushNotificationService =
+  require("../services/pushNotificationService");
+
 const {
   resolveTenantForLogin,
 } = require("../services/tenantService");
@@ -2455,6 +2458,385 @@ router.get(
         success: false,
 
         error: err.message
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
+// GET /wali-app/notifications
+// Phase 1: in-app notifications only
+// ================================
+
+router.get(
+
+  "/notifications",
+
+  ...withWaliAuth,
+
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await notificationService.listInAppNotifications({
+
+          tenantId: req.tenantId,
+
+          waliAkunId: req.wali.wali_akun_id,
+
+          limit: req.query.limit,
+
+          offset: req.query.offset,
+
+          unreadOnly:
+            String(req.query.unread_only || "").toLowerCase() === "true",
+
+        });
+
+      res.json({
+
+        success: true,
+
+        ...result,
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success: false,
+
+        error: err.message,
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
+// GET /wali-app/notifications/unread-count
+// ================================
+
+router.get(
+
+  "/notifications/unread-count",
+
+  ...withWaliAuth,
+
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await notificationService.listInAppNotifications({
+
+          tenantId: req.tenantId,
+
+          waliAkunId: req.wali.wali_akun_id,
+
+          limit: 1,
+
+          offset: 0,
+
+        });
+
+      res.json({
+
+        success: true,
+
+        unread_count: result.unread_count,
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success: false,
+
+        error: err.message,
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
+// PUT /wali-app/notifications/read-all
+// ================================
+
+router.put(
+
+  "/notifications/read-all",
+
+  ...withWaliAuth,
+
+  async (req, res) => {
+
+    try {
+
+      const updated =
+        await notificationService.markAllInAppNotificationsRead({
+
+          tenantId: req.tenantId,
+
+          waliAkunId: req.wali.wali_akun_id,
+
+        });
+
+      res.json({
+
+        success: true,
+
+        updated,
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success: false,
+
+        error: err.message,
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
+// PUT /wali-app/notifications/:id/read
+// ================================
+
+router.put(
+
+  "/notifications/:id/read",
+
+  ...withWaliAuth,
+
+  async (req, res) => {
+
+    try {
+
+      const notificationId =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(notificationId) ||
+        notificationId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error: "notification id tidak valid",
+
+        });
+
+      }
+
+      const row =
+        await notificationService.markInAppNotificationRead({
+
+          tenantId: req.tenantId,
+
+          waliAkunId: req.wali.wali_akun_id,
+
+          notificationId,
+
+        });
+
+      if (!row) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          error: "Notifikasi tidak ditemukan",
+
+        });
+
+      }
+
+      res.json({
+
+        success: true,
+
+        data: row,
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success: false,
+
+        error: err.message,
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
+// POST /wali-app/device-token
+// ================================
+
+router.post(
+
+  "/device-token",
+
+  ...withWaliAuth,
+
+  async (req, res) => {
+
+    try {
+
+      const {
+        expo_push_token,
+        platform,
+        device_name,
+      } = req.body;
+
+      const row =
+        await pushNotificationService.registerWaliDeviceToken({
+
+          tenantId: req.tenantId,
+
+          waliId: req.wali.wali_akun_id,
+
+          expoPushToken: expo_push_token,
+
+          platform,
+
+          deviceName: device_name,
+
+        });
+
+      res.json({
+
+        success: true,
+
+        data: {
+
+          id: row.id,
+
+          platform: row.platform,
+
+          device_name: row.device_name,
+
+          is_active: row.is_active,
+
+          last_seen: row.last_seen,
+
+        },
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      const status =
+        err.statusCode || 500;
+
+      res.status(status).json({
+
+        success: false,
+
+        error: err.message,
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
+// DELETE /wali-app/device-token
+// ================================
+
+router.delete(
+
+  "/device-token",
+
+  ...withWaliAuth,
+
+  async (req, res) => {
+
+    try {
+
+      const row =
+        await pushNotificationService.unregisterWaliDeviceToken({
+
+          tenantId: req.tenantId,
+
+          waliId: req.wali.wali_akun_id,
+
+          expoPushToken: req.body?.expo_push_token,
+
+        });
+
+      res.json({
+
+        success: true,
+
+        data: row,
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        success: false,
+
+        error: err.message,
 
       });
 

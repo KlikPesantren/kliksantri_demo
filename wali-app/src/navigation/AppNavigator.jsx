@@ -15,12 +15,12 @@ export function AppNavigator() {
   const anakRef = useRef(anak);
 
   useEffect(() => {
-    anakRef.current = anak;
-  }, [anak]);
-
-  useEffect(() => {
     restoreSession();
   }, [restoreSession]);
+
+  useEffect(() => {
+    anakRef.current = anak;
+  }, [anak]);
 
   useEffect(() => {
     if (isAuthenticated && anak.length > 0) {
@@ -32,15 +32,22 @@ export function AppNavigator() {
     if (!isAuthenticated) return undefined;
 
     let cleanup = () => {};
-
+    let isMounted = true;
     setupNotificationNavigation(navigationRef, {
       getAnak: () => anakRef.current,
       setActiveSantri,
-    }).then((remove) => {
-      if (typeof remove === 'function') cleanup = remove;
+    }).then((removeListener) => {
+      if (!isMounted) {
+        removeListener();
+        return;
+      }
+      cleanup = removeListener;
     });
 
-    return () => cleanup();
+    return () => {
+      isMounted = false;
+      cleanup();
+    };
   }, [isAuthenticated, setActiveSantri]);
 
   if (isLoading) {

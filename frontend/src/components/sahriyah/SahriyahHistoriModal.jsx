@@ -1,17 +1,18 @@
+import { FaFileInvoice } from "react-icons/fa";
 import Modal from "../Modal";
 import Button from "../ui/Button";
 import EmptyState from "../ui/EmptyState";
-import { Table, TableScroll } from "../ui/table";
+import { Table, TableActions, TableScroll } from "../ui/table";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { FormActionBar } from "../ui/form";
 
-function SahriyahHistoriModal({ open, riwayat, onClose }) {
+function SahriyahHistoriModal({ open, riwayat, onClose, onInvoice }) {
   return (
     <Modal
       open={open}
       title="Histori Pembayaran Sahriyah"
       onClose={onClose}
-      width={560}
+      width={620}
     >
       {riwayat.length === 0 ? (
         <EmptyState
@@ -27,6 +28,9 @@ function SahriyahHistoriModal({ open, riwayat, onClose }) {
                 <th>Nominal</th>
                 <th>Beras</th>
                 <th>Petugas</th>
+                {onInvoice ? (
+                  <th className="table-v3__cell--actions">Invoice</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -37,7 +41,21 @@ function SahriyahHistoriModal({ open, riwayat, onClose }) {
                     {formatCurrency(r.nominal)}
                   </td>
                   <td>{Number(r.nominal_beras || 0)} Kg</td>
-                  <td>{r.petugas || "—"}</td>
+                  <td>{r.petugas || "-"}</td>
+                  {onInvoice ? (
+                    <td className="table-v3__cell--actions">
+                      <TableActions
+                        items={[
+                          {
+                            type: "custom",
+                            icon: FaFileInvoice,
+                            title: "Lihat Invoice",
+                            onClick: () => onInvoice(r.id),
+                          },
+                        ]}
+                      />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

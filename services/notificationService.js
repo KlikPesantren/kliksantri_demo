@@ -1,5 +1,6 @@
 const { Expo } = require("expo-server-sdk");
 const pool = require("../db");
+const pushNotificationService = require("./pushNotificationService");
 
 const expo = new Expo();
 
@@ -15,6 +16,334 @@ function normalizePlatform(platform) {
   if (!platform) return null;
   const value = String(platform).trim().toLowerCase();
   return ALLOWED_PLATFORMS.has(value) ? value : null;
+}
+
+async function createInAppNotification({
+  tenantId,
+  waliAkunId,
+  santriId = null,
+  title,
+  body,
+  type = "generic",
+  data = {},
+}) {
+  const safeTitle = String(title || "").trim();
+  const safeBody = String(body || "").trim();
+
+  if (!tenantId || !waliAkunId) {
+    throw new Error("tenantId dan waliAkunId wajib");
+  }
+
+  if (!safeTitle || !safeBody) {
+    const err = new Error("title dan body wajib");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const result = await pool.query(
+    `
+    INSERT INTO wali_in_app_notifications (
+      tenant_id,
+      wali_akun_id,
+      santri_id,
+      title,
+      body,
+      type,
+      data
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+    RETURNING *
+    `,
+    [
+      tenantId,
+      waliAkunId,
+      santriId ? Number(santriId) : null,
+      safeTitle,
+      safeBody,
+      type,
+      JSON.stringify(data || {}),
+    ]
+  );
+
+  const notification = result.rows[0];
+
+  try {
+    await pushNotificationService.sendPushToWali({
+      tenantId,
+      waliId: waliAkunId,
+      title: safeTitle,
+      body: safeBody,
+      data: {
+        ...(data || {}),
+        type,
+        notification_id: notification.id,
+      },
+    });
+  } catch (pushErr) {
+    console.log("IN-APP PUSH ERROR:", pushErr.message);
+  }
+
+  return notification;
+}
+
+async function sendInAppToWaliBySantriId({
+  tenantId,
+  santriId,
+  title,
+  body = null,
+  type = "generic",
+  data = {},
+}) {
+  try {
+    if (!tenantId || !santriId) {
+      return {
+        success: false,
+        skipped: true,
+        reason: "missing_tenant_or_santri",
+      };
+    }
+
+    const waliRows = await resolveWaliAccountsForSantri(tenantId, santriId);
+
+    if (waliRows.length === 0) {
+      return {
+        success: false,
+        skipped: true,
+        reason: "no_wali",
+      };
+    }
+
+    const santriNama = waliRows[0].santri_nama || "Anak";
+    const safeTitle = String(title || "").trim();
+    const defaultBodyByType = {
+      pelanggaran: `[${santriNama}] mendapatkan pelanggaran baru.`,
+      perizinan: `[${santriNama}] tercatat keluar pondok.`,
+      kesehatan: `[${santriNama}] sedang tercatat sakit.`,
+      sahriyah: `[${santriNama}] ada pembaruan sahriyah.`,
+    };
+    const safeBody =
+      String(body || "").trim() ||
+      defaultBodyByType[type] ||
+      `[${santriNama}] ada pembaruan.`;
+
+    const payload = {
+      ...(data || {}),
+      type,
+      santri_id: Number(santriId),
+    };
+
+    const rows = [];
+    const seenWali = new Set();
+
+    for (const row of waliRows) {
+      if (seenWali.has(row.wali_akun_id)) continue;
+      seenWali.add(row.wali_akun_id);
+
+      const notification = await createInAppNotification({
+        tenantId,
+        waliAkunId: row.wali_akun_id,
+        santriId,
+        title: safeTitle,
+        body: safeBody,
+        type,
+        data: payload,
+      });
+
+      rows.push(notification);
+    }
+
+    return {
+      success: rows.length > 0,
+      count: rows.length,
+      rows,
+    };
+  } catch (err) {
+    console.log("sendInAppToWaliBySantriId ERROR:", err.message);
+    return {
+      success: false,
+      error: err.message,
+    };
+  }
+}
+
+async function sendInAppToAllWaliInTenant({
+  tenantId,
+  title,
+  body,
+  type = "generic",
+  data = {},
+}) {
+  try {
+    if (!tenantId) {
+      return {
+        success: false,
+        skipped: true,
+        reason: "missing_tenant",
+      };
+    }
+
+    const waliRows = await getActiveWaliAccountsInTenant(tenantId);
+
+    if (waliRows.length === 0) {
+      return {
+        success: false,
+        skipped: true,
+        reason: "no_wali",
+      };
+    }
+
+    const safeTitle = String(title || "").trim();
+    const safeBody = String(body || "").trim();
+
+    if (!safeTitle || !safeBody) {
+      return {
+        success: false,
+        skipped: true,
+        reason: "missing_title_or_body",
+      };
+    }
+
+    const payload = {
+      ...(data || {}),
+      type,
+    };
+
+    const rows = [];
+
+    for (const row of waliRows) {
+      const notification = await createInAppNotification({
+        tenantId,
+        waliAkunId: row.wali_akun_id,
+        title: safeTitle,
+        body: safeBody,
+        type,
+        data: payload,
+      });
+
+      rows.push(notification);
+    }
+
+    return {
+      success: rows.length > 0,
+      count: rows.length,
+      rows,
+    };
+  } catch (err) {
+    console.log("sendInAppToAllWaliInTenant ERROR:", err.message);
+    return {
+      success: false,
+      error: err.message,
+    };
+  }
+}
+
+async function listInAppNotifications({
+  tenantId,
+  waliAkunId,
+  limit = 30,
+  offset = 0,
+  unreadOnly = false,
+}) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+  const safeOffset = Math.max(Number(offset) || 0, 0);
+  const conditions = ["tenant_id = $1", "wali_akun_id = $2"];
+  const params = [tenantId, waliAkunId];
+
+  if (unreadOnly) {
+    conditions.push("read_at IS NULL");
+  }
+
+  const whereSql = conditions.join(" AND ");
+
+  const [countResult, unreadResult, dataResult] = await Promise.all([
+    pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM wali_in_app_notifications
+       WHERE ${whereSql}`,
+      params
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM wali_in_app_notifications
+       WHERE tenant_id = $1
+         AND wali_akun_id = $2
+         AND read_at IS NULL`,
+      [tenantId, waliAkunId]
+    ),
+    pool.query(
+      `
+      SELECT
+        id,
+        santri_id,
+        title,
+        body,
+        type,
+        data,
+        read_at,
+        created_at
+      FROM wali_in_app_notifications
+      WHERE ${whereSql}
+      ORDER BY created_at DESC, id DESC
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2}
+      `,
+      [...params, safeLimit, safeOffset]
+    ),
+  ]);
+
+  return {
+    data: dataResult.rows,
+    pagination: {
+      limit: safeLimit,
+      offset: safeOffset,
+      total: countResult.rows[0]?.total || 0,
+    },
+    unread_count: unreadResult.rows[0]?.total || 0,
+  };
+}
+
+async function markInAppNotificationRead({
+  tenantId,
+  waliAkunId,
+  notificationId,
+}) {
+  const result = await pool.query(
+    `
+    UPDATE wali_in_app_notifications
+    SET read_at = COALESCE(read_at, NOW())
+    WHERE id = $1
+      AND tenant_id = $2
+      AND wali_akun_id = $3
+    RETURNING
+      id,
+      santri_id,
+      title,
+      body,
+      type,
+      data,
+      read_at,
+      created_at
+    `,
+    [notificationId, tenantId, waliAkunId]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function markAllInAppNotificationsRead({ tenantId, waliAkunId }) {
+  const result = await pool.query(
+    `
+    UPDATE wali_in_app_notifications
+    SET read_at = COALESCE(read_at, NOW())
+    WHERE tenant_id = $1
+      AND wali_akun_id = $2
+      AND read_at IS NULL
+    RETURNING id
+    `,
+    [tenantId, waliAkunId]
+  );
+
+  return result.rowCount;
 }
 
 async function registerPushToken({
@@ -511,6 +840,12 @@ module.exports = {
   sendPushNotification,
   sendPushToWaliBySantriId,
   sendPushToAllWaliInTenant,
+  createInAppNotification,
+  sendInAppToWaliBySantriId,
+  sendInAppToAllWaliInTenant,
+  listInAppNotifications,
+  markInAppNotificationRead,
+  markAllInAppNotificationsRead,
   resolveWaliAccountsForSantri,
   getActiveWaliAccountsInTenant,
   deactivateInvalidToken,

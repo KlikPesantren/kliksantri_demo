@@ -2,6 +2,8 @@ node_modules
 
 uploads/pesantren/*
 !uploads/pesantren/.gitkeep
+backups/*.backup
+backups/uploads/*
 
 .env
 .mt4b-railway-secrets.local

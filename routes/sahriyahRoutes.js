@@ -95,8 +95,16 @@ router.get("/", async (req, res) => {
     );
 
     let listSql = `
-      SELECT t.*, s.nama, s.nis, s.kelas_id
+      SELECT t.*, s.nama, s.nis, s.kelas_id, lp.latest_invoice_id
       ${joinSql}
+      LEFT JOIN LATERAL (
+        SELECT ps.id AS latest_invoice_id
+        FROM pembayaran_sahriyah ps
+        WHERE ps.tagihan_id = t.id
+          AND ps.tenant_id = t.tenant_id
+        ORDER BY ps.tanggal DESC, ps.id DESC
+        LIMIT 1
+      ) lp ON true
       WHERE ${whereSql}
       ORDER BY t.tahun DESC, t.bulan DESC, t.id DESC
     `;
@@ -268,13 +276,15 @@ router.put("/bayar/:id", async (req, res) => {
       ]
     );
 
-    await pool.query(
+    const pembayaranResult = await pool.query(
       `INSERT INTO pembayaran_sahriyah (
          tagihan_id, nominal, nominal_beras, petugas, tenant_id
        )
-       VALUES ($1, $2, $3, $4, $5)`,
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
       [req.params.id, nominal, beras, petugas, req.tenantId]
     );
+    const invoiceId = pembayaranResult.rows[0]?.id;
 
     if (Number(nominal) > 0) {
       await pool.query(
@@ -299,7 +309,7 @@ router.put("/bayar/:id", async (req, res) => {
         ? `Pembayaran sahriyah ${santriNama} sebesar ${nominalLabel} telah diterima.`
         : `Pembayaran sahriyah ${santriNama} telah diterima.`;
 
-      await notificationService.sendPushToWaliBySantriId({
+      await notificationService.sendInAppToWaliBySantriId({
         tenantId: req.tenantId,
         santriId,
         title: "Pembayaran Sahriyah Diterima",
@@ -309,10 +319,12 @@ router.put("/bayar/:id", async (req, res) => {
           type: "sahriyah",
           santri_id: santriId,
           tagihan_id: tagihanId,
+          ref_table: "tagihan_sahriyah",
+          ref_id: tagihanId,
         },
       });
-    } catch (pushErr) {
-      console.log("SAHRIYAH PUSH ERROR:", pushErr.message);
+    } catch (notifErr) {
+      console.log("SAHRIYAH IN-APP NOTIFICATION ERROR:", notifErr.message);
     }
 
     res.json({
@@ -322,6 +334,7 @@ router.put("/bayar/:id", async (req, res) => {
       beras_terbayar: berasTerbayarBaru,
       sisa_beras: Math.max(0, sisaBerasBaru),
       status,
+      invoice_id: invoiceId,
     });
   } catch (err) {
     console.log(err);

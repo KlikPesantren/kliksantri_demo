@@ -54,6 +54,7 @@ import PlatformBillingOverviewPage from "./pages/platform/PlatformBillingOvervie
 import PlatformTenantHealthOverviewPage from "./pages/platform/PlatformTenantHealthOverviewPage";
 import PlatformDeploymentChecklistPage from "./pages/platform/PlatformDeploymentChecklistPage";
 import PlatformUploadStoragePage from "./pages/platform/PlatformUploadStoragePage";
+import PlatformBackupRestorePage from "./pages/platform/PlatformBackupRestorePage";
 import PlatformProfilePage from "./pages/platform/PlatformProfilePage";
 import PlatformAnnouncementsPage from "./pages/platform/PlatformAnnouncementsPage";
 import AboutKlikSantriPage from "./pages/AboutKlikSantriPage";
@@ -125,6 +126,7 @@ function App() {
             element={<PlatformDeploymentChecklistPage />}
           />
           <Route path="system/upload-storage" element={<PlatformUploadStoragePage />} />
+          <Route path="system/backup-restore" element={<PlatformBackupRestorePage />} />
           <Route
             path="system/announcements"
             element={<PlatformAnnouncementsPage />}

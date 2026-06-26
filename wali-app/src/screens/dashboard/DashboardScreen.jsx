@@ -5,11 +5,13 @@ import {
   View,
   StyleSheet,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useActiveChild } from '../../context/ActiveChildContext';
 import { useAuth } from '../../context/AuthContext';
 import { useDashboard } from '../../hooks/useDashboard';
 import { usePengumuman } from '../../hooks/usePengumuman';
 import { useProfilPesantren } from '../../hooks/useProfilPesantren';
+import { useNotifications } from '../../hooks/useNotifications';
 import { SantriHeroCard } from '../../components/home/SantriHeroCard';
 import { PesantrenImageCard } from '../../components/home/PesantrenImageCard';
 import { QuickAccessGrid } from '../../components/home/QuickAccessGrid';
@@ -33,6 +35,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
   const { data, isLoading, error, refresh } = useDashboard(activeSantriId);
   const { data: pengumuman, refresh: refreshPengumuman } = usePengumuman();
   const { data: pesantren, refresh: refreshPesantren } = useProfilPesantren();
+  const { unreadCount, refreshUnreadCount } = useNotifications({ limit: 1 });
 
   const hasPengumuman = (pengumuman?.length ?? 0) > 0;
   const showGanti = anak.length > 1;
@@ -43,6 +46,14 @@ export function DashboardScreen({ navigation: tabNavigation }) {
       return;
     }
     tabNavigation.navigate('AnakPilih');
+  };
+  const handleNotificationPress = () => {
+    const parent = tabNavigation.getParent?.();
+    if (parent) {
+      parent.navigate('Notifications');
+      return;
+    }
+    tabNavigation.navigate('Notifications');
   };
 
   const statistikPesantren = data?.statistik_pesantren;
@@ -55,12 +66,20 @@ export function DashboardScreen({ navigation: tabNavigation }) {
     }
   }, [data, statistikPesantren]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshUnreadCount();
+    }, [refreshUnreadCount]),
+  );
+
   const heroHeader = (
     <SantriHeroCard
       activeChild={activeChild}
       dashboardProfil={data?.profil}
       wali={wali}
       onGantiPress={showGanti ? handleGantiAnak : undefined}
+      onNotificationPress={handleNotificationPress}
+      unreadNotificationCount={unreadCount}
     />
   );
 
@@ -103,6 +122,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
               refresh();
               refreshPengumuman();
               refreshPesantren();
+              refreshUnreadCount();
             }}
             colors={[colors.primary]}
             tintColor={colors.primary}
@@ -114,6 +134,8 @@ export function DashboardScreen({ navigation: tabNavigation }) {
           dashboardProfil={data?.profil}
           wali={wali}
           onGantiPress={showGanti ? handleGantiAnak : undefined}
+          onNotificationPress={handleNotificationPress}
+          unreadNotificationCount={unreadCount}
         />
 
         <PesantrenImageCard

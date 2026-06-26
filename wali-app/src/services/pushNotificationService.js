@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pushApi } from '../api/push.api';
 
 const PUSH_STATUS_KEY = 'wali_push_registration_status';
-const DEVICE_ID_KEY = 'wali_device_id';
 
 let Notifications = null;
 let Device = null;
@@ -22,15 +21,6 @@ async function loadExpoModules() {
   } catch {
     return null;
   }
-}
-
-async function getOrCreateDeviceId() {
-  const existing = await AsyncStorage.getItem(DEVICE_ID_KEY);
-  if (existing) return existing;
-
-  const generated = `wali-${Platform.OS}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  await AsyncStorage.setItem(DEVICE_ID_KEY, generated);
-  return generated;
 }
 
 async function saveRegistrationStatus(status) {
@@ -64,6 +54,15 @@ export async function registerPushToken() {
   }
 
   try {
+    if (Platform.OS === 'android') {
+      await Notif.setNotificationChannelAsync('default', {
+        name: 'Default',
+        importance: Notif.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#15803D',
+      });
+    }
+
     const { status: existingStatus } = await Notif.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -91,20 +90,23 @@ export async function registerPushToken() {
       throw new Error('Expo push token kosong');
     }
 
-    const deviceId = await getOrCreateDeviceId();
     const platform = Platform.OS;
+    const deviceName =
+      Dev.deviceName ||
+      [Dev.manufacturer, Dev.modelName].filter(Boolean).join(' ') ||
+      platform;
 
-    await pushApi.registerToken({
+    await pushApi.registerDeviceToken({
       expo_push_token: expoPushToken,
-      device_id: deviceId,
       platform,
+      device_name: deviceName,
     });
 
     const status = {
       ok: true,
       expo_push_token: expoPushToken,
       platform,
-      device_id: deviceId,
+      device_name: deviceName,
     };
     await saveRegistrationStatus(status);
     return status;
@@ -124,5 +126,28 @@ export async function registerPushTokenBackground() {
   } catch (err) {
     console.warn('[push] Background register gagal:', err?.message || err);
     return { ok: false, error: err?.message || 'register_failed' };
+  }
+}
+
+export async function unregisterPushToken() {
+  try {
+    const status = await getPushRegistrationStatus();
+    const expoPushToken = status?.expo_push_token;
+
+    if (!expoPushToken) {
+      return { ok: false, skipped: true, reason: 'no_token' };
+    }
+
+    await pushApi.unregisterDeviceToken({ expo_push_token: expoPushToken });
+    await saveRegistrationStatus({
+      ok: false,
+      unregistered: true,
+      expo_push_token: expoPushToken,
+    });
+
+    return { ok: true };
+  } catch (err) {
+    console.warn('[push] Gagal unregister token:', err?.message || err);
+    return { ok: false, error: err?.message || 'unregister_failed' };
   }
 }

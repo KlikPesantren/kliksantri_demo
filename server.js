@@ -59,6 +59,9 @@ const platformSettingsRoutes =
 const platformAnnouncementRoutes =
   require("./routes/platformAnnouncementRoutes");
 
+const platformBackupRoutes =
+  require("./routes/platformBackupRoutes");
+
 const santriRoutes =
   require("./routes/santriRoutes");
 
@@ -120,6 +123,9 @@ const sahriyahSettingRoutes =
 require(
 "./routes/sahriyahSettingRoutes"
 );
+
+const invoiceRoutes =
+require("./routes/invoiceRoutes");
 
 const tamuRoutes =
 require("./routes/tamuRoutes");
@@ -302,6 +308,11 @@ app.use(
 app.use(
   "/platform/announcements",
   platformAnnouncementRoutes
+);
+
+app.use(
+  "/platform/backup",
+  platformBackupRoutes
 );
 
 app.use(
@@ -532,6 +543,15 @@ tenantMiddleware,
 requireTenantFeature("sahriyah"),
 requirePermission("sahriyah.manage"),
 sahriyahSettingRoutes
+);
+
+app.use(
+"/invoice",
+authMiddleware,
+tenantMiddleware,
+requireTenantFeature("sahriyah"),
+requirePermission("sahriyah.view"),
+invoiceRoutes
 );
 
 app.use(
