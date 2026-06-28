@@ -49,8 +49,8 @@ function UsersPage() {
   const [pwdUser, setPwdUser]         = useState(null);
   const [newPassword, setNewPassword] = useState("");
 
-  const [statusModal, setStatusModal] = useState(false);
-  const [statusTarget, setStatusTarget] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const currentUser = getUser() || {};
 
@@ -168,31 +168,25 @@ function UsersPage() {
     }
   };
 
-  const openToggleStatus = (u) => {
+  const openDelete = (u) => {
     if (String(currentUser.id) === String(u.id)) {
-      setError("Tidak dapat mengubah status akun sendiri");
+      setError("Tidak dapat menghapus akun sendiri");
       return;
     }
-    setStatusTarget(u);
-    setStatusModal(true);
+    setDeleteTarget(u);
+    setDeleteModal(true);
   };
 
-  const handleToggleStatus = async () => {
-    const u = statusTarget;
-    const newStatus = u.status === "Aktif" ? "Nonaktif" : "Aktif";
+  const handleDelete = async () => {
+    const u = deleteTarget;
     setError("");
     try {
-      await api.put(`/users/${u.id}`, {
-        nama: u.nama,
-        username: u.username,
-        role: u.role,
-        status: newStatus,
-      });
-      setStatusModal(false);
-      flash(`User ${u.username} sekarang ${newStatus}`);
+      await api.delete(`/users/${u.id}`);
+      setDeleteModal(false);
+      flash(`User ${u.username} berhasil dihapus`);
       load();
     } catch (err) {
-      setError(err.response?.data?.error || "Gagal mengubah status");
+      setError(err.response?.data?.error || "Gagal menghapus user");
     }
   };
 
@@ -280,21 +274,28 @@ function UsersPage() {
                         </td>
                         <td>{formatDate(u.created_at)}</td>
                         <td className="table-v3__cell--actions">
-                          {hasPermission("user.update") && (
+                          {(hasPermission("user.update") || hasPermission("user.delete")) && (
                             <TableActions
                               items={[
-                                { type: "edit", onClick: () => openEdit(u) },
+                                {
+                                  type: "edit",
+                                  hidden: !hasPermission("user.update"),
+                                  onClick: () => openEdit(u),
+                                },
                                 {
                                   type: "custom",
                                   icon: FaKey,
                                   title: "Reset PIN",
+                                  hidden: !hasPermission("user.update"),
                                   onClick: () => openResetPassword(u),
                                 },
                                 {
-                                  type: "toggle",
-                                  active: u.status === "Aktif",
-                                  hidden: String(currentUser.id) === String(u.id),
-                                  onClick: () => openToggleStatus(u),
+                                  type: "delete",
+                                  title: "Hapus",
+                                  hidden:
+                                    !hasPermission("user.delete") ||
+                                    String(currentUser.id) === String(u.id),
+                                  onClick: () => openDelete(u),
                                 },
                               ]}
                             />
@@ -407,22 +408,15 @@ function UsersPage() {
         </FormActionBar>
       </Modal>
 
-      <Modal
-        open={statusModal}
-        title="Ubah Status User"
-        onClose={() => setStatusModal(false)}
-        width={420}
-      >
+      <Modal open={deleteModal} title="Hapus User" onClose={() => setDeleteModal(false)} width={420}>
         <p style={{ margin: "0 0 16px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-          {statusTarget?.status === "Nonaktif"
-            ? `Aktifkan kembali user "${statusTarget?.username}"?`
-            : `Nonaktifkan user "${statusTarget?.username}"? User tidak akan bisa login.`}
+          Hapus user <strong>{deleteTarget?.username}</strong>? Aksi ini tidak bisa dibatalkan.
         </p>
         <FormActionBar className="form-action-bar-v3--compact">
-          <Button type="button" variant="primary" onClick={handleToggleStatus}>
-            Ya, Lanjutkan
+          <Button type="button" variant="danger" onClick={handleDelete}>
+            Ya, Hapus
           </Button>
-          <Button type="button" variant="outline" onClick={() => setStatusModal(false)}>
+          <Button type="button" variant="outline" onClick={() => setDeleteModal(false)}>
             Batal
           </Button>
         </FormActionBar>

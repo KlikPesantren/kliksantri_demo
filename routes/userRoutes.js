@@ -7,7 +7,33 @@ const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
 
 const withTenant = [authMiddleware, tenantMiddleware];
-const { validateTenantAssignableRole, tenantAssignableRolesSqlList } = require("../utils/platformRbac");
+const {
+  getTenantCustomRolePrefix,
+  validateTenantRoleForAssignment,
+  tenantAssignableRolesSqlList,
+} = require("../utils/platformRbac");
+
+async function validateAssignableRoleForTenant(role, tenantId) {
+  const roleCheck = validateTenantRoleForAssignment(role, tenantId);
+  if (!roleCheck.ok) return roleCheck;
+
+  const exists = await pool.query(
+    `SELECT id
+     FROM roles
+     WHERE name = $1
+       AND (
+         name = ANY($2::text[])
+         OR (is_system = false AND name LIKE $3)
+       )`,
+    [role, tenantAssignableRolesSqlList(), `${getTenantCustomRolePrefix(tenantId)}%`]
+  );
+
+  if (exists.rows.length === 0) {
+    return { ok: false, status: 400, error: "Role tidak ditemukan" };
+  }
+
+  return { ok: true };
+}
 
 // ======================
 // GET /users/meta/roles — daftar role untuk dropdown form
@@ -23,8 +49,9 @@ router.get(
         `SELECT name, label
          FROM roles
          WHERE name = ANY($1::text[])
+            OR (is_system = false AND name LIKE $2)
          ORDER BY id ASC`,
-        [tenantAssignableRolesSqlList()],
+        [tenantAssignableRolesSqlList(), `${getTenantCustomRolePrefix(req.tenantId)}%`],
       );
       res.json({ success: true, data: result.rows });
     } catch (err) {
@@ -78,7 +105,7 @@ router.post(
         return res.status(400).json({ success: false, error: "Semua field wajib diisi" });
       }
 
-      const roleCheck = validateTenantAssignableRole(role);
+      const roleCheck = await validateAssignableRoleForTenant(role, req.tenantId);
       if (!roleCheck.ok) {
         return res.status(roleCheck.status).json({ success: false, error: roleCheck.error });
       }
@@ -125,7 +152,7 @@ router.put(
         return res.status(400).json({ success: false, error: "Nama, username, dan role wajib diisi" });
       }
 
-      const roleCheck = validateTenantAssignableRole(role);
+      const roleCheck = await validateAssignableRoleForTenant(role, req.tenantId);
       if (!roleCheck.ok) {
         return res.status(roleCheck.status).json({ success: false, error: roleCheck.error });
       }
@@ -215,11 +242,34 @@ router.delete(
       }
 
       const check = await pool.query(
-        "SELECT id FROM users WHERE id = $1 AND tenant_id = $2",
+        "SELECT id, role FROM users WHERE id = $1 AND tenant_id = $2",
         [id, req.tenantId]
       );
       if (check.rows.length === 0) {
         return res.status(404).json({ success: false, error: "User tidak ditemukan" });
+      }
+
+      const targetUser = check.rows[0];
+      if (targetUser.role === "platform_superadmin") {
+        return res.status(403).json({ success: false, error: "User platform tidak boleh dihapus dari tenant" });
+      }
+
+      if (targetUser.role === "superadmin") {
+        const adminCount = await pool.query(
+          `SELECT COUNT(*)::int AS total
+           FROM users
+           WHERE tenant_id = $1
+             AND role = 'superadmin'
+             AND id <> $2`,
+          [req.tenantId, id]
+        );
+
+        if (Number(adminCount.rows[0]?.total || 0) < 1) {
+          return res.status(400).json({
+            success: false,
+            error: "Tidak dapat menghapus admin terakhir di tenant ini",
+          });
+        }
       }
 
       await pool.query("DELETE FROM users WHERE id = $1 AND tenant_id = $2", [id, req.tenantId]);

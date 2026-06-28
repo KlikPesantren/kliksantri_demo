@@ -1,5 +1,6 @@
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <SPI.h>
@@ -135,7 +136,7 @@ const char* password =
 // =====================
 
 String SERVER_URL =
-  "http://10.47.175.36:3000";
+  "https://kliksantridemo-production-1930.up.railway.app";
 
 String TENANT_SLUG =
   "anwarulhuda313";
@@ -664,12 +665,15 @@ bool apiPost(
     return false;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure();
+
   HTTPClient http;
 
   String url =
     SERVER_URL + endpoint;
 
-  http.begin(url);
+  http.begin(client, url);
 
   http.setTimeout(2000);
 
@@ -1874,13 +1878,16 @@ void sendPing() {
 
     ) return;
 
+  WiFiClientSecure client;
+  client.setInsecure();
+
   HTTPClient http;
 
   String url =
     SERVER_URL
     + "/rfid/device/heartbeat";
 
-  http.begin(url);
+  http.begin(client, url);
 
   http.setTimeout(1500);
 
@@ -1919,7 +1926,7 @@ void sendPing() {
   Serial.print("BODY: ");
   Serial.println(body);
 
-  Serial.print("HTTP CODE: ");
+  Serial.print("PING HTTP CODE: ");
   Serial.println(httpCode);
 
   Serial.print("RESPONSE: ");
@@ -1960,6 +1967,9 @@ void sendAudit(
     return;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure();
+
   HTTPClient http;
 
   String url =
@@ -1973,7 +1983,7 @@ void sendAudit(
 
   );
 
-  http.begin(url);
+  http.begin(client, url);
 
   http.setTimeout(2000);
 

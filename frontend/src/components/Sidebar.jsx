@@ -111,6 +111,8 @@ const MENU_GROUPS = [
       "RFID Mutasi",
       "RFID Merchant",
       "RFID Device",
+      "Audit",
+      "Devices",
     ],
   },
   {
@@ -123,7 +125,7 @@ const MENU_GROUPS = [
     id: "sistem",
     title: "Sistem",
     collapsible: true,
-    items: ["Users", "Roles", "Audit", "Devices", "Info dari KlikSantri", "Tentang KlikSantri"],
+    items: ["Users", "Roles", "Info dari KlikSantri", "Tentang KlikSantri"],
   },
 ];
 
@@ -136,6 +138,8 @@ const RFID_PATHS = new Set([
   "/rfid-mutasi",
   "/rfid-merchant",
   "/rfid-devices",
+  "/audit",
+  "/devices",
 ]);
 
 function loadCollapsedState() {

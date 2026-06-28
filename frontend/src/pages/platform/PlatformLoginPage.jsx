@@ -72,7 +72,7 @@ function PlatformLoginStyles() {
         align-items: center;
         justify-content: center;
         padding: 32px 24px;
-        background: #F8FAFC;
+        background: var(--background);
       }
 
       .platform-login-mobile-banner {
@@ -90,7 +90,7 @@ function PlatformLoginStyles() {
         width: 100%;
         max-width: 400px;
         background: var(--surface);
-        border: 1px solid #E2E8F0;
+        border: 1px solid var(--border);
         border-top: 3px solid #166534;
         border-radius: var(--radius-xl);
         box-shadow: var(--shadow-card);
@@ -128,9 +128,23 @@ function PlatformLoginStyles() {
         padding: 11px 12px;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--text-primary);
         font-size: 14px;
         box-sizing: border-box;
         font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      }
+
+      .platform-field input::placeholder {
+        color: var(--text-muted);
+        opacity: 1;
+      }
+
+      .platform-field input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--focus-ring);
       }
 
       .platform-error {

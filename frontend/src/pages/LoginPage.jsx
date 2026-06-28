@@ -115,11 +115,24 @@ function LoginPageStyles() {
         padding: 11px 12px;
         border-radius: var(--radius-md);
         border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-primary);
         font-size: 14px;
         box-sizing: border-box;
         font-family: inherit;
         outline: none;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      }
+
+      .login-input::placeholder {
+        color: var(--text-muted);
+        opacity: 1;
+      }
+
+      .login-input:disabled {
+        background: var(--surface-muted);
+        color: var(--text-muted);
+        cursor: not-allowed;
       }
 
       .login-input:focus {

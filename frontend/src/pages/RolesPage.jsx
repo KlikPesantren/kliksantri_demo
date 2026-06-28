@@ -82,8 +82,9 @@ function RolesPage() {
     setError("");
     try {
       const res = await api.get(`/roles/${role.id}`);
-      const keys = res.data.data?.permissions || [];
-      setSelectedRole(role);
+      const data = res.data.data || {};
+      const keys = data.permissions || [];
+      setSelectedRole({ ...role, ...data });
       setChecked(new Set(keys));
       setMatrixModal(true);
     } catch (err) {
@@ -110,7 +111,7 @@ function RolesPage() {
   };
 
   const saveMatrix = async () => {
-    if (rbacReadOnly || !selectedRole) return;
+    if (rbacReadOnly || !selectedRole?.can_manage) return;
     setSavingMatrix(true);
     setError("");
     try {
@@ -278,6 +279,9 @@ function RolesPage() {
       >
         <p style={{ margin: "0 0 16px", color: "var(--text-secondary)", fontSize: "13px" }}>
           {checked.size} permission dipilih
+          {!selectedRole?.can_manage
+            ? " - role sistem hanya bisa dilihat. Buat role custom untuk matrix khusus."
+            : ""}
         </p>
 
         <div style={{ maxHeight: "55vh", overflowY: "auto", paddingRight: "4px" }}>
@@ -295,6 +299,7 @@ function RolesPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => toggleGroup(grup, !allSelected)}
+                    disabled={!selectedRole?.can_manage}
                     style={{ border: "none", background: "transparent", padding: "2px 0" }}
                   >
                     {allSelected ? "Hapus semua" : someSelected ? "Pilih semua" : "Pilih semua"}
@@ -306,7 +311,7 @@ function RolesPage() {
                         type="checkbox"
                         checked={checked.has(p.key)}
                         onChange={() => togglePerm(p.key)}
-                        disabled={rbacReadOnly}
+                        disabled={rbacReadOnly || !selectedRole?.can_manage}
                       />
                       <span>
                         <span style={{ display: "block", fontSize: "13px", color: "var(--text-primary)" }}>
@@ -323,7 +328,7 @@ function RolesPage() {
         </div>
 
         <FormActionBar className="form-action-bar-v3--compact">
-          {!rbacReadOnly ? (
+          {!rbacReadOnly && selectedRole?.can_manage ? (
             <Button
               type="button"
               variant="primary"

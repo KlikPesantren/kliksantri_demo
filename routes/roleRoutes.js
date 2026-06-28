@@ -5,9 +5,11 @@ const authMiddleware = require("../middleware/authMiddleware");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
 const {
+  getTenantCustomRolePrefix,
   isPlatformRole,
+  isTenantCustomRole,
   isTenantAssignableRole,
-  rejectTenantRoleMutation,
+  normalizeTenantCustomRoleName,
   tenantAssignableRolesSqlList,
 } = require("../utils/platformRbac");
 
@@ -23,12 +25,13 @@ async function getRoleById(id) {
   return rows[0] || null;
 }
 
-function sendMutationBlocked(res) {
-  const blocked = rejectTenantRoleMutation();
-  return res.status(blocked.status).json({
-    success: false,
-    error: blocked.error,
-  });
+function canTenantManageRole(role, tenantId) {
+  return Boolean(
+    role &&
+      !role.is_system &&
+      !isPlatformRole(role.name) &&
+      isTenantCustomRole(role.name, tenantId)
+  );
 }
 
 router.get("/", async (req, res) => {
@@ -39,14 +42,20 @@ router.get("/", async (req, res) => {
        FROM roles r
        LEFT JOIN role_permissions rp ON rp.role_id = r.id
        WHERE r.name = ANY($1::text[])
+          OR (r.is_system = false AND r.name LIKE $2)
        GROUP BY r.id
        ORDER BY r.id ASC`,
-      [assignableRoles],
+      [assignableRoles, `${getTenantCustomRolePrefix(req.tenantId)}%`],
     );
+    const data = result.rows.map((role) => ({
+      ...role,
+      can_manage: canTenantManageRole(role, req.tenantId),
+    }));
+
     res.json({
       success: true,
-      rbac_read_only: true,
-      data: result.rows,
+      rbac_read_only: false,
+      data,
     });
   } catch (err) {
     console.error(err);
@@ -64,7 +73,7 @@ router.get("/permissions", async (req, res) => {
     );
     res.json({
       success: true,
-      rbac_read_only: true,
+      rbac_read_only: false,
       data: result.rows,
     });
   } catch (err) {
@@ -78,7 +87,12 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
     const role = await getRoleById(id);
 
-    if (!role || isPlatformRole(role.name) || !isTenantAssignableRole(role.name)) {
+    const canView =
+      role &&
+      !isPlatformRole(role.name) &&
+      (isTenantAssignableRole(role.name) || isTenantCustomRole(role.name, req.tenantId));
+
+    if (!canView) {
       return res.status(404).json({ success: false, error: "Role tidak ditemukan" });
     }
 
@@ -93,9 +107,9 @@ router.get("/:id", async (req, res) => {
 
     res.json({
       success: true,
-      rbac_read_only: true,
       data: {
         ...role,
+        can_manage: canTenantManageRole(role, req.tenantId),
         permissions: perms.rows.map((r) => r.key),
       },
     });
@@ -105,10 +119,115 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.post("/", (_req, res) => sendMutationBlocked(res));
+router.post("/", async (req, res) => {
+  try {
+    const { name, label } = req.body;
+    const roleName = normalizeTenantCustomRoleName(req.tenantId, name);
+    const roleLabel = String(label || name || "").trim();
 
-router.put("/:id/permissions", (_req, res) => sendMutationBlocked(res));
+    if (!roleName || !roleLabel) {
+      return res.status(400).json({ success: false, error: "Nama dan label role wajib diisi" });
+    }
 
-router.delete("/:id", (_req, res) => sendMutationBlocked(res));
+    if (assignableRoles.includes(roleName) || isPlatformRole(roleName)) {
+      return res.status(403).json({ success: false, error: "Nama role sistem tidak boleh dipakai" });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO roles (name, label, is_system)
+       VALUES ($1, $2, false)
+       RETURNING id, name, label, is_system`,
+      [roleName, roleLabel]
+    );
+
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(400).json({ success: false, error: "Role sudah ada" });
+    }
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put("/:id/permissions", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const role = await getRoleById(id);
+
+    if (!canTenantManageRole(role, req.tenantId)) {
+      return res.status(403).json({
+        success: false,
+        error: "Permission role sistem tidak boleh diubah dari tenant. Buat role custom untuk matrix khusus.",
+      });
+    }
+
+    const permissionKeys = Array.isArray(req.body?.permissions) ? req.body.permissions : [];
+
+    await client.query("BEGIN");
+    const perms = await client.query(
+      `SELECT id
+       FROM permissions
+       WHERE key = ANY($1::text[])
+         AND grup <> 'platform'`,
+      [permissionKeys]
+    );
+
+    await client.query("DELETE FROM role_permissions WHERE role_id = $1", [id]);
+
+    for (const perm of perms.rows) {
+      await client.query(
+        `INSERT INTO role_permissions (role_id, permission_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [id, perm.id]
+      );
+    }
+
+    await client.query("COMMIT");
+    requirePermission.invalidateCache();
+    res.json({ success: true, updated_count: perms.rows.length });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const role = await getRoleById(id);
+
+    if (!canTenantManageRole(role, req.tenantId)) {
+      return res.status(403).json({ success: false, error: "Role sistem tidak boleh dihapus" });
+    }
+
+    const used = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM users
+       WHERE tenant_id = $1
+         AND role = $2`,
+      [req.tenantId, role.name]
+    );
+
+    if (Number(used.rows[0]?.total || 0) > 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Role masih dipakai user. Pindahkan user ke role lain dulu.",
+      });
+    }
+
+    await pool.query("DELETE FROM roles WHERE id = $1", [id]);
+    requirePermission.invalidateCache();
+    res.json({ success: true, message: "Role berhasil dihapus" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;

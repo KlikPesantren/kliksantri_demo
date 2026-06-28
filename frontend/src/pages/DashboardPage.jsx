@@ -51,6 +51,7 @@ function DashboardPage() {
   });
 
   const pembayaranTerbaru = summary?.pembayaran_terbaru || [];
+  const role = user?.role || "";
 
   const grafikKas = (summary?.grafik_kas || []).map((item) => ({
     bulan: ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][
@@ -76,12 +77,13 @@ function DashboardPage() {
   return (
     <AppShell title="Dashboard" breadcrumb="Dashboard">
       <DashboardResponsiveStyles />
-      {user?.role === "superadmin" && (
-        <div className="dashboard-page dashboard-monitoring-v3">
-          <section className="dashboard-section dashboard-section--hero">
-            <DashboardHero />
-          </section>
+      <div className="dashboard-page dashboard-monitoring-v3">
+        <section className="dashboard-section dashboard-section--hero">
+          <DashboardHero />
+        </section>
 
+        {role === "superadmin" && (
+          <>
           <section className="dashboard-section dashboard-section--metrics">
             <DashboardMetrics summary={summary} />
           </section>
@@ -103,16 +105,23 @@ function DashboardPage() {
           <section className="dashboard-section dashboard-section--chart">
             <DashboardFinanceChart grafikKas={grafikKas} />
           </section>
-        </div>
-      )}
+          </>
+        )}
 
-      {user?.role === "keuangan" && <DashboardKeuangan summary={summary} />}
+        {role === "keuangan" && <DashboardKeuangan summary={summary} />}
 
-      {user?.role === "pendidikan" && <DashboardPendidikan summary={summary} />}
+        {role === "pendidikan" && <DashboardPendidikan summary={summary} />}
 
-      {user?.role === "keamanan" && <DashboardKeamanan summary={summary} />}
+        {role === "keamanan" && <DashboardKeamanan summary={summary} />}
 
-      {user?.role === "sekretaris" && <DashboardSekretaris summary={summary} />}
+        {role === "sekretaris" && <DashboardSekretaris summary={summary} />}
+
+        {!["superadmin", "keuangan", "pendidikan", "keamanan", "sekretaris"].includes(role) && (
+          <section className="dashboard-section dashboard-section--metrics">
+            <DashboardMetrics summary={summary} />
+          </section>
+        )}
+      </div>
     </AppShell>
   );
 }

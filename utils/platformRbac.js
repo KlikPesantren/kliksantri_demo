@@ -33,6 +33,30 @@ function isTenantAssignableRole(roleName) {
   return TENANT_ASSIGNABLE_ROLES.has(normalized);
 }
 
+function getTenantCustomRolePrefix(tenantId) {
+  return `tenant_${tenantId}_`;
+}
+
+function isTenantCustomRole(roleName, tenantId) {
+  const normalized = String(roleName || "").trim().toLowerCase();
+  return normalized.startsWith(getTenantCustomRolePrefix(tenantId));
+}
+
+function normalizeTenantCustomRoleName(tenantId, rawName) {
+  const slug = String(rawName || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_ -]/g, "")
+    .replace(/[\s-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (!slug) return "";
+
+  const prefix = getTenantCustomRolePrefix(tenantId);
+  return slug.startsWith(prefix) ? slug : `${prefix}${slug}`;
+}
+
 function filterTenantRoles(rows) {
   return (rows || []).filter(
     (row) => !isPlatformRole(row.name) && isTenantAssignableRole(row.name),
@@ -75,6 +99,23 @@ function validateTenantAssignableRole(roleName) {
   return { ok: true };
 }
 
+function validateTenantRoleForAssignment(roleName, tenantId) {
+  const platformCheck = rejectPlatformRoleAssignment(roleName);
+  if (!platformCheck.ok) {
+    return platformCheck;
+  }
+
+  if (isTenantAssignableRole(roleName) || isTenantCustomRole(roleName, tenantId)) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    status: 403,
+    error: TENANT_ROLE_DENIED,
+  };
+}
+
 function rejectTenantRoleMutation() {
   return {
     ok: false,
@@ -100,6 +141,10 @@ module.exports = {
   filterTenantPermissionKeys,
   rejectPlatformRoleAssignment,
   validateTenantAssignableRole,
+  validateTenantRoleForAssignment,
   rejectTenantRoleMutation,
   tenantAssignableRolesSqlList,
+  getTenantCustomRolePrefix,
+  isTenantCustomRole,
+  normalizeTenantCustomRoleName,
 };
