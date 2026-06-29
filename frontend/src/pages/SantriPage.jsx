@@ -65,6 +65,11 @@ function formatTempatTanggalLahir(item) {
   return tempat || tanggal || "-";
 }
 
+function formatLimitHarian(value) {
+  if (value === null || value === undefined) return "Tanpa limit harian";
+  return formatCurrency(Number(value || 0));
+}
+
 function SantriPage() {
   const [santri, setSantri] = useState([]);
   const [kelas, setKelas] = useState([]);
@@ -87,6 +92,8 @@ function SantriPage() {
     kelas_id: "",
     foto: "",
     status: "aktif",
+    limit_harian: "0",
+    tanpa_limit_harian: false,
   });
 
   const getSantri = async () => {
@@ -146,9 +153,15 @@ function SantriPage() {
     });
   };
 
+  const buildPayload = () => ({
+    ...form,
+    limit_harian: form.tanpa_limit_harian ? null : Number(form.limit_harian || 0),
+    tanpa_limit_harian: undefined,
+  });
+
   const addSantri = async () => {
     try {
-      await api.post("/santri", form);
+      await api.post("/santri", buildPayload());
       resetForm();
       getSantri();
     } catch (err) {
@@ -175,6 +188,10 @@ function SantriPage() {
       kelas_id: item.kelas_id || "",
       foto: item.foto || "",
       status: item.status || "aktif",
+      limit_harian: item.limit_harian === null || item.limit_harian === undefined
+        ? ""
+        : String(item.limit_harian),
+      tanpa_limit_harian: item.limit_harian === null || item.limit_harian === undefined,
     });
   };
 
@@ -192,7 +209,7 @@ function SantriPage() {
         if (!ok) return;
       }
 
-      const response = await api.put(`/santri/${editId}`, form);
+      const response = await api.put(`/santri/${editId}`, buildPayload());
       if (response.data.exit_summary) {
         alert(
           `Santri diperbarui.\n\nRingkasan keluar:\n${formatExitSummary(response.data.exit_summary)}`,
@@ -234,6 +251,8 @@ function SantriPage() {
       kelas_id: "",
       foto: "",
       status: "aktif",
+      limit_harian: "0",
+      tanpa_limit_harian: false,
     });
     setEditId(null);
     setOriginalStatus("aktif");
@@ -252,6 +271,9 @@ function SantriPage() {
       NomorHPWali: item.nomor_hp_ortu,
       RFID: item.uid_rfid,
       Saldo: item.saldo,
+      LimitJajanHarian: item.limit_harian === null || item.limit_harian === undefined
+        ? "Tanpa limit"
+        : item.limit_harian,
       Alamat: item.alamat,
     }));
 
@@ -338,9 +360,6 @@ function SantriPage() {
                   ))}
                 </Select>
               </FormField>
-              <FormField label="UID RFID" htmlFor="santri-rfid">
-                <Input id="santri-rfid" type="text" name="uid_rfid" value={form.uid_rfid} onChange={handleChange} />
-              </FormField>
               <FormField label="Status" htmlFor="santri-status">
                 <Select id="santri-status" name="status" value={form.status} onChange={handleChange}>
                   <option value="aktif">Aktif</option>
@@ -353,6 +372,58 @@ function SantriPage() {
           </FormSection>
 
           {editId ? <SantriOperationalChecklist santriId={editId} /> : null}
+
+          <FormSection title="Pengaturan RFID">
+            <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>
+              Limit harian adalah batas maksimal transaksi RFID santri per hari. Isi 0 jika santri tidak boleh jajan melalui RFID.
+            </p>
+            <FormGrid>
+              <FormField label="UID RFID / Kartu RFID" htmlFor="santri-rfid">
+                <Input id="santri-rfid" type="text" name="uid_rfid" value={form.uid_rfid} onChange={handleChange} />
+              </FormField>
+              <FormField label="Saldo RFID" htmlFor="santri-saldo-rfid" helper="Saldo dikelola lewat menu topup RFID.">
+                <Input
+                  id="santri-saldo-rfid"
+                  type="text"
+                  value={editId ? formatCurrency(Number(santri.find((item) => item.id === editId)?.saldo || 0)) : "Akan aktif setelah santri dibuat"}
+                  readOnly
+                />
+              </FormField>
+              <FormField
+                label="Limit Jajan Harian"
+                htmlFor="santri-limit-harian"
+                helper={form.tanpa_limit_harian ? "Santri tetap wajib punya saldo cukup, tapi tidak dibatasi limit harian." : "Nominal maksimal transaksi RFID per hari."}
+              >
+                <Input
+                  id="santri-limit-harian"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  name="limit_harian"
+                  value={form.limit_harian}
+                  onChange={handleChange}
+                  disabled={form.tanpa_limit_harian}
+                />
+              </FormField>
+              <FormField label="Tanpa limit harian" htmlFor="santri-tanpa-limit">
+                <label style={checkboxRowStyle}>
+                  <input
+                    id="santri-tanpa-limit"
+                    type="checkbox"
+                    checked={form.tanpa_limit_harian}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        tanpa_limit_harian: e.target.checked,
+                        limit_harian: e.target.checked ? "" : prev.limit_harian || "0",
+                      }))
+                    }
+                  />
+                  <span>Aktifkan jika santri boleh transaksi tanpa batas harian.</span>
+                </label>
+              </FormField>
+            </FormGrid>
+          </FormSection>
 
           <FormSection title="Data Wali">
             <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>
@@ -545,6 +616,8 @@ function SantriPage() {
             <DetailItem label="Wali" value={detailSantri.orang_tua || "-"} translate="no" />
             <DetailItem label="Nomor HP Wali" value={detailSantri.nomor_hp_ortu || "-"} translate="no" />
             <DetailItem label="UID RFID" value={detailSantri.uid_rfid || "-"} />
+            <DetailItem label="Saldo RFID" value={formatCurrency(Number(detailSantri.saldo || 0))} />
+            <DetailItem label="Limit Jajan Harian" value={formatLimitHarian(detailSantri.limit_harian)} />
             <DetailItem label="Status" value={detailSantri.status || "aktif"} />
             <DetailItem label="Alamat Lengkap" value={detailSantri.alamat || "-"} fullWidth />
           </div>
@@ -587,6 +660,15 @@ const detailLabelStyle = {
 const detailValueStyle = {
   color: "var(--text-primary)",
   whiteSpace: "pre-wrap",
+};
+
+const checkboxRowStyle = {
+  minHeight: 42,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  color: "var(--text-primary)",
+  fontWeight: 600,
 };
 
 export default SantriPage;

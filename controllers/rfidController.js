@@ -170,9 +170,12 @@ exports.rfidPayment = async (req, res) => {
       Number(todayUsage.rows[0].total);
 
     const limit =
-      Number(santri.limit_harian || 0);
+      santri.limit_harian === null
+        ? null
+        : Number(santri.limit_harian || 0);
 
     if (
+      limit !== null &&
       !override_limit &&
       totalHariIni + Number(nominal) > limit
     ) {

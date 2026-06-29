@@ -667,15 +667,24 @@ bool apiPost(
 
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(15000);
 
   HTTPClient http;
 
   String url =
     SERVER_URL + endpoint;
 
+  Serial.println("====== API POST ======");
+  Serial.print("WiFi.status: ");
+  Serial.println(WiFi.status());
+  Serial.print("Local IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("URL: ");
+  Serial.println(url);
+
   http.begin(client, url);
 
-  http.setTimeout(2000);
+  http.setTimeout(15000);
 
   http.addHeader(
 
@@ -690,6 +699,14 @@ bool apiPost(
 
   response =
     http.getString();
+
+  Serial.print("HTTP CODE: ");
+  Serial.println(httpCode);
+  if (httpCode < 0) {
+    Serial.print("HTTP ERROR: ");
+    Serial.println(http.errorToString(httpCode));
+  }
+  Serial.println("======================");
 
   if (
 
@@ -1880,6 +1897,7 @@ void sendPing() {
 
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(15000);
 
   HTTPClient http;
 
@@ -1889,7 +1907,7 @@ void sendPing() {
 
   http.begin(client, url);
 
-  http.setTimeout(1500);
+  http.setTimeout(15000);
 
   http.addHeader(
 
@@ -1920,6 +1938,12 @@ void sendPing() {
 
   Serial.println("====== PING ======");
 
+  Serial.print("WiFi.status: ");
+  Serial.println(WiFi.status());
+
+  Serial.print("Local IP: ");
+  Serial.println(WiFi.localIP());
+
   Serial.print("URL: ");
   Serial.println(url);
 
@@ -1928,6 +1952,11 @@ void sendPing() {
 
   Serial.print("PING HTTP CODE: ");
   Serial.println(httpCode);
+
+  if (httpCode < 0) {
+    Serial.print("PING HTTP ERROR: ");
+    Serial.println(http.errorToString(httpCode));
+  }
 
   Serial.print("RESPONSE: ");
   Serial.println(response);
@@ -1969,6 +1998,7 @@ void sendAudit(
 
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(15000);
 
   HTTPClient http;
 
@@ -1985,7 +2015,7 @@ void sendAudit(
 
   http.begin(client, url);
 
-  http.setTimeout(2000);
+  http.setTimeout(15000);
 
   http.addHeader(
 
@@ -2027,6 +2057,11 @@ void sendAudit(
   );
 
   Serial.println(code);
+
+  if (code < 0) {
+    Serial.print("AUDIT HTTP ERROR: ");
+    Serial.println(http.errorToString(code));
+  }
 
   http.end();
 }

@@ -20,6 +20,18 @@ const {
 const router = express.Router();
 const withTenant = [authMiddleware, tenantMiddleware];
 
+function normalizeLimitHarian(value) {
+  if (value === null) return null;
+  if (value === undefined || value === "") return 0;
+
+  const normalized = Number(value);
+  if (!Number.isFinite(normalized) || normalized < 0) {
+    throw new Error("Limit jajan harian harus angka minimal 0");
+  }
+
+  return Math.floor(normalized);
+}
+
 const importUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -146,7 +158,15 @@ router.post(
         nomor_hp_ortu,
         kelas_id,
         foto,
+        limit_harian,
       } = req.body;
+
+      let normalizedLimitHarian;
+      try {
+        normalizedLimitHarian = normalizeLimitHarian(limit_harian);
+      } catch (limitErr) {
+        return res.status(400).json({ success: false, error: limitErr.message });
+      }
 
       const kelasCheck = await assertKelasInTenant(req.tenantId, kelas_id, client);
       if (!kelasCheck.ok) {
@@ -159,9 +179,9 @@ router.post(
         `INSERT INTO santri (
            nis, nama, tempat_lahir, tanggal_lahir, jenis_kelamin,
            tanggal_masuk_pesantren, uid_rfid, alamat, orang_tua,
-           nomor_hp_ortu, kelas_id, foto, tenant_id
+           nomor_hp_ortu, kelas_id, foto, limit_harian, tenant_id
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
           RETURNING *,
             to_char(tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
             to_char(tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren`,
@@ -178,6 +198,7 @@ router.post(
           nomor_hp_ortu,
           kelas_id || null,
           foto,
+          normalizedLimitHarian,
           req.tenantId,
         ]
       );
@@ -254,7 +275,15 @@ router.put(
         kelas_id,
         foto,
         status,
+        limit_harian,
       } = req.body;
+
+      let normalizedLimitHarian;
+      try {
+        normalizedLimitHarian = normalizeLimitHarian(limit_harian);
+      } catch (limitErr) {
+        return res.status(400).json({ success: false, error: limitErr.message });
+      }
 
       const kelasCheck = await assertKelasInTenant(req.tenantId, kelas_id, client);
       if (!kelasCheck.ok) {
@@ -293,8 +322,9 @@ router.put(
              nomor_hp_ortu = $10,
              kelas_id = $11,
              foto = $12,
-             status = $13
-         WHERE id = $14 AND tenant_id = $15
+             status = $13,
+             limit_harian = $14
+         WHERE id = $15 AND tenant_id = $16
           RETURNING *,
             to_char(tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
             to_char(tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren`,
@@ -312,6 +342,7 @@ router.put(
           kelas_id || null,
           foto,
           nextStatus,
+          normalizedLimitHarian,
           id,
           req.tenantId,
         ]
