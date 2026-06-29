@@ -56,8 +56,27 @@ function authReducer(state, action) {
 
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const pushRegisterAttemptedRef = React.useRef(false);
+
+  const registerPushAfterAuthReady = useCallback(async (source) => {
+    if (pushRegisterAttemptedRef.current) {
+      console.log('PUSH REGISTER SKIP already attempted', { source });
+      return;
+    }
+
+    pushRegisterAttemptedRef.current = true;
+    console.log('PUSH REGISTER START', { source });
+
+    const result = await registerPushTokenBackground({ source });
+    if (result?.ok) {
+      console.log('PUSH REGISTER DONE', { source });
+    } else {
+      console.log('PUSH REGISTER NOT OK', { source, result });
+    }
+  }, []);
 
   const logout = useCallback(async () => {
+    pushRegisterAttemptedRef.current = false;
     await unregisterPushToken();
     await storage.clearSession();
     dispatch({ type: 'LOGOUT' });
@@ -92,13 +111,13 @@ export function AuthProvider({ children }) {
         anak,
         santriIds,
       });
-      registerPushTokenBackground();
+      await registerPushAfterAuthReady('restoreSession');
 
     } catch {
       await storage.clearSession();
       dispatch({ type: 'SET_LOADING', value: false });
     }
-  }, []);
+  }, [registerPushAfterAuthReady]);
 
   const login = useCallback(async (nomor_hp, pin, tenant_slug) => {
     const res = await authApi.login(nomor_hp, pin, tenant_slug);
@@ -115,10 +134,15 @@ export function AuthProvider({ children }) {
     await storage.saveSession(token, wali, anak, santriIds, slug);
 
     dispatch({ type: 'LOGIN', token, wali, anak, santriIds });
-    registerPushTokenBackground();
+    await registerPushAfterAuthReady('login');
 
     return { anak, santriIds, tenant };
-  }, []);
+  }, [registerPushAfterAuthReady]);
+
+  React.useEffect(() => {
+    if (!state.isAuthenticated || !state.token) return;
+    registerPushAfterAuthReady('authStateEffect');
+  }, [state.isAuthenticated, state.token, registerPushAfterAuthReady]);
 
   return (
     <AuthContext.Provider value={{ ...state, login, logout, restoreSession }}>

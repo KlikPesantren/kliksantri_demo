@@ -6,6 +6,7 @@ import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
 import { SplashScreen } from '../screens/auth/SplashScreen';
 import { setupNotificationNavigation } from '../services/notificationNavigationService';
+import { registerPushTokenBackground } from '../services/pushNotificationService';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -13,6 +14,7 @@ export function AppNavigator() {
   const { isLoading, isAuthenticated, anak, restoreSession } = useAuth();
   const { restoreActiveChild, setActiveSantri } = useActiveChild();
   const anakRef = useRef(anak);
+  const pushRegisterOnReadyRef = useRef(false);
 
   useEffect(() => {
     restoreSession();
@@ -27,6 +29,19 @@ export function AppNavigator() {
       restoreActiveChild(anak);
     }
   }, [isAuthenticated, anak, restoreActiveChild]);
+
+  useEffect(() => {
+    if (!isAuthenticated || isLoading || pushRegisterOnReadyRef.current) {
+      return undefined;
+    }
+
+    pushRegisterOnReadyRef.current = true;
+    const timer = setTimeout(() => {
+      registerPushTokenBackground({ source: 'appNavigatorAuthenticated' });
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;

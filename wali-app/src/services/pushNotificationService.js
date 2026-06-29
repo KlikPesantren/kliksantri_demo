@@ -38,17 +38,26 @@ export async function getPushRegistrationStatus() {
   return raw ? JSON.parse(raw) : null;
 }
 
-export async function registerPushToken() {
+export async function registerPushToken(options = {}) {
+  const source = options?.source || 'unknown';
+  console.log('PUSH REGISTER START', { source });
+
   const modules = await loadExpoModules();
   if (!modules) {
-    console.warn('[push] expo-notifications tidak tersedia — lewati registrasi');
+    console.error('PUSH REGISTER ERROR', {
+      source,
+      reason: 'expo-notifications module unavailable',
+    });
     return { ok: false, skipped: true, reason: 'module_unavailable' };
   }
 
   const { Notifications: Notif, Device: Dev, Constants: Const } = modules;
 
   if (!Dev.isDevice) {
-    console.warn('[push] Push token hanya didukung di perangkat fisik');
+    console.error('PUSH REGISTER ERROR', {
+      source,
+      reason: 'physical device required',
+    });
     await saveRegistrationStatus({ ok: false, skipped: true, reason: 'simulator' });
     return { ok: false, skipped: true, reason: 'simulator' };
   }
@@ -76,7 +85,7 @@ export async function registerPushToken() {
     }
 
     if (finalStatus !== 'granted') {
-      console.warn('[push] Izin notifikasi ditolak pengguna');
+      console.warn('PUSH PERMISSION DENIED', { source, status: finalStatus });
       await saveRegistrationStatus({ ok: false, skipped: true, reason: 'permission_denied' });
       return { ok: false, skipped: true, reason: 'permission_denied' };
     }
@@ -96,7 +105,7 @@ export async function registerPushToken() {
       throw new Error('Expo push token kosong');
     }
 
-    console.log('[push] Expo token:', expoPushToken);
+    console.log('PUSH REGISTER TOKEN OK', expoPushToken);
 
     const platform = Platform.OS;
     const deviceName =
@@ -104,13 +113,18 @@ export async function registerPushToken() {
       [Dev.manufacturer, Dev.modelName].filter(Boolean).join(' ') ||
       platform;
 
+    console.log('PUSH REGISTER POST START', {
+      endpoint: '/wali-app/device-token',
+      token_prefix: `${String(expoPushToken).slice(0, 24)}...`,
+    });
+
     const response = await pushApi.registerDeviceToken({
       expo_push_token: expoPushToken,
       platform,
       device_name: deviceName,
     });
 
-    console.log('[push] register device-token success:', response);
+    console.log('PUSH REGISTER POST SUCCESS', response);
 
     const status = {
       ok: true,
@@ -121,7 +135,8 @@ export async function registerPushToken() {
     await saveRegistrationStatus(status);
     return status;
   } catch (err) {
-    console.error('[push] Gagal mendaftarkan push token:', {
+    console.error('PUSH REGISTER ERROR', {
+      source,
       message: err?.message,
       code: err?.code,
       status: err?.response?.status,
@@ -136,11 +151,14 @@ export async function registerPushToken() {
   }
 }
 
-export async function registerPushTokenBackground() {
+export async function registerPushTokenBackground(options = {}) {
   try {
-    return await registerPushToken();
+    return await registerPushToken(options);
   } catch (err) {
-    console.warn('[push] Background register gagal:', err?.message || err);
+    console.error('PUSH REGISTER ERROR', {
+      source: options?.source || 'background',
+      message: err?.message || 'register_failed',
+    });
     return { ok: false, error: err?.message || 'register_failed' };
   }
 }
