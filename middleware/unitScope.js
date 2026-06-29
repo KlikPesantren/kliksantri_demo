@@ -1,4 +1,5 @@
 const pool = require("../db");
+const requirePermission = require("./requirePermission");
 
 /**
  * Resolve unit access for the authenticated user within active tenant.
@@ -42,36 +43,42 @@ async function resolveUnitAccess(req) {
     };
   }
 
-  if (role === "bendahara_unit") {
-    const { rows } = await pool.query(
-      `SELECT s.unit_id
-       FROM user_unit_scope s
-       INNER JOIN users usr ON usr.id = s.user_id AND usr.tenant_id = $2
-       INNER JOIN unit_pendidikan u ON u.id = s.unit_id AND u.tenant_id = $2
-       WHERE s.user_id = $1`,
-      [userId, tenantId]
-    );
+  const perms = await requirePermission.getPermissionList(role, {
+    tenantScoped: true,
+  });
+  const canView = perms.includes("kas_instansi.view");
+  const canManage = perms.includes("kas_instansi.manage");
 
-    if (rows.length === 0) {
-      return {
-        denied: true,
-        status: 403,
-        error: "Unit scope belum diassign untuk bendahara",
-      };
-    }
-
+  if (!canView && !canManage) {
     return {
-      mode: "SCOPED",
-      unitIds: rows.map((r) => r.unit_id),
-      canManage: true,
-      tenantId,
+      denied: true,
+      status: 403,
+      error: "Akses ditolak",
+    };
+  }
+
+  const { rows } = await pool.query(
+    `SELECT s.unit_id
+     FROM user_unit_scope s
+     INNER JOIN users usr ON usr.id = s.user_id AND usr.tenant_id = $2
+     INNER JOIN unit_pendidikan u ON u.id = s.unit_id AND u.tenant_id = $2
+     WHERE s.user_id = $1`,
+    [userId, tenantId]
+  );
+
+  if (rows.length === 0) {
+    return {
+      denied: true,
+      status: 403,
+      error: "Unit scope belum diassign",
     };
   }
 
   return {
-    denied: true,
-    status: 403,
-    error: "Akses ditolak",
+    mode: "SCOPED",
+    unitIds: rows.map((r) => r.unit_id),
+    canManage,
+    tenantId,
   };
 }
 

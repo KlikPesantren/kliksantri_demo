@@ -7,6 +7,7 @@ import StatusBadge from "../components/ui/StatusBadge";
 import Button, { actionBarStyle } from "../components/ui/Button";
 import { Table, TableScroll } from "../components/ui/table";
 import { exportExcel } from "../utils/exportExcel";
+import { hasPermission } from "../utils/hasPermission";
 
 const SESI_LIST = [
   "Ngaji Pagi",
@@ -78,8 +79,13 @@ function AbsensiPage() {
   const [tahun, setTahun] = useState(new Date().getFullYear());
   const [santri, setSantri] = useState([]);
   const [absensi, setAbsensi] = useState({});
+  const [error, setError] = useState("");
 
   const fetchSeqRef = useRef(0);
+  const canManageAbsensi =
+    hasPermission("absensi.manage") ||
+    hasPermission("absensi.create") ||
+    hasPermission("absensi.update");
 
   const getAbsensi = async (b, t) => {
     const seq = ++fetchSeqRef.current;
@@ -113,28 +119,39 @@ function AbsensiPage() {
       setAbsensi(data);
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.error || "Gagal memuat absensi");
     }
   };
 
   const getKelas = async () => {
     try {
-      const response = await api.get("/kelas");
-      setKelas(response.data.data || []);
+      const response = await api.get("/absensi/kelas");
+      const list = response.data.data || [];
+      setKelas(list);
+      if (list.length === 1) {
+        setKelasId(String(list[0].id));
+        getSantri(list[0].id);
+      }
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.error || "Gagal memuat kelas akses");
     }
   };
 
   const getSantri = async (id) => {
+    if (!id) {
+      setSantri([]);
+      return;
+    }
+
     try {
-      const response = await api.get("/santri");
-      setSantri(
-        response.data.data.filter(
-          (s) => String(s.kelas_id) === String(id)
-        )
-      );
+      const response = await api.get("/absensi/santri", {
+        params: { kelas_id: id },
+      });
+      setSantri(response.data.data || []);
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.error || "Gagal memuat santri kelas");
     }
   };
 
@@ -153,6 +170,11 @@ function AbsensiPage() {
   };
 
   const simpanAbsensi = async () => {
+    if (!canManageAbsensi) {
+      setError("Role belum memiliki izin kelola absensi");
+      return;
+    }
+
     const entries = Object.entries(absensi).filter(
       ([, val]) => val && val !== ""
     );
@@ -184,7 +206,7 @@ function AbsensiPage() {
       
       await getAbsensi(bulan, tahun);
     } catch (err) {
-      alert("Gagal simpan: " + (err.response?.data?.error || err.message));
+      setError(err.response?.data?.error || err.message || "Gagal simpan absensi");
     }
   };
 
@@ -211,6 +233,9 @@ function AbsensiPage() {
     <AppShell title="Absensi Bulanan" breadcrumb="Akademik / Absensi Bulanan">
       <AkademikResponsiveStyles />
       <div className="akademik-page">
+      {error ? (
+        <div style={errorBannerStyle}>{error}</div>
+      ) : null}
       <Card padding="md" shadow="card" border={false} radius="xl">
         <div className="akademik-filter-panel ops-page__filter filter-bar-v3 filter-bar-v3--table">
           <span className="filter-bar-v3__label">Filter absensi</span>
@@ -222,6 +247,7 @@ function AbsensiPage() {
               setKelasId(e.target.value);
               getSantri(e.target.value);
             }}
+            disabled={kelas.length === 1}
           >
             <option value="">Pilih Kelas</option>
             {kelas.map((k) => (
@@ -287,6 +313,7 @@ function AbsensiPage() {
                             onChange={(e) =>
                               handleAbsensi(sesi, s.id, hari, e.target.value)
                             }
+                            disabled={!canManageAbsensi}
                             style={{ border: "none", background: "transparent" }}
                           >
                             <option value="">-</option>
@@ -317,13 +344,25 @@ function AbsensiPage() {
         <Button variant="success" onClick={handleExport}>
           Export Excel
         </Button>
-        <Button variant="primary" onClick={simpanAbsensi}>
-          Simpan Semua Absensi
-        </Button>
+        {canManageAbsensi ? (
+          <Button variant="primary" onClick={simpanAbsensi}>
+            Simpan Semua Absensi
+          </Button>
+        ) : null}
       </div>
       </div>
     </AppShell>
   );
 }
+
+const errorBannerStyle = {
+  background: "var(--danger-subtle)",
+  color: "var(--danger)",
+  padding: "12px 16px",
+  borderRadius: "8px",
+  marginBottom: "16px",
+  fontSize: "14px",
+  borderLeft: "3px solid var(--danger)",
+};
 
 export default AbsensiPage;

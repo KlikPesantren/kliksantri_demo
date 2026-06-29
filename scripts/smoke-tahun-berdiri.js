@@ -5,7 +5,7 @@
 require("dotenv").config();
 const pool = require("../db");
 
-const BASE = process.env.BANNER_DEBUG_BASE || "http://10.47.175.36:3000";
+const BASE = process.env.BANNER_DEBUG_BASE || "http://10.10.2.140:3000";
 const TENANT = process.env.SMOKE_TENANT_SLUG || "default";
 
 async function loginAdmin() {

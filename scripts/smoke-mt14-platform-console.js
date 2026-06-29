@@ -5,7 +5,7 @@
 require("dotenv").config();
 const pool = require("../db");
 
-const BASE = process.env.SMOKE_BASE_URL || "http://10.47.175.36:3000";
+const BASE = process.env.SMOKE_BASE_URL || "http://10.10.2.140:3000";
 
 let passed = 0;
 let failed = 0;

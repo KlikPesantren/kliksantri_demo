@@ -36,6 +36,10 @@ const FORM_INIT = {
 function UsersPage() {
   const [users, setUsers]       = useState([]);
   const [roles, setRoles]       = useState([]);
+  const [units, setUnits]       = useState([]);
+  const [kelasList, setKelasList] = useState([]);
+  const [unitScope, setUnitScope] = useState([]);
+  const [kelasScope, setKelasScope] = useState([]);
   const [search, setSearch]     = useState("");
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
@@ -82,6 +86,19 @@ function UsersPage() {
       ]);
       setUsers(uRes.data.data || []);
       setRoles(rRes.data.data || []);
+
+      try {
+        const [unitRes, kelasRes] = await Promise.all([
+          api.get("/users/meta/units"),
+          api.get("/users/meta/kelas"),
+        ]);
+        setUnits(unitRes.data.data || []);
+        setKelasList(kelasRes.data.data || []);
+      } catch (unitErr) {
+        console.error(unitErr);
+        setUnits([]);
+        setKelasList([]);
+      }
     } catch (err) {
       setError(err.response?.data?.error || "Gagal memuat data user");
     } finally {
@@ -99,10 +116,12 @@ function UsersPage() {
   const openAdd = () => {
     setEditId(null);
     setForm({ ...FORM_INIT, role: roles[0]?.name || "" });
+    setUnitScope([]);
+    setKelasScope([]);
     setFormModal(true);
   };
 
-  const openEdit = (u) => {
+  const openEdit = async (u) => {
     setEditId(u.id);
     setForm({
       nama: u.nama || "",
@@ -111,7 +130,43 @@ function UsersPage() {
       role: u.role || "",
       status: u.status || "Aktif",
     });
+    setUnitScope([]);
+    setKelasScope([]);
     setFormModal(true);
+
+    try {
+      const [unitRes, kelasRes] = await Promise.all([
+        api.get(`/users/${u.id}/unit-scope`),
+        api.get(`/users/${u.id}/kelas-scope`),
+      ]);
+      setUnitScope(unitRes.data.data || []);
+      setKelasScope(kelasRes.data.data || []);
+    } catch (err) {
+      setError(err.response?.data?.error || "Gagal memuat scope akses user");
+    }
+  };
+
+  const showUnitScope = form.role && form.role !== "superadmin";
+  const showKelasScope = form.role && form.role !== "superadmin";
+
+  const toggleUnitScope = (unitId) => {
+    setUnitScope((prev) => {
+      const id = Number(unitId);
+      if (prev.some((v) => Number(v) === id)) {
+        return prev.filter((v) => Number(v) !== id);
+      }
+      return [...prev, id];
+    });
+  };
+
+  const toggleKelasScope = (kelasId) => {
+    setKelasScope((prev) => {
+      const id = Number(kelasId);
+      if (prev.some((v) => Number(v) === id)) {
+        return prev.filter((v) => Number(v) !== id);
+      }
+      return [...prev, id];
+    });
   };
 
   const handleSave = async () => {
@@ -134,10 +189,25 @@ function UsersPage() {
       if (editId) {
         if (form.password.trim()) payload.password = form.password;
         await api.put(`/users/${editId}`, payload);
+        await api.put(`/users/${editId}/unit-scope`, {
+          unit_ids: showUnitScope ? unitScope : [],
+        });
+        await api.put(`/users/${editId}/kelas-scope`, {
+          kelas_ids: showKelasScope ? kelasScope : [],
+        });
         flash("User berhasil diperbarui");
       } else {
         payload.password = form.password;
-        await api.post("/users", payload);
+        const res = await api.post("/users", payload);
+        const newUserId = res.data?.data?.id;
+        if (newUserId) {
+          await api.put(`/users/${newUserId}/unit-scope`, {
+            unit_ids: showUnitScope ? unitScope : [],
+          });
+          await api.put(`/users/${newUserId}/kelas-scope`, {
+            kelas_ids: showKelasScope ? kelasScope : [],
+          });
+        }
         flash("User berhasil ditambahkan");
       }
       setFormModal(false);
@@ -352,7 +422,13 @@ function UsersPage() {
             <Select
               id="user-role"
               value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, role: e.target.value });
+                if (e.target.value === "superadmin") {
+                  setUnitScope([]);
+                  setKelasScope([]);
+                }
+              }}
             >
               <option value="">— Pilih Role —</option>
               {roles.map((r) => (
@@ -372,6 +448,62 @@ function UsersPage() {
               <option value="Nonaktif">Nonaktif</option>
             </Select>
           </FormField>
+          {showUnitScope ? (
+            <FormField label="Unit Akses" htmlFor="user-unit-scope" fullWidth>
+              <div id="user-unit-scope" style={unitScopeGrid}>
+                {units.length === 0 ? (
+                  <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+                    Belum ada unit aktif.
+                  </span>
+                ) : (
+                  units.map((unit) => {
+                    const checked = unitScope.some((id) => Number(id) === Number(unit.id));
+                    return (
+                      <label key={unit.id} style={unitScopeOption}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleUnitScope(unit.id)}
+                        />
+                        <span>{unit.nama || unit.kode}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <p style={unitScopeHint}>
+                Dipakai untuk membatasi akses Program Unit dan Kas Unit.
+              </p>
+            </FormField>
+          ) : null}
+          {showKelasScope ? (
+            <FormField label="Kelas Akses" htmlFor="user-kelas-scope" fullWidth>
+              <div id="user-kelas-scope" style={unitScopeGrid}>
+                {kelasList.length === 0 ? (
+                  <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+                    Belum ada kelas.
+                  </span>
+                ) : (
+                  kelasList.map((kelas) => {
+                    const checked = kelasScope.some((id) => Number(id) === Number(kelas.id));
+                    return (
+                      <label key={kelas.id} style={unitScopeOption}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleKelasScope(kelas.id)}
+                        />
+                        <span>{kelas.nama_kelas}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <p style={unitScopeHint}>
+                Dipakai untuk membatasi akses Absensi Santri.
+              </p>
+            </FormField>
+          ) : null}
         </FormGrid>
         <FormActionBar className="form-action-bar-v3--compact">
           <Button type="button" variant="primary" onClick={handleSave}>
@@ -443,6 +575,32 @@ const bannerSuccess = {
   marginBottom: "16px",
   fontSize: "14px",
   borderLeft: "3px solid var(--primary-hover)",
+};
+
+const unitScopeGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: "8px",
+  padding: "10px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-md)",
+  background: "var(--surface-muted)",
+};
+
+const unitScopeOption = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  color: "var(--text-primary)",
+  fontSize: "13px",
+  fontWeight: 600,
+};
+
+const unitScopeHint = {
+  margin: "6px 0 0",
+  color: "var(--text-secondary)",
+  fontSize: "12px",
+  lineHeight: 1.4,
 };
 
 export default UsersPage;

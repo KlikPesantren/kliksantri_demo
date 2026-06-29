@@ -219,7 +219,7 @@ const io =
         origin:
           process.env.CORS_ORIGIN ||
           process.env.FRONTEND_URL ||
-          "http://10.47.175.36:5173",
+          "http://10.10.2.140:5173",
 
         methods: [
 

@@ -4,8 +4,8 @@
  */
 require("dotenv").config();
 
-const API = process.env.SMOKE_BASE_URL || "http://10.47.175.36:3000";
-const FRONTEND = process.env.SMOKE_FRONTEND_URL || "http://10.47.175.36:5173";
+const API = process.env.SMOKE_BASE_URL || "http://10.10.2.140:3000";
+const FRONTEND = process.env.SMOKE_FRONTEND_URL || "http://10.10.2.140:5173";
 
 let passed = 0;
 let failed = 0;

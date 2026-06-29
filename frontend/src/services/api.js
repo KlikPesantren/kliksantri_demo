@@ -6,7 +6,7 @@ import {
 } from "../constants/tenant";
 import { clearSession } from "../utils/storage";
 
-const DEV_API_FALLBACK = "http://10.47.175.36:3000";
+const DEV_API_FALLBACK = "http://10.10.2.140:3000";
 
 export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||

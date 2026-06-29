@@ -71,18 +71,31 @@ function ProtectedRoute({ children }) {
   const allowed = !required || hasPermission(required);
 
   if (!allowed) {
+    const message =
+      required === "dashboard.view"
+        ? "Role belum memiliki izin dashboard"
+        : "Role belum memiliki izin untuk halaman ini";
+
     return (
       <div
         style={{
           height: "100vh",
           display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          fontSize: "30px",
-          fontWeight: "bold",
+          gap: 12,
+          padding: 24,
+          textAlign: "center",
+          background: "var(--background)",
         }}
       >
-        AKSES DITOLAK
+        <div style={{ fontSize: "26px", fontWeight: 800, color: "var(--text-primary)" }}>
+          {message}
+        </div>
+        <p style={{ margin: 0, color: "var(--text-secondary)", maxWidth: 460, lineHeight: 1.5 }}>
+          Minta admin memberi permission <strong>{required}</strong> pada matrix role ini.
+        </p>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 
-const DEV_API_FALLBACK = 'http://10.47.175.36:3000';
+const DEV_API_FALLBACK = 'http://10.10.2.140:3000';
 
 const BASE = (
   ENV_API_BASE_URL || (__DEV__ ? DEV_API_FALLBACK : '')

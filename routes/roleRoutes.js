@@ -120,6 +120,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
+  const client = await pool.connect();
   try {
     const { name, label } = req.body;
     const roleName = normalizeTenantCustomRoleName(req.tenantId, name);
@@ -133,20 +134,36 @@ router.post("/", async (req, res) => {
       return res.status(403).json({ success: false, error: "Nama role sistem tidak boleh dipakai" });
     }
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `INSERT INTO roles (name, label, is_system)
        VALUES ($1, $2, false)
        RETURNING id, name, label, is_system`,
       [roleName, roleLabel]
     );
 
+    await client.query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT $1, id
+       FROM permissions
+       WHERE key = 'dashboard.view'
+       ON CONFLICT DO NOTHING`,
+      [result.rows[0].id]
+    );
+
+    await client.query("COMMIT");
+    requirePermission.invalidateCache();
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
+    await client.query("ROLLBACK");
     if (err.code === "23505") {
       return res.status(400).json({ success: false, error: "Role sudah ada" });
     }
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
   }
 });
 
