@@ -13,6 +13,16 @@ import DashboardKeamanan from "../components/dashboard/DashboardKeamanan";
 import DashboardSekretaris from "../components/dashboard/DashboardSekretaris";
 import DashboardKesehatanHariIni from "../components/dashboard/DashboardKesehatanHariIni";
 import { getUser } from "../utils/storage";
+import { hasPermission } from "../utils/hasPermission";
+
+const DEFAULT_SHORTCUTS = [
+  { permission: "absensi.view", label: "Absensi Santri", path: "/absensi" },
+  { permission: "program_unit.view", label: "Program Unit", path: "/program-unit" },
+  { permission: "kas_instansi.view", label: "Kas Unit", path: "/kas-instansi" },
+  { permission: "pembayaran.view", label: "Pembayaran", path: "/pembayaran" },
+  { permission: "santri.view", label: "Data Santri", path: "/santri" },
+  { permission: "pengumuman.view", label: "Pengumuman", path: "/pengumuman" },
+];
 
 function DashboardPage() {
   const user = getUser();
@@ -52,6 +62,8 @@ function DashboardPage() {
 
   const pembayaranTerbaru = summary?.pembayaran_terbaru || [];
   const role = user?.role || "";
+  const canViewDashboardData = hasPermission("dashboard.view");
+  const shortcuts = DEFAULT_SHORTCUTS.filter((item) => hasPermission(item.permission));
 
   const grafikKas = (summary?.grafik_kas || []).map((item) => ({
     bulan: ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][
@@ -71,8 +83,10 @@ function DashboardPage() {
   };
 
   useEffect(() => {
-    getSummary();
-  }, []);
+    if (canViewDashboardData) {
+      getSummary();
+    }
+  }, [canViewDashboardData]);
 
   return (
     <AppShell title="Dashboard" breadcrumb="Dashboard">
@@ -82,7 +96,33 @@ function DashboardPage() {
           <DashboardHero />
         </section>
 
-        {role === "superadmin" && (
+        {!canViewDashboardData ? (
+          <section className="dashboard-section dashboard-section--metrics">
+            <div style={shortcutPanelStyle}>
+              <div>
+                <h2 style={shortcutTitleStyle}>Akses Cepat</h2>
+                <p style={shortcutSubtitleStyle}>
+                  Pilih halaman yang tersedia untuk role Anda.
+                </p>
+              </div>
+              <div style={shortcutGridStyle}>
+                {shortcuts.length > 0 ? (
+                  shortcuts.map((item) => (
+                    <a key={item.path} href={item.path} style={shortcutLinkStyle}>
+                      {item.label}
+                    </a>
+                  ))
+                ) : (
+                  <span style={shortcutEmptyStyle}>
+                    Belum ada halaman yang bisa diakses. Minta admin mengatur permission role.
+                  </span>
+                )}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {canViewDashboardData && role === "superadmin" && (
           <>
           <section className="dashboard-section dashboard-section--metrics">
             <DashboardMetrics summary={summary} />
@@ -108,15 +148,15 @@ function DashboardPage() {
           </>
         )}
 
-        {role === "keuangan" && <DashboardKeuangan summary={summary} />}
+        {canViewDashboardData && role === "keuangan" && <DashboardKeuangan summary={summary} />}
 
-        {role === "pendidikan" && <DashboardPendidikan summary={summary} />}
+        {canViewDashboardData && role === "pendidikan" && <DashboardPendidikan summary={summary} />}
 
-        {role === "keamanan" && <DashboardKeamanan summary={summary} />}
+        {canViewDashboardData && role === "keamanan" && <DashboardKeamanan summary={summary} />}
 
-        {role === "sekretaris" && <DashboardSekretaris summary={summary} />}
+        {canViewDashboardData && role === "sekretaris" && <DashboardSekretaris summary={summary} />}
 
-        {!["superadmin", "keuangan", "pendidikan", "keamanan", "sekretaris"].includes(role) && (
+        {canViewDashboardData && !["superadmin", "keuangan", "pendidikan", "keamanan", "sekretaris"].includes(role) && (
           <section className="dashboard-section dashboard-section--metrics">
             <DashboardMetrics summary={summary} />
           </section>
@@ -125,5 +165,50 @@ function DashboardPage() {
     </AppShell>
   );
 }
+
+const shortcutPanelStyle = {
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)",
+  padding: "20px",
+  boxShadow: "var(--shadow-card)",
+};
+
+const shortcutTitleStyle = {
+  margin: 0,
+  fontSize: "18px",
+  color: "var(--text-primary)",
+};
+
+const shortcutSubtitleStyle = {
+  margin: "6px 0 16px",
+  color: "var(--text-secondary)",
+  fontSize: "14px",
+};
+
+const shortcutGridStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+};
+
+const shortcutLinkStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: "38px",
+  padding: "8px 12px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--border)",
+  background: "var(--surface-muted)",
+  color: "var(--text-primary)",
+  textDecoration: "none",
+  fontSize: "13px",
+  fontWeight: 700,
+};
+
+const shortcutEmptyStyle = {
+  color: "var(--text-secondary)",
+  fontSize: "14px",
+};
 
 export default DashboardPage;

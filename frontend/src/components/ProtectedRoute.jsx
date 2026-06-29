@@ -68,7 +68,8 @@ function ProtectedRoute({ children }) {
   }
 
   const required = ROUTE_PERMISSIONS[location.pathname];
-  const allowed = !required || hasPermission(required);
+  const isDashboardRoute = location.pathname === "/dashboard";
+  const allowed = isDashboardRoute || !required || hasPermission(required);
 
   if (!allowed) {
     const message =
