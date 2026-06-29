@@ -55,20 +55,24 @@ export async function registerPushToken() {
 
   try {
     if (Platform.OS === 'android') {
+      console.log('[push] create Android notification channel: default');
       await Notif.setNotificationChannelAsync('default', {
         name: 'Default',
         importance: Notif.AndroidImportance.MAX,
+        sound: 'default',
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#15803D',
       });
     }
 
     const { status: existingStatus } = await Notif.getPermissionsAsync();
+    console.log('[push] notification permission existing:', existingStatus);
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
       const { status } = await Notif.requestPermissionsAsync();
       finalStatus = status;
+      console.log('[push] notification permission requested:', status);
     }
 
     if (finalStatus !== 'granted') {
@@ -81,6 +85,8 @@ export async function registerPushToken() {
       Const.expoConfig?.extra?.eas?.projectId ??
       Const.easConfig?.projectId;
 
+    console.log('[push] EAS projectId:', projectId || null);
+
     const tokenResult = await Notif.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined,
     );
@@ -90,17 +96,21 @@ export async function registerPushToken() {
       throw new Error('Expo push token kosong');
     }
 
+    console.log('[push] Expo token:', expoPushToken);
+
     const platform = Platform.OS;
     const deviceName =
       Dev.deviceName ||
       [Dev.manufacturer, Dev.modelName].filter(Boolean).join(' ') ||
       platform;
 
-    await pushApi.registerDeviceToken({
+    const response = await pushApi.registerDeviceToken({
       expo_push_token: expoPushToken,
       platform,
       device_name: deviceName,
     });
+
+    console.log('[push] register device-token success:', response);
 
     const status = {
       ok: true,
@@ -111,7 +121,13 @@ export async function registerPushToken() {
     await saveRegistrationStatus(status);
     return status;
   } catch (err) {
-    console.warn('[push] Gagal mendaftarkan push token:', err?.message || err);
+    console.error('[push] Gagal mendaftarkan push token:', {
+      message: err?.message,
+      code: err?.code,
+      status: err?.response?.status,
+      data: err?.response?.data,
+      stack: err?.stack,
+    });
     await saveRegistrationStatus({
       ok: false,
       error: err?.message || 'register_failed',

@@ -2735,6 +2735,16 @@ router.post(
         device_name,
       } = req.body;
 
+      console.log("DEVICE TOKEN REGISTER", {
+        wali_id: req.wali?.wali_akun_id,
+        tenant_id: req.tenantId,
+        token_prefix: expo_push_token
+          ? `${String(expo_push_token).slice(0, 24)}...`
+          : null,
+        platform,
+        device_name,
+      });
+
       const row =
         await pushNotificationService.registerWaliDeviceToken({
 
@@ -2749,6 +2759,17 @@ router.post(
           deviceName: device_name,
 
         });
+
+      console.log("DEVICE TOKEN REGISTER SUCCESS", {
+        id: row.id,
+        wali_id: row.wali_id,
+        tenant_id: row.tenant_id,
+        token_prefix: row.expo_push_token
+          ? `${String(row.expo_push_token).slice(0, 24)}...`
+          : null,
+        is_active: row.is_active,
+        last_seen: row.last_seen,
+      });
 
       res.json({
 
@@ -2774,7 +2795,12 @@ router.post(
 
     catch (err) {
 
-      console.log(err);
+      console.error("DEVICE TOKEN REGISTER ERROR", {
+        wali_id: req.wali?.wali_akun_id,
+        tenant_id: req.tenantId,
+        message: err.message,
+        stack: err.stack,
+      });
 
       const status =
         err.statusCode || 500;
