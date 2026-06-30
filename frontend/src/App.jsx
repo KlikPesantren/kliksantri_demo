@@ -59,6 +59,7 @@ import PlatformProfilePage from "./pages/platform/PlatformProfilePage";
 import PlatformAnnouncementsPage from "./pages/platform/PlatformAnnouncementsPage";
 import AboutKlikSantriPage from "./pages/AboutKlikSantriPage";
 import PlatformInfoAnnouncementsPage from "./pages/PlatformInfoAnnouncementsPage";
+import LandingPage from "./pages/LandingPage";
 
 function RouteFallback() {
   return null;
@@ -74,6 +75,7 @@ function App() {
       <TenantProfileProvider>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/landing" element={<LandingPage />} />
 
         {/* Platform Console — auth terpisah dari tenant admin */}
         <Route path="/platform/login" element={<PlatformLoginPage />} />
