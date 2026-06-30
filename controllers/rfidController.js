@@ -161,9 +161,11 @@ exports.rfidPayment = async (req, res) => {
       COALESCE(SUM(nominal),0) total
       FROM transaksi_rfid
       WHERE santri_id = $1
+      AND tenant_id = $2
       AND DATE(created_at)=CURRENT_DATE
+      AND LOWER(TRIM(COALESCE(trx_type, 'payment'))) = 'payment'
       `,
-      [santri.id]
+      [santri.id, tenantId]
     );
 
     const totalHariIni =
@@ -925,34 +927,6 @@ VALUES
         nominal,
         user_id,
         trxId,
-        tenantId
-      ]
-    );
-
-    await client.query(
-      `
-      INSERT INTO buku_kas
-      (
-        tanggal,
-        jenis,
-        kategori,
-        keterangan,
-        nominal,
-        tenant_id
-      )
-      VALUES
-      (
-        CURRENT_DATE,
-        'Masuk',
-        'RFID Topup',
-        $1,
-        $2,
-        $3
-      )
-      `,
-      [
-        santri.rows[0].nama,
-        nominal,
         tenantId
       ]
     );
