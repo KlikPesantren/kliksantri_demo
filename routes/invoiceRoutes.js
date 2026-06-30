@@ -28,9 +28,10 @@ function withAbsoluteAssetUrl(req, invoice) {
 
 function renderSahriyahPrintHtml(invoice) {
   const item = invoice.items[0] || {};
+  const tenantName = invoice.tenant?.nama || "Pesantren";
   const logoHtml = invoice.tenant.logo_url
     ? `<img class="logo" src="${escapeHtml(invoice.tenant.logo_url)}" alt="Logo" />`
-    : `<div class="logo logo--placeholder">${escapeHtml((invoice.tenant.nama || "K").slice(0, 1))}</div>`;
+    : `<div class="logo logo--placeholder">${escapeHtml((tenantName || "P").slice(0, 1))}</div>`;
 
   return `<!doctype html>
 <html lang="id">
@@ -135,7 +136,15 @@ function renderSahriyahPrintHtml(invoice) {
       text-align: center;
       color: #4b5563;
     }
-    .brand { color: #16a34a; font-weight: 800; }
+    .footer-main {
+      color: #111827;
+      font-weight: 800;
+    }
+    .powered {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #6b7280;
+    }
     .actions {
       position: sticky;
       top: 0;
@@ -169,7 +178,7 @@ function renderSahriyahPrintHtml(invoice) {
     <header class="header">
       ${logoHtml}
       <div>
-        <h1 class="tenant-name">${escapeHtml(invoice.tenant.nama || "-")}</h1>
+        <h1 class="tenant-name">${escapeHtml(tenantName)}</h1>
         <p class="tenant-meta">${escapeHtml(invoice.tenant.alamat || "")}</p>
         <p class="tenant-meta">${escapeHtml(invoice.tenant.telepon || "")}${invoice.tenant.email ? " | " + escapeHtml(invoice.tenant.email) : ""}</p>
       </div>
@@ -220,7 +229,8 @@ function renderSahriyahPrintHtml(invoice) {
 
     <footer class="footer">
       <p>Terima kasih</p>
-      <p><span class="brand">KlikSantri</span> - Amanah Kita Bersama</p>
+      <p class="footer-main">Dicetak secara digital oleh ${escapeHtml(tenantName)}</p>
+      <p class="powered">Didukung oleh KlikSantri</p>
     </footer>
   </main>
 </body>

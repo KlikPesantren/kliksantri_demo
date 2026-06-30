@@ -22,6 +22,7 @@ function SahriyahInvoiceModal({
   onWhatsApp,
 }) {
   const item = invoice?.items?.[0] || {};
+  const tenantName = invoice?.tenant?.nama || "Pesantren";
 
   return (
     <Modal open={open} title="Invoice Pembayaran" onClose={onClose} width={760}>
@@ -130,6 +131,14 @@ function SahriyahInvoiceModal({
               color: var(--text-secondary);
               text-align: center;
             }
+            .invoice-preview__footer-main {
+              color: var(--text-primary);
+              font-weight: 800;
+            }
+            .invoice-preview__powered {
+              margin-top: 2px;
+              font-size: 12px;
+            }
             .invoice-preview__empty {
               padding: 32px;
               text-align: center;
@@ -203,7 +212,10 @@ function SahriyahInvoiceModal({
 
             <div className="invoice-preview__footer">
               <p>Terima kasih</p>
-              <strong>KlikSantri - Amanah Kita Bersama</strong>
+              <strong className="invoice-preview__footer-main">
+                Dicetak secara digital oleh {tenantName}
+              </strong>
+              <p className="invoice-preview__powered">Didukung oleh KlikSantri</p>
             </div>
           </div>
 

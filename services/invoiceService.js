@@ -46,6 +46,7 @@ function buildInvoiceNo({ paymentId, tenantId, tanggal, prefix = "INV-SHR" }) {
 
 function buildWhatsAppText(invoice) {
   const item = invoice.items[0] || {};
+  const tenantName = invoice.tenant?.nama || "Pesantren";
   return [
     "Assalamu'alaikum.",
     "",
@@ -59,7 +60,7 @@ function buildWhatsAppText(invoice) {
     `Status: ${invoice.status || "-"}`,
     "",
     "Terima kasih.",
-    "KlikSantri - Amanah Kita Bersama",
+    tenantName,
   ].join("\n");
 }
 
