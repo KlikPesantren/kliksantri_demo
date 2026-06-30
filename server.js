@@ -464,7 +464,12 @@ app.use(
   "/upload",
   authMiddleware,
   tenantMiddleware,
-  requirePermission("profil.view"),
+  requirePermission.requireAnyPermission([
+    "profil.view",
+    "profil.manage",
+    "santri.manage",
+    "pengumuman.manage",
+  ]),
   uploadRoutes
 );
 

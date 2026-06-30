@@ -9,6 +9,7 @@ import {
   FaSearch,
 } from "react-icons/fa";
 import api from "../services/api";
+import { uploadImage } from "../services/upload";
 import AppShell from "../layouts/AppShell";
 import Card from "../components/ui/Card";
 import StatusBadge from "../components/ui/StatusBadge";
@@ -88,6 +89,19 @@ async function processCoverImage(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function dataUrlToFile(dataUrl, fileName) {
+  const [metadata, base64Data] = dataUrl.split(",");
+  const mime = metadata?.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+  const binary = atob(base64Data);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new File([bytes], fileName, { type: mime });
 }
 
 const EMPTY_FORM = {
@@ -714,10 +728,12 @@ function PengumumanPage() {
     try {
       setCoverUploading(true);
       const dataUrl = await processCoverImage(file);
-      setForm((prev) => ({ ...prev, cover_url: dataUrl }));
+      const coverFile = dataUrlToFile(dataUrl, `pengumuman-cover-${Date.now()}.jpg`);
+      const coverUrl = await uploadImage(coverFile);
+      setForm((prev) => ({ ...prev, cover_url: coverUrl }));
     } catch (err) {
       console.error(err);
-      alert("Gagal memproses gambar cover.");
+      alert("Gagal mengupload gambar cover.");
     } finally {
       setCoverUploading(false);
     }
