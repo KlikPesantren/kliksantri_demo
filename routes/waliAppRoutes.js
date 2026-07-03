@@ -2716,6 +2716,61 @@ router.put(
 );
 
 // ================================
+// GET /wali-app/device-token/status
+// ================================
+
+router.get(
+
+  "/device-token/status",
+
+  ...withWaliAuth,
+
+  async (req, res) => {
+
+    try {
+
+      const status =
+        await pushNotificationService.getWaliDeviceTokenStatus({
+
+          tenantId: req.tenantId,
+
+          waliId: req.wali.wali_akun_id,
+
+        });
+
+      res.json({
+
+        success: true,
+
+        ...status,
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.error("[PUSH] DEVICE TOKEN STATUS ERROR", {
+        wali_id: req.wali?.wali_akun_id,
+        tenant_id: req.tenantId,
+        message: err.message,
+      });
+
+      res.status(500).json({
+
+        success: false,
+
+        error: err.message,
+
+      });
+
+    }
+
+  }
+
+);
+
+// ================================
 // POST /wali-app/device-token
 // ================================
 
@@ -2737,9 +2792,10 @@ router.post(
 
       console.log("[PUSH] DEVICE TOKEN REGISTER", {
         wali_id: req.wali?.wali_akun_id,
+        user_id: req.wali?.wali_akun_id,
         tenant_id: req.tenantId,
         token_prefix: expo_push_token
-          ? `${String(expo_push_token).slice(0, 24)}...`
+          ? `${String(expo_push_token).slice(0, 20)}...`
           : null,
         platform,
         device_name,
@@ -2765,10 +2821,11 @@ router.post(
         wali_id: row.wali_id,
         tenant_id: row.tenant_id,
         token_prefix: row.expo_push_token
-          ? `${String(row.expo_push_token).slice(0, 24)}...`
+          ? `${String(row.expo_push_token).slice(0, 20)}...`
           : null,
         is_active: row.is_active,
         last_seen: row.last_seen,
+        action: "insert_or_update",
       });
 
       res.json({
@@ -3026,11 +3083,18 @@ router.post(
 
           errors: result.errors ?? [],
 
+          token_count: result.token_count ?? 0,
+
+          expo_response: result.expo_response ?? result.tickets ?? [],
+
+          reason: result.reason ?? null,
+
         },
 
         message: result.success
           ? "Notifikasi test dikirim"
           : result.error ||
+            result.reason ||
             "Gagal mengirim notifikasi test",
 
       });

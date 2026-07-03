@@ -129,6 +129,59 @@ async function getActiveTokensForWali({ tenantId, waliId }) {
   return result.rows;
 }
 
+async function getWaliDeviceTokenStatus({ tenantId, waliId }) {
+  const result = await pool.query(
+    `
+    SELECT
+      COUNT(*) FILTER (WHERE is_active = true)::int AS active_token_count,
+      (
+        SELECT LEFT(expo_push_token, 20) || '...'
+        FROM wali_device_tokens
+        WHERE tenant_id = $1
+          AND wali_id = $2
+          AND is_active = true
+        ORDER BY last_seen DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) AS latest_token_prefix,
+      (
+        SELECT platform
+        FROM wali_device_tokens
+        WHERE tenant_id = $1
+          AND wali_id = $2
+          AND is_active = true
+        ORDER BY last_seen DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) AS latest_platform,
+      (
+        SELECT last_seen
+        FROM wali_device_tokens
+        WHERE tenant_id = $1
+          AND wali_id = $2
+          AND is_active = true
+        ORDER BY last_seen DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) AS latest_last_seen
+    FROM wali_device_tokens
+    WHERE tenant_id = $1
+      AND wali_id = $2
+    `,
+    [tenantId, waliId]
+  );
+
+  const row = result.rows[0] || {};
+  const activeTokenCount = Number(row.active_token_count || 0);
+
+  return {
+    wali_id: waliId,
+    tenant_id: tenantId,
+    has_active_token: activeTokenCount > 0,
+    active_token_count: activeTokenCount,
+    latest_token_prefix: row.latest_token_prefix || null,
+    latest_platform: row.latest_platform || null,
+    latest_last_seen: row.latest_last_seen || null,
+  };
+}
+
 async function sendPushToWali({
   tenantId,
   waliId,
@@ -164,6 +217,7 @@ async function sendPushToWali({
         success: false,
         skipped: true,
         reason: "no_active_token",
+        token_count: 0,
       };
     }
 
@@ -203,6 +257,8 @@ async function sendPushToWali({
     return {
       success: tickets.some((ticket) => ticket.status === "ok"),
       sent: tickets.filter((ticket) => ticket.status === "ok").length,
+      token_count: validTokens.length,
+      expo_response: tickets,
       errors,
       tickets,
     };
@@ -218,5 +274,6 @@ async function sendPushToWali({
 module.exports = {
   registerWaliDeviceToken,
   unregisterWaliDeviceToken,
+  getWaliDeviceTokenStatus,
   sendPushToWali,
 };

@@ -38,6 +38,26 @@ export async function getPushRegistrationStatus() {
   return raw ? JSON.parse(raw) : null;
 }
 
+export async function getPushDebugInfo() {
+  const registrationStatus = await getPushRegistrationStatus();
+  const modules = await loadExpoModules();
+  let permissionStatus = null;
+
+  if (modules?.Notifications) {
+    try {
+      const permission = await modules.Notifications.getPermissionsAsync();
+      permissionStatus = permission?.status || null;
+    } catch (err) {
+      permissionStatus = `error: ${err?.message || 'permission_check_failed'}`;
+    }
+  }
+
+  return {
+    permission_status: permissionStatus,
+    registration_status: registrationStatus,
+  };
+}
+
 export async function registerPushToken(options = {}) {
   const source = options?.source || 'unknown';
   console.log('[PUSH] register start', { source });

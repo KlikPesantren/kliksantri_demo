@@ -20,6 +20,7 @@ export const ENDPOINTS = {
   NOTIFICATION_READ: (id) => `/wali-app/notifications/${id}/read`,
   NOTIFICATIONS_READ_ALL: '/wali-app/notifications/read-all',
   DEVICE_TOKEN: '/wali-app/device-token',
+  DEVICE_TOKEN_STATUS: '/wali-app/device-token/status',
   PROFIL_PESANTREN: '/wali-app/profil-pesantren',
   CHANGE_PIN: '/wali-app/pin',
   PUSH_TOKEN: '/wali-app/push-token',

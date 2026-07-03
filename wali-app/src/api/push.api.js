@@ -40,6 +40,11 @@ export const pushApi = {
     return res.data;
   },
 
+  async getDeviceTokenStatus() {
+    const res = await api.get(ENDPOINTS.DEVICE_TOKEN_STATUS);
+    return res.data;
+  },
+
   async sendTestNotification({ title, body }) {
     const res = await api.post(ENDPOINTS.TEST_NOTIFICATION, {
       title,
