@@ -51,13 +51,35 @@ exports.lookupCard = async (req, res) => {
       });
     }
 
+    const usageResult = await pool.query(
+      `
+      SELECT COALESCE(SUM(nominal), 0) total
+      FROM transaksi_rfid
+      WHERE santri_id = $1
+        AND tenant_id = $2
+        AND DATE(created_at) = CURRENT_DATE
+        AND LOWER(TRIM(COALESCE(trx_type, 'payment'))) = 'payment'
+      `,
+      [santri.id, tenantId]
+    );
+
+    const pemakaianHariIni = Number(usageResult.rows[0]?.total || 0);
+    const limitHarian = santri.limit_harian === null
+      ? null
+      : Number(santri.limit_harian || 0);
+    const sisaLimitHariIni = limitHarian === null
+      ? null
+      : Math.max(limitHarian - pemakaianHariIni, 0);
+
     res.json({
       success: true,
       data: {
         uid_rfid: santri.uid_rfid,
         nama: santri.nama,
         saldo: Number(santri.saldo || 0),
-        limit_harian: Number(santri.limit_harian || 0),
+        limit_harian: limitHarian,
+        pemakaian_hari_ini: pemakaianHariIni,
+        sisa_limit_hari_ini: sisaLimitHariIni,
       },
     });
   } catch (err) {

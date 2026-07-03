@@ -40,11 +40,11 @@ export async function getPushRegistrationStatus() {
 
 export async function registerPushToken(options = {}) {
   const source = options?.source || 'unknown';
-  console.log('PUSH REGISTER START', { source });
+  console.log('[PUSH] register start', { source });
 
   const modules = await loadExpoModules();
   if (!modules) {
-    console.error('PUSH REGISTER ERROR', {
+    console.error('[PUSH] register error', {
       source,
       reason: 'expo-notifications module unavailable',
     });
@@ -54,7 +54,7 @@ export async function registerPushToken(options = {}) {
   const { Notifications: Notif, Device: Dev, Constants: Const } = modules;
 
   if (!Dev.isDevice) {
-    console.error('PUSH REGISTER ERROR', {
+    console.error('[PUSH] register error', {
       source,
       reason: 'physical device required',
     });
@@ -64,7 +64,9 @@ export async function registerPushToken(options = {}) {
 
   try {
     if (Platform.OS === 'android') {
-      console.log('[push] create Android notification channel: default');
+      console.log('[PUSH] create Android notification channel', {
+        channel_id: 'default',
+      });
       await Notif.setNotificationChannelAsync('default', {
         name: 'Default',
         importance: Notif.AndroidImportance.MAX,
@@ -75,17 +77,17 @@ export async function registerPushToken(options = {}) {
     }
 
     const { status: existingStatus } = await Notif.getPermissionsAsync();
-    console.log('[push] notification permission existing:', existingStatus);
+    console.log('[PUSH] permission existing', { status: existingStatus });
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
       const { status } = await Notif.requestPermissionsAsync();
       finalStatus = status;
-      console.log('[push] notification permission requested:', status);
+      console.log('[PUSH] permission requested', { status });
     }
 
     if (finalStatus !== 'granted') {
-      console.warn('PUSH PERMISSION DENIED', { source, status: finalStatus });
+      console.warn('[PUSH] permission denied', { source, status: finalStatus });
       await saveRegistrationStatus({ ok: false, skipped: true, reason: 'permission_denied' });
       return { ok: false, skipped: true, reason: 'permission_denied' };
     }
@@ -94,7 +96,7 @@ export async function registerPushToken(options = {}) {
       Const.expoConfig?.extra?.eas?.projectId ??
       Const.easConfig?.projectId;
 
-    console.log('[push] EAS projectId:', projectId || null);
+    console.log('[PUSH] EAS projectId', { projectId: projectId || null });
 
     const tokenResult = await Notif.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined,
@@ -105,7 +107,9 @@ export async function registerPushToken(options = {}) {
       throw new Error('Expo push token kosong');
     }
 
-    console.log('PUSH REGISTER TOKEN OK', expoPushToken);
+    console.log('[PUSH] expo token', {
+      token_prefix: `${String(expoPushToken).slice(0, 24)}...`,
+    });
 
     const platform = Platform.OS;
     const deviceName =
@@ -113,9 +117,11 @@ export async function registerPushToken(options = {}) {
       [Dev.manufacturer, Dev.modelName].filter(Boolean).join(' ') ||
       platform;
 
-    console.log('PUSH REGISTER POST START', {
+    console.log('[PUSH] register request', {
       endpoint: '/wali-app/device-token',
       token_prefix: `${String(expoPushToken).slice(0, 24)}...`,
+      platform,
+      device_name: deviceName,
     });
 
     const response = await pushApi.registerDeviceToken({
@@ -124,7 +130,7 @@ export async function registerPushToken(options = {}) {
       device_name: deviceName,
     });
 
-    console.log('PUSH REGISTER POST SUCCESS', response);
+    console.log('[PUSH] register success', response);
 
     const status = {
       ok: true,
@@ -135,7 +141,7 @@ export async function registerPushToken(options = {}) {
     await saveRegistrationStatus(status);
     return status;
   } catch (err) {
-    console.error('PUSH REGISTER ERROR', {
+    console.error('[PUSH] register error', {
       source,
       message: err?.message,
       code: err?.code,
@@ -155,7 +161,7 @@ export async function registerPushTokenBackground(options = {}) {
   try {
     return await registerPushToken(options);
   } catch (err) {
-    console.error('PUSH REGISTER ERROR', {
+    console.error('[PUSH] register error', {
       source: options?.source || 'background',
       message: err?.message || 'register_failed',
     });

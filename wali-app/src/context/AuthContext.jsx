@@ -56,27 +56,38 @@ function authReducer(state, action) {
 
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
-  const pushRegisterAttemptedRef = React.useRef(false);
+  const pushRegisterInFlightRef = React.useRef(false);
+  const pushRegisteredRef = React.useRef(false);
 
   const registerPushAfterAuthReady = useCallback(async (source) => {
-    if (pushRegisterAttemptedRef.current) {
-      console.log('PUSH REGISTER SKIP already attempted', { source });
+    if (pushRegisteredRef.current) {
+      console.log('[PUSH] register skip already success', { source });
       return;
     }
 
-    pushRegisterAttemptedRef.current = true;
-    console.log('PUSH REGISTER START', { source });
+    if (pushRegisterInFlightRef.current) {
+      console.log('[PUSH] register skip in flight', { source });
+      return;
+    }
+
+    pushRegisterInFlightRef.current = true;
+    console.log('[PUSH] register start', { source });
 
     const result = await registerPushTokenBackground({ source });
+    pushRegisterInFlightRef.current = false;
+
     if (result?.ok) {
-      console.log('PUSH REGISTER DONE', { source });
+      pushRegisteredRef.current = true;
+      console.log('[PUSH] register done', { source });
     } else {
-      console.log('PUSH REGISTER NOT OK', { source, result });
+      pushRegisteredRef.current = false;
+      console.log('[PUSH] register not ok', { source, result });
     }
   }, []);
 
   const logout = useCallback(async () => {
-    pushRegisterAttemptedRef.current = false;
+    pushRegisterInFlightRef.current = false;
+    pushRegisteredRef.current = false;
     await unregisterPushToken();
     await storage.clearSession();
     dispatch({ type: 'LOGOUT' });

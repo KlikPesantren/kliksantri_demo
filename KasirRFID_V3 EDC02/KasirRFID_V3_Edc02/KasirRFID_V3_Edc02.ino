@@ -18,6 +18,14 @@ Preferences prefs;
 
 bool syncInProgress = false;
 
+const bool DEBUG = true;
+const unsigned long HEARTBEAT_INTERVAL_MS = 30000;
+const unsigned long SYNC_INTERVAL_MS = 15000;
+const unsigned long WIFI_RECONNECT_INTERVAL_MS = 10000;
+const int API_TIMEOUT_MS = 15000;
+const int HEARTBEAT_TIMEOUT_MS = 8000;
+const int AUDIT_TIMEOUT_MS = 8000;
+
 // =====================
 // STATE
 // =====================
@@ -70,6 +78,12 @@ String currentName = "";
 
 int currentSaldo = 0;
 
+int currentLimitHarian = -1;
+
+int currentPemakaianHariIni = 0;
+
+int currentSisaLimitHariIni = -1;
+
 String nominalInput = "";
 
 bool isTopup = false;
@@ -89,6 +103,8 @@ unsigned long lastRFIDRead = 0;
 unsigned long displayTimer = 0;
 
 unsigned long lastPing = 0;
+
+unsigned long lastSync = 0;
 
 bool wifiDisconnectedShown =
   false;
@@ -597,7 +613,7 @@ void connectWiFi() {
     millis()
       - lastAttempt
 
-    < 10000
+    < WIFI_RECONNECT_INTERVAL_MS
 
     ) return;
 
@@ -627,10 +643,6 @@ void connectWiFi() {
   // =====================
   // RECONNECT
   // =====================
-
-  WiFi.disconnect(true);
-
-  delay(300);
 
   WiFi.begin(
 
@@ -667,24 +679,26 @@ bool apiPost(
 
   WiFiClientSecure client;
   client.setInsecure();
-  client.setTimeout(15000);
+  client.setTimeout(API_TIMEOUT_MS);
 
   HTTPClient http;
 
   String url =
     SERVER_URL + endpoint;
 
-  Serial.println("====== API POST ======");
-  Serial.print("WiFi.status: ");
-  Serial.println(WiFi.status());
-  Serial.print("Local IP: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("URL: ");
-  Serial.println(url);
+  if (DEBUG) {
+    Serial.println("====== API POST ======");
+    Serial.print("WiFi.status: ");
+    Serial.println(WiFi.status());
+    Serial.print("Local IP: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("URL: ");
+    Serial.println(url);
+  }
 
   http.begin(client, url);
 
-  http.setTimeout(15000);
+  http.setTimeout(API_TIMEOUT_MS);
 
   http.addHeader(
 
@@ -700,13 +714,17 @@ bool apiPost(
   response =
     http.getString();
 
-  Serial.print("HTTP CODE: ");
-  Serial.println(httpCode);
+  if (DEBUG) {
+    Serial.print("HTTP CODE: ");
+    Serial.println(httpCode);
+  }
   if (httpCode < 0) {
     Serial.print("HTTP ERROR: ");
     Serial.println(http.errorToString(httpCode));
   }
-  Serial.println("======================");
+  if (DEBUG) {
+    Serial.println("======================");
+  }
 
   if (
 
@@ -734,7 +752,10 @@ void saveSantriCache(
 
   String uid,
   String nama,
-  int saldo
+  int saldo,
+  int limitHarian,
+  int pemakaianHariIni,
+  int sisaLimitHariIni
 
 ) {
 
@@ -765,6 +786,12 @@ void saveSantriCache(
   file.println(nama);
 
   file.println(saldo);
+
+  file.println(limitHarian);
+
+  file.println(pemakaianHariIni);
+
+  file.println(sisaLimitHariIni);
 
   file.close();
 
@@ -816,6 +843,40 @@ bool loadSantriCache(
 
   currentSaldo =
     file.readStringUntil('\n').toInt();
+
+  currentLimitHarian = -1;
+  currentPemakaianHariIni = 0;
+  currentSisaLimitHariIni = -1;
+
+  if (
+
+    file.available()
+
+  ) {
+
+    currentLimitHarian =
+      file.readStringUntil('\n').toInt();
+  }
+
+  if (
+
+    file.available()
+
+  ) {
+
+    currentPemakaianHariIni =
+      file.readStringUntil('\n').toInt();
+  }
+
+  if (
+
+    file.available()
+
+  ) {
+
+    currentSisaLimitHariIni =
+      file.readStringUntil('\n').toInt();
+  }
 
   file.close();
 
@@ -934,13 +995,37 @@ bool fetchSantriData(
 
       data["saldo"];
 
+    currentLimitHarian =
+
+      data["limit_harian"].isNull()
+        ? -1
+        : data["limit_harian"].as<int>();
+
+    currentPemakaianHariIni =
+
+      data["pemakaian_hari_ini"].isNull()
+        ? 0
+        : data["pemakaian_hari_ini"].as<int>();
+
+    currentSisaLimitHariIni =
+
+      data["sisa_limit_hari_ini"].isNull()
+        ? -1
+        : data["sisa_limit_hari_ini"].as<int>();
+
     saveSantriCache(
 
       uid,
 
       currentName,
 
-      currentSaldo
+      currentSaldo,
+
+      currentLimitHarian,
+
+      currentPemakaianHariIni,
+
+      currentSisaLimitHariIni
 
     );
 
@@ -1569,6 +1654,245 @@ String generateTransactionId() {
     + String(millis());
 }
 
+String offlineDayKey() {
+
+  return String(
+    millis() / 86400000UL
+  );
+}
+
+int getOfflinePaymentUsageToday(
+  String uid
+) {
+
+  File file =
+
+    LittleFS.open(
+
+      "/queue.txt",
+
+      FILE_READ
+
+    );
+
+  if (!file) return 0;
+
+  int total = 0;
+  String today =
+    offlineDayKey();
+
+  while (
+
+    file.available()
+
+  ) {
+
+    String line =
+      file.readStringUntil('\n');
+
+    line.trim();
+
+    if (line == "") continue;
+
+    int p1 =
+      line.indexOf('|');
+
+    int p2 =
+      line.indexOf('|', p1 + 1);
+
+    int p3 =
+      line.indexOf('|', p2 + 1);
+
+    int p4 =
+      line.indexOf('|', p3 + 1);
+
+    int p5 =
+      p4 == -1
+        ? -1
+        : line.indexOf('|', p4 + 1);
+
+    if (
+
+      p1 == -1
+
+      ||
+
+      p2 == -1
+
+      ||
+
+      p3 == -1
+
+      ||
+
+      p4 == -1
+
+    ) continue;
+
+    String queuedUid =
+      line.substring(p1 + 1, p2);
+
+    String nominal =
+      line.substring(p2 + 1, p3);
+
+    String topup =
+      line.substring(p3 + 1, p4);
+
+    String day =
+      p5 == -1
+        ? line.substring(p4 + 1)
+        : line.substring(p4 + 1, p5);
+
+    queuedUid.trim();
+    topup.trim();
+    day.trim();
+
+    if (
+
+      queuedUid == uid
+
+      &&
+
+      topup == "0"
+
+      &&
+
+      day == today
+
+    ) {
+
+      total +=
+        nominal.toInt();
+    }
+  }
+
+  file.close();
+
+  return total;
+}
+
+bool validateOfflinePayment(
+  int nominal
+) {
+
+  if (
+
+    !loadSantriCache(currentUID)
+
+  ) {
+
+    showResult(
+
+      "CACHE TIDAK ADA",
+
+      "ONLINE DULU",
+
+      2200
+
+    );
+
+    beep(300);
+
+    return false;
+  }
+
+  if (
+
+    isTopup
+
+  ) return true;
+
+  if (
+
+    nominal > currentSaldo
+
+  ) {
+
+    showResult(
+
+      "SALDO KURANG",
+
+      "Saldo:" + rupiah(currentSaldo),
+
+      2200
+
+    );
+
+    beep(300);
+
+    return false;
+  }
+
+  if (
+
+    !overrideLimit
+
+    &&
+
+    currentLimitHarian >= 0
+
+  ) {
+
+    int onlineUsed =
+      currentPemakaianHariIni;
+
+    int offlineUsed =
+      getOfflinePaymentUsageToday(currentUID);
+
+    int willTotal =
+      onlineUsed
+      + offlineUsed
+      + nominal;
+
+    if (DEBUG) {
+      Serial.println("OFFLINE LIMIT CHECK");
+      Serial.print("limit: ");
+      Serial.println(currentLimitHarian);
+      Serial.print("online_used: ");
+      Serial.println(onlineUsed);
+      Serial.print("offline_used: ");
+      Serial.println(offlineUsed);
+      Serial.print("nominal: ");
+      Serial.println(nominal);
+      Serial.print("will_total: ");
+      Serial.println(willTotal);
+      Serial.print("allowed: ");
+      Serial.println(willTotal <= currentLimitHarian);
+    }
+
+    if (
+
+      willTotal
+      > currentLimitHarian
+
+    ) {
+
+      int sisa =
+        currentLimitHarian
+        - onlineUsed
+        - offlineUsed;
+
+      if (sisa < 0) sisa = 0;
+
+      showResult(
+
+        "LIMIT HABIS",
+
+        "Sisa:" + rupiah(sisa),
+
+        2200
+
+      );
+
+      beep(300);
+
+      return false;
+    }
+  }
+
+  return true;
+}
+
 
 // OFFLINE SAVE ===========
 //=========================
@@ -1611,6 +1935,14 @@ void saveOfflineTransaction() {
     + "|"
 
     + String(isTopup)
+
+    + "|"
+
+    + offlineDayKey()
+
+    + "|"
+
+    + String(overrideLimit)
 
     + "\n";
 
@@ -1658,15 +1990,50 @@ bool sendTransaction() {
 
   ) {
 
+    int nominal =
+      nominalInput.toInt();
+
+    if (
+
+      !validateOfflinePayment(nominal)
+
+    ) return false;
+
+    if (
+
+      !isTopup
+
+    ) {
+
+      currentSaldo -=
+        nominal;
+
+      saveSantriCache(
+
+        currentUID,
+
+        currentName,
+
+        currentSaldo,
+
+        currentLimitHarian,
+
+        currentPemakaianHariIni,
+
+        currentSisaLimitHariIni
+
+      );
+    }
+
     saveOfflineTransaction();
 
     showResult(
 
-      "Saved",
+      "QUEUE SAVED",
 
-      "Offline",
+      "Saldo:" + rupiah(currentSaldo),
 
-      1500
+      1800
 
     );
 
@@ -1761,6 +2128,22 @@ bool sendTransaction() {
 
     currentSaldo =
       saldo;
+
+    saveSantriCache(
+
+      currentUID,
+
+      currentName,
+
+      currentSaldo,
+
+      currentLimitHarian,
+
+      currentPemakaianHariIni,
+
+      currentSisaLimitHariIni
+
+    );
 
     sendAudit(
 
@@ -1897,7 +2280,7 @@ void sendPing() {
 
   WiFiClientSecure client;
   client.setInsecure();
-  client.setTimeout(15000);
+  client.setTimeout(HEARTBEAT_TIMEOUT_MS);
 
   HTTPClient http;
 
@@ -1907,7 +2290,7 @@ void sendPing() {
 
   http.begin(client, url);
 
-  http.setTimeout(15000);
+  http.setTimeout(HEARTBEAT_TIMEOUT_MS);
 
   http.addHeader(
 
@@ -1936,38 +2319,42 @@ void sendPing() {
   String response =
     http.getString();
 
-  Serial.println("====== PING ======");
+  if (DEBUG) {
+    Serial.println("====== PING ======");
 
-  Serial.print("WiFi.status: ");
-  Serial.println(WiFi.status());
+    Serial.print("WiFi.status: ");
+    Serial.println(WiFi.status());
 
-  Serial.print("Local IP: ");
-  Serial.println(WiFi.localIP());
+    Serial.print("Local IP: ");
+    Serial.println(WiFi.localIP());
 
-  Serial.print("URL: ");
-  Serial.println(url);
+    Serial.print("URL: ");
+    Serial.println(url);
 
-  Serial.print("BODY: ");
-  Serial.println(body);
+    Serial.print("BODY: ");
+    Serial.println(body);
 
-  Serial.print("PING HTTP CODE: ");
-  Serial.println(httpCode);
+    Serial.print("PING HTTP CODE: ");
+    Serial.println(httpCode);
+  }
 
   if (httpCode < 0) {
     Serial.print("PING HTTP ERROR: ");
     Serial.println(http.errorToString(httpCode));
   }
 
-  Serial.print("RESPONSE: ");
-  Serial.println(response);
+  if (DEBUG) {
+    Serial.print("RESPONSE: ");
+    Serial.println(response);
 
-  Serial.println("==================");
+    Serial.println("==================");
 
-  Serial.print(
-    "PING: ");
+    Serial.print(
+      "PING: ");
 
-  Serial.println(
-    httpCode);
+    Serial.println(
+      httpCode);
+  }
 
   http.end();
 }
@@ -1998,7 +2385,7 @@ void sendAudit(
 
   WiFiClientSecure client;
   client.setInsecure();
-  client.setTimeout(15000);
+  client.setTimeout(AUDIT_TIMEOUT_MS);
 
   HTTPClient http;
 
@@ -2015,7 +2402,7 @@ void sendAudit(
 
   http.begin(client, url);
 
-  http.setTimeout(15000);
+  http.setTimeout(AUDIT_TIMEOUT_MS);
 
   http.addHeader(
 
@@ -2050,13 +2437,15 @@ void sendAudit(
 
     http.POST(body);
 
-  Serial.print(
+  if (DEBUG) {
+    Serial.print(
 
-    "AUDIT CODE: "
+      "AUDIT CODE: "
 
-  );
+    );
 
-  Serial.println(code);
+    Serial.println(code);
+  }
 
   if (code < 0) {
     Serial.print("AUDIT HTTP ERROR: ");
@@ -2156,6 +2545,14 @@ void syncOfflineQueue() {
     int p3 =
       line.indexOf('|', p2 + 1);
 
+    int p4 =
+      line.indexOf('|', p3 + 1);
+
+    int p5 =
+      p4 == -1
+        ? -1
+        : line.indexOf('|', p4 + 1);
+
     if (
 
       p1 == -1
@@ -2193,8 +2590,17 @@ void syncOfflineQueue() {
 
     String topup =
 
-      line.substring(
-        p3 + 1);
+      p4 == -1
+        ? line.substring(p3 + 1)
+        : line.substring(p3 + 1, p4);
+
+    String queuedOverride =
+
+      p5 == -1
+        ? "0"
+        : line.substring(p5 + 1);
+
+    queuedOverride.trim();
     // =====================
     // JSON
     // =====================
@@ -2221,7 +2627,8 @@ void syncOfflineQueue() {
       trxId;
 
     doc["override_limit"] =
-      false;
+      queuedOverride == "1"
+      || queuedOverride == "true";
 
     String body;
 
@@ -2480,6 +2887,12 @@ void resetState() {
 
   currentSaldo = 0;
 
+  currentLimitHarian = -1;
+
+  currentPemakaianHariIni = 0;
+
+  currentSisaLimitHariIni = -1;
+
   nominalInput = "";
 
   isTopup = false;
@@ -2658,7 +3071,26 @@ void loop() {
   }
 
   // =====================
-  // PING + SYNC
+  // SYNC
+  // =====================
+
+  if (
+
+    millis()
+      - lastSync
+
+    > SYNC_INTERVAL_MS
+
+  ) {
+
+    lastSync =
+      millis();
+
+    syncOfflineQueue();
+  }
+
+  // =====================
+  // PING
   // =====================
 
   if (
@@ -2666,14 +3098,12 @@ void loop() {
     millis()
       - lastPing
 
-    > 10000
+    > HEARTBEAT_INTERVAL_MS
 
   ) {
 
     lastPing =
       millis();
-
-    syncOfflineQueue();
 
     sendPing();
   }

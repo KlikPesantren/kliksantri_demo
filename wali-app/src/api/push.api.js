@@ -4,7 +4,7 @@ import { ENDPOINTS } from '../constants/endpoints';
 export const pushApi = {
   async registerDeviceToken({ expo_push_token, platform, device_name }) {
     try {
-      console.log('[push] POST', ENDPOINTS.DEVICE_TOKEN, {
+      console.log('[PUSH] register request api', ENDPOINTS.DEVICE_TOKEN, {
         token_prefix: expo_push_token ? `${String(expo_push_token).slice(0, 24)}...` : null,
         platform,
         device_name,
@@ -16,14 +16,14 @@ export const pushApi = {
         device_name,
       });
 
-      console.log('[push] POST /wali-app/device-token response', {
+      console.log('[PUSH] register response api', {
         status: res.status,
         data: res.data,
       });
 
       return res.data;
     } catch (err) {
-      console.error('[push] POST /wali-app/device-token failed', {
+      console.error('[PUSH] register error api', {
         message: err?.message,
         code: err?.code,
         status: err?.response?.status,

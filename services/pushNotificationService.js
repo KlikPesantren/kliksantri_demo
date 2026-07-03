@@ -53,7 +53,7 @@ async function registerWaliDeviceToken({
       is_active = true,
       last_seen = NOW(),
       updated_at = NOW()
-    RETURNING *
+    RETURNING *, last_seen AS last_seen_at
     `,
     [
       tenantId,

@@ -2735,7 +2735,7 @@ router.post(
         device_name,
       } = req.body;
 
-      console.log("DEVICE TOKEN REGISTER", {
+      console.log("[PUSH] DEVICE TOKEN REGISTER", {
         wali_id: req.wali?.wali_akun_id,
         tenant_id: req.tenantId,
         token_prefix: expo_push_token
@@ -2760,7 +2760,7 @@ router.post(
 
         });
 
-      console.log("DEVICE TOKEN REGISTER SUCCESS", {
+      console.log("[PUSH] DEVICE TOKEN REGISTER SUCCESS", {
         id: row.id,
         wali_id: row.wali_id,
         tenant_id: row.tenant_id,
@@ -2785,7 +2785,7 @@ router.post(
 
           is_active: row.is_active,
 
-          last_seen: row.last_seen,
+          last_seen_at: row.last_seen_at || row.last_seen,
 
         },
 
@@ -2795,7 +2795,7 @@ router.post(
 
     catch (err) {
 
-      console.error("DEVICE TOKEN REGISTER ERROR", {
+      console.error("[PUSH] DEVICE TOKEN REGISTER ERROR", {
         wali_id: req.wali?.wali_akun_id,
         tenant_id: req.tenantId,
         message: err.message,
@@ -2999,19 +2999,18 @@ router.post(
         ).trim();
 
       const result =
-        await notificationService.sendPushNotification({
+        await pushNotificationService.sendPushToWali({
 
           tenantId: req.tenantId,
 
-          waliAkunId: req.wali.wali_akun_id,
+          waliId: req.wali.wali_akun_id,
 
           title,
 
           body,
 
-          type: "test",
-
           data: {
+            type: "test",
             screen: "Beranda",
           },
 
@@ -3022,8 +3021,6 @@ router.post(
         success: result.success,
 
         data: {
-
-          log_id: result.log_id,
 
           sent: result.sent,
 
