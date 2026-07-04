@@ -3019,7 +3019,7 @@ router.post(
 
 // ===================================
 // POST /wali-app/test-notification
-// QA only — disabled in production unless ALLOW_WALI_TEST_NOTIFICATION=true
+// Authenticated wali-only diagnostic endpoint.
 // ===================================
 
 router.post(
@@ -3029,20 +3029,6 @@ router.post(
   ...withWaliAuth,
 
   async (req, res) => {
-
-    if (
-      !notificationService.isTestNotificationAllowed()
-    ) {
-
-      return res.status(404).json({
-
-        success: false,
-
-        error: "Endpoint tidak tersedia",
-
-      });
-
-    }
 
     try {
 
