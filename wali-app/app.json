@@ -30,6 +30,7 @@
     },
     "android": {
       "package": "com.kliksantri.wali",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 2,
       "usesCleartextTraffic": true,
       "permissions": [
