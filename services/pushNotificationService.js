@@ -247,7 +247,12 @@ async function sendPushToWali({
 
       if (ticket.status === "ok") continue;
 
-      errors.push(ticket.message || "Push ticket error");
+      const ticketError =
+        ticket.details?.error
+          ? `${ticket.details.error}: ${ticket.message || "Push ticket error"}`
+          : ticket.message || "Push ticket error";
+
+      errors.push(ticketError);
 
       if (ticket.details?.error === "DeviceNotRegistered") {
         await deactivateToken({ tenantId, expoPushToken: token });
@@ -260,6 +265,7 @@ async function sendPushToWali({
       token_count: validTokens.length,
       expo_response: tickets,
       errors,
+      reason: errors[0] || null,
       tickets,
     };
   } catch (err) {

@@ -3081,6 +3081,7 @@ router.post(
           ? "Notifikasi test dikirim"
           : result.error ||
             result.reason ||
+            result.errors?.[0] ||
             "Gagal mengirim notifikasi test",
 
       });
