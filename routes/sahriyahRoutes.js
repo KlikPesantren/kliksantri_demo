@@ -68,6 +68,31 @@ function isStatusLunas(status) {
   return String(status || "").trim().toLowerCase() === "lunas";
 }
 
+async function notifyTagihanSahriyahDibuat({ tenantId, santriId, tagihanId, bulan, tahun, nominal }) {
+  const nominalLabel = formatNominalRp(nominal);
+  const body = nominalLabel
+    ? `Tagihan sahriyah bulan ${bulan}/${tahun} sebesar ${nominalLabel} telah tersedia.`
+    : `Tagihan sahriyah bulan ${bulan}/${tahun} telah tersedia.`;
+
+  const result = await notificationService.sendInAppToWaliBySantriId({
+    tenantId,
+    santriId: Number(santriId),
+    title: "Tagihan Sahriyah Baru",
+    body,
+    type: "sahriyah",
+    data: {
+      type: "sahriyah",
+      santri_id: Number(santriId),
+      tagihan_id: Number(tagihanId),
+      ref_table: "tagihan_sahriyah",
+      ref_id: Number(tagihanId),
+    },
+  });
+
+  console.log("SAHRIYAH GENERATE NOTIFICATION RESULT:", result);
+  return result;
+}
+
 router.get("/", async (req, res) => {
   try {
     const paging = parsePagination(req.query, { defaultLimit: 20, maxLimit: 200 });
@@ -161,6 +186,7 @@ router.post("/generate", async (req, res) => {
     let skipped_existing_count = 0;
     let skipped_no_setting_count = 0;
     const total_target = santri.rows.length;
+    const createdRows = [];
 
     for (const s of santri.rows) {
       if (!s.setting_id) {
@@ -179,11 +205,12 @@ router.post("/generate", async (req, res) => {
       );
 
       if (cek.rows.length === 0) {
-        await pool.query(
+        const created = await pool.query(
           `INSERT INTO tagihan_sahriyah (
              santri_id, bulan, tahun, nominal, nominal_beras, keterangan, tenant_id
            )
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id`,
           [
             s.id,
             bulan,
@@ -194,6 +221,13 @@ router.post("/generate", async (req, res) => {
             req.tenantId,
           ]
         );
+        createdRows.push({
+          id: created.rows[0]?.id,
+          santri_id: s.id,
+          bulan,
+          tahun,
+          nominal: s.nominal_uang || 0,
+        });
         created_count += 1;
       } else {
         skipped_existing_count += 1;
@@ -208,6 +242,21 @@ router.post("/generate", async (req, res) => {
       skipped_existing_count,
       skipped_no_setting_count,
       total_target,
+    });
+
+    setImmediate(() => {
+      for (const row of createdRows) {
+        notifyTagihanSahriyahDibuat({
+          tenantId: req.tenantId,
+          santriId: row.santri_id,
+          tagihanId: row.id,
+          bulan: row.bulan,
+          tahun: row.tahun,
+          nominal: row.nominal,
+        }).catch((notifErr) => {
+          console.log("SAHRIYAH GENERATE NOTIFICATION ERROR:", notifErr.message);
+        });
+      }
     });
   } catch (err) {
     console.log(err);

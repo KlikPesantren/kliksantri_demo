@@ -139,6 +139,32 @@ async function notifyPembayaranDiterima({ tenantId, santriId, pembayaranId, invo
   return result;
 }
 
+async function notifyTagihanPembayaranDibuat({ tenantId, santriId, pembayaranId, namaTagihan, bulan, tahun, nominal }) {
+  const nominalLabel = formatNominalRp(nominal);
+  const periode = [bulan, tahun].filter(Boolean).join(" ");
+  const body = nominalLabel
+    ? `Tagihan ${namaTagihan || "pembayaran"} ${periode} sebesar ${nominalLabel} telah tersedia.`
+    : `Tagihan ${namaTagihan || "pembayaran"} ${periode} telah tersedia.`;
+
+  const result = await notificationService.sendInAppToWaliBySantriId({
+    tenantId,
+    santriId: Number(santriId),
+    title: "Tagihan Pembayaran Baru",
+    body,
+    type: "pembayaran",
+    data: {
+      type: "pembayaran",
+      santri_id: Number(santriId),
+      pembayaran_id: Number(pembayaranId),
+      ref_table: "pembayaran",
+      ref_id: Number(pembayaranId),
+    },
+  });
+
+  console.log("PEMBAYARAN GENERATE NOTIFICATION RESULT:", result);
+  return result;
+}
+
 async function resolveJenisTagihanId(client, tenantId, namaTagihan) {
   const trimmed = String(namaTagihan || "").trim();
   if (!trimmed) {
@@ -372,6 +398,7 @@ router.post("/generate", async (req, res) => {
     let created_count = 0;
     let skipped_count = 0;
     let skipped_nonaktif_count = 0;
+    const createdRows = [];
 
     for (const santriId of uniqueIds) {
       const santriRow = await client.query(
@@ -411,7 +438,7 @@ router.post("/generate", async (req, res) => {
         continue;
       }
 
-      await insertPembayaran(client, req.tenantId, {
+      const created = await insertPembayaran(client, req.tenantId, {
         santri_id: santriId,
         jenis_tagihan_id: jenisTagihanId,
         nama_tagihan: String(nama_tagihan).trim(),
@@ -421,6 +448,7 @@ router.post("/generate", async (req, res) => {
         nominal_bayar: 0,
       });
 
+      createdRows.push(created);
       created_count += 1;
     }
 
@@ -432,6 +460,22 @@ router.post("/generate", async (req, res) => {
       skipped_count,
       skipped_nonaktif_count,
       total_target,
+    });
+
+    setImmediate(() => {
+      for (const row of createdRows) {
+        notifyTagihanPembayaranDibuat({
+          tenantId: req.tenantId,
+          santriId: row.santri_id,
+          pembayaranId: row.id,
+          namaTagihan: row.nama_tagihan,
+          bulan: row.bulan,
+          tahun: row.tahun,
+          nominal: row.nominal_tagihan,
+        }).catch((notifErr) => {
+          console.log("PEMBAYARAN GENERATE NOTIFICATION ERROR:", notifErr.message);
+        });
+      }
     });
   } catch (err) {
     await client.query("ROLLBACK");

@@ -49,6 +49,19 @@ api.interceptors.response.use(
       }
     }
 
+    if (status === 401) {
+      clearSession();
+      sessionStorage.setItem(
+        "auth_message",
+        data?.error || "Sesi login berakhir. Silakan login ulang."
+      );
+
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+        return new Promise(() => {});
+      }
+    }
+
     return Promise.reject(error);
   }
 );
