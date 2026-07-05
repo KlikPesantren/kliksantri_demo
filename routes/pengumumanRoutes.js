@@ -4,7 +4,13 @@ const pool = require("../db");
 const { assertRecordInTenant } = require("../services/tenantScope");
 const notificationService = require("../services/notificationService");
 
-const PUSH_PENGUMUMAN_PRIORITIES = new Set(["penting", "urgent"]);
+function buildPengumumanNotificationTitle(prioritas) {
+  const key = String(prioritas || "normal").trim().toLowerCase();
+  if (key === "urgent") return "Pengumuman Urgent";
+  if (key === "penting") return "Pengumuman Penting";
+  return "Pengumuman Baru";
+}
+
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
@@ -58,18 +64,11 @@ router.post("/", async (req, res) => {
     );
 
     const pengumumanRow = result.rows[0];
-    const prioritasKey = String(
-      pengumumanRow.prioritas || "normal"
-    ).toLowerCase();
-
-    if (PUSH_PENGUMUMAN_PRIORITIES.has(prioritasKey)) {
+    if (pengumumanRow.is_active) {
       try {
-        await notificationService.sendInAppToAllWaliInTenant({
+        const notifResult = await notificationService.sendInAppToAllWaliInTenant({
           tenantId: req.tenantId,
-          title:
-            prioritasKey === "urgent"
-              ? "Pengumuman Urgent"
-              : "Pengumuman Penting",
+          title: buildPengumumanNotificationTitle(pengumumanRow.prioritas),
           body: pengumumanRow.judul,
           type: "pengumuman",
           data: {
@@ -79,6 +78,7 @@ router.post("/", async (req, res) => {
             ref_id: Number(pengumumanRow.id),
           },
         });
+        console.log("PENGUMUMAN IN-APP NOTIFICATION RESULT:", notifResult);
       } catch (notifErr) {
         console.log("PENGUMUMAN IN-APP NOTIFICATION ERROR:", notifErr.message);
       }

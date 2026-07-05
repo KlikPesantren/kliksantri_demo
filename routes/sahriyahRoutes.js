@@ -309,7 +309,7 @@ router.put("/bayar/:id", async (req, res) => {
         ? `Pembayaran sahriyah ${santriNama} sebesar ${nominalLabel} telah diterima.`
         : `Pembayaran sahriyah ${santriNama} telah diterima.`;
 
-      await notificationService.sendInAppToWaliBySantriId({
+      const notifResult = await notificationService.sendInAppToWaliBySantriId({
         tenantId: req.tenantId,
         santriId,
         title: "Pembayaran Sahriyah Diterima",
@@ -319,10 +319,12 @@ router.put("/bayar/:id", async (req, res) => {
           type: "sahriyah",
           santri_id: santriId,
           tagihan_id: tagihanId,
-          ref_table: "tagihan_sahriyah",
-          ref_id: tagihanId,
+          invoice_id: invoiceId ? Number(invoiceId) : null,
+          ref_table: invoiceId ? "pembayaran_sahriyah" : "tagihan_sahriyah",
+          ref_id: invoiceId ? Number(invoiceId) : tagihanId,
         },
       });
+      console.log("SAHRIYAH IN-APP NOTIFICATION RESULT:", notifResult);
     } catch (notifErr) {
       console.log("SAHRIYAH IN-APP NOTIFICATION ERROR:", notifErr.message);
     }

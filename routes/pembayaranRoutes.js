@@ -14,6 +14,7 @@ const {
   getBulanFilterVariants,
 } = require("../utils/bulanNormalize");
 const { isSantriAktif, SQL_SANTri_AKTIF } = require("../utils/santriStatus");
+const notificationService = require("../services/notificationService");
 
 async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, santri_ids }) {
   if (scope === "selected" || (!scope && Array.isArray(santri_ids) && santri_ids.length)) {
@@ -104,6 +105,38 @@ function buildPembayaranFilters(tenantId, query) {
 
 function isStatusLunas(status) {
   return String(status || "").trim().toLowerCase() === "lunas";
+}
+
+function formatNominalRp(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return `Rp${amount.toLocaleString("id-ID")}`;
+}
+
+async function notifyPembayaranDiterima({ tenantId, santriId, pembayaranId, invoiceId, namaTagihan, nominal }) {
+  const nominalLabel = formatNominalRp(nominal);
+  const body = nominalLabel
+    ? `Pembayaran ${namaTagihan || "tagihan"} sebesar ${nominalLabel} telah diterima.`
+    : `Pembayaran ${namaTagihan || "tagihan"} telah diterima.`;
+
+  const result = await notificationService.sendInAppToWaliBySantriId({
+    tenantId,
+    santriId: Number(santriId),
+    title: "Pembayaran Diterima",
+    body,
+    type: "pembayaran",
+    data: {
+      type: "pembayaran",
+      santri_id: Number(santriId),
+      pembayaran_id: Number(pembayaranId),
+      invoice_id: invoiceId ? Number(invoiceId) : null,
+      ref_table: invoiceId ? "pembayaran_detail" : "pembayaran",
+      ref_id: Number(invoiceId || pembayaranId),
+    },
+  });
+
+  console.log("PEMBAYARAN IN-APP NOTIFICATION RESULT:", result);
+  return result;
 }
 
 async function resolveJenisTagihanId(client, tenantId, namaTagihan) {
@@ -468,6 +501,21 @@ router.post("/", async (req, res) => {
 
     await client.query("COMMIT");
 
+    if (Number(nominal_bayar || 0) > 0) {
+      try {
+        await notifyPembayaranDiterima({
+          tenantId: req.tenantId,
+          santriId: row.santri_id,
+          pembayaranId: row.id,
+          invoiceId: null,
+          namaTagihan: row.nama_tagihan,
+          nominal: nominal_bayar,
+        });
+      } catch (notifErr) {
+        console.log("PEMBAYARAN CREATE IN-APP NOTIFICATION ERROR:", notifErr.message);
+      }
+    }
+
     res.json({ success: true, data: row, created_count: 1, skipped_count: 0, total_target: 1 });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -550,6 +598,19 @@ router.put("/bayar/:id", async (req, res) => {
        )`,
       [`${data.nama_tagihan} - ${data.nama}`, nominal, petugas, req.tenantId]
     );
+
+    try {
+      await notifyPembayaranDiterima({
+        tenantId: req.tenantId,
+        santriId: data.santri_id,
+        pembayaranId: data.id,
+        invoiceId,
+        namaTagihan: data.nama_tagihan,
+        nominal,
+      });
+    } catch (notifErr) {
+      console.log("PEMBAYARAN BAYAR IN-APP NOTIFICATION ERROR:", notifErr.message);
+    }
 
     res.json({ success: true, invoice_id: invoiceId });
   } catch (err) {

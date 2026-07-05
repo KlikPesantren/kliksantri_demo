@@ -120,6 +120,7 @@ async function sendInAppToWaliBySantriId({
       perizinan: `[${santriNama}] tercatat keluar pondok.`,
       kesehatan: `[${santriNama}] sedang tercatat sakit.`,
       sahriyah: `[${santriNama}] ada pembaruan sahriyah.`,
+      pembayaran: `[${santriNama}] pembayaran telah diterima.`,
     };
     const safeBody =
       String(body || "").trim() ||
