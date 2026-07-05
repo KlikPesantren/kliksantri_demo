@@ -27,6 +27,7 @@ import {
   FormGrid,
   FormActionBar,
 } from "../components/ui/form";
+import { getApiError } from "../components/pembayaran/pembayaranShared";
 
 const COVER_WIDTH = 1200;
 const COVER_HEIGHT = 675;
@@ -670,7 +671,7 @@ function PengumumanPage() {
       getList();
     } catch (err) {
       console.error(err);
-      alert("Gagal menyimpan pengumuman.");
+      alert(getApiError(err, "Gagal menyimpan pengumuman."));
     }
   };
 

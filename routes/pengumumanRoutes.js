@@ -11,6 +11,28 @@ function buildPengumumanNotificationTitle(prioritas) {
   return "Pengumuman Baru";
 }
 
+async function sendPengumumanNotification({ tenantId, pengumuman }) {
+  if (!pengumuman?.is_active) return;
+
+  try {
+    const notifResult = await notificationService.sendInAppToAllWaliInTenant({
+      tenantId,
+      title: buildPengumumanNotificationTitle(pengumuman.prioritas),
+      body: pengumuman.judul,
+      type: "pengumuman",
+      data: {
+        type: "pengumuman",
+        pengumuman_id: Number(pengumuman.id),
+        ref_table: "pengumuman",
+        ref_id: Number(pengumuman.id),
+      },
+    });
+    console.log("PENGUMUMAN IN-APP NOTIFICATION RESULT:", notifResult);
+  } catch (notifErr) {
+    console.log("PENGUMUMAN IN-APP NOTIFICATION ERROR:", notifErr.message);
+  }
+}
+
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
@@ -64,27 +86,16 @@ router.post("/", async (req, res) => {
     );
 
     const pengumumanRow = result.rows[0];
-    if (pengumumanRow.is_active) {
-      try {
-        const notifResult = await notificationService.sendInAppToAllWaliInTenant({
-          tenantId: req.tenantId,
-          title: buildPengumumanNotificationTitle(pengumumanRow.prioritas),
-          body: pengumumanRow.judul,
-          type: "pengumuman",
-          data: {
-            type: "pengumuman",
-            pengumuman_id: Number(pengumumanRow.id),
-            ref_table: "pengumuman",
-            ref_id: Number(pengumumanRow.id),
-          },
-        });
-        console.log("PENGUMUMAN IN-APP NOTIFICATION RESULT:", notifResult);
-      } catch (notifErr) {
-        console.log("PENGUMUMAN IN-APP NOTIFICATION ERROR:", notifErr.message);
-      }
-    }
 
-    res.status(201).json({ success: true, data: pengumumanRow });  } catch (err) {
+    res.status(201).json({ success: true, data: pengumumanRow });
+
+    setImmediate(() => {
+      sendPengumumanNotification({
+        tenantId: req.tenantId,
+        pengumuman: pengumumanRow,
+      });
+    });
+  } catch (err) {
     console.error("PENGUMUMAN INSERT ERROR", err);
     return res.status(500).json({
       success: false,
