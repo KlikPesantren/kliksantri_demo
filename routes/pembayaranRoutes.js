@@ -454,16 +454,8 @@ router.post("/generate", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({
-      success: true,
-      created_count,
-      skipped_count,
-      skipped_nonaktif_count,
-      total_target,
-    });
-
-    setImmediate(() => {
-      for (const row of createdRows) {
+    const notificationResults = await Promise.allSettled(
+      createdRows.map((row) =>
         notifyTagihanPembayaranDibuat({
           tenantId: req.tenantId,
           santriId: row.santri_id,
@@ -472,10 +464,20 @@ router.post("/generate", async (req, res) => {
           bulan: row.bulan,
           tahun: row.tahun,
           nominal: row.nominal_tagihan,
-        }).catch((notifErr) => {
-          console.log("PEMBAYARAN GENERATE NOTIFICATION ERROR:", notifErr.message);
-        });
-      }
+        })
+      )
+    );
+    const notification_count = notificationResults.filter(
+      (item) => item.status === "fulfilled" && item.value?.success
+    ).length;
+
+    res.json({
+      success: true,
+      created_count,
+      skipped_count,
+      skipped_nonaktif_count,
+      total_target,
+      notification_count,
     });
   } catch (err) {
     await client.query("ROLLBACK");

@@ -234,6 +234,22 @@ router.post("/generate", async (req, res) => {
       }
     }
 
+    const notificationResults = await Promise.allSettled(
+      createdRows.map((row) =>
+        notifyTagihanSahriyahDibuat({
+          tenantId: req.tenantId,
+          santriId: row.santri_id,
+          tagihanId: row.id,
+          bulan: row.bulan,
+          tahun: row.tahun,
+          nominal: row.nominal,
+        })
+      )
+    );
+    const notification_count = notificationResults.filter(
+      (item) => item.status === "fulfilled" && item.value?.success
+    ).length;
+
     res.json({
       success: true,
       message: "Tagihan berhasil dibuat",
@@ -242,21 +258,7 @@ router.post("/generate", async (req, res) => {
       skipped_existing_count,
       skipped_no_setting_count,
       total_target,
-    });
-
-    setImmediate(() => {
-      for (const row of createdRows) {
-        notifyTagihanSahriyahDibuat({
-          tenantId: req.tenantId,
-          santriId: row.santri_id,
-          tagihanId: row.id,
-          bulan: row.bulan,
-          tahun: row.tahun,
-          nominal: row.nominal,
-        }).catch((notifErr) => {
-          console.log("SAHRIYAH GENERATE NOTIFICATION ERROR:", notifErr.message);
-        });
-      }
+      notification_count,
     });
   } catch (err) {
     console.log(err);
