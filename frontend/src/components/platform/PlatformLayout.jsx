@@ -39,6 +39,10 @@ function PlatformLayoutStyles() {
         border-right: 1px solid var(--platform-sidebar-border, #1E293B);
       }
 
+      .platform-sidebar-backdrop {
+        display: none;
+      }
+
       .platform-brand {
         flex-shrink: 0;
         padding: 0 6px 10px;
@@ -175,6 +179,32 @@ function PlatformLayoutStyles() {
         background: var(--card);
       }
 
+      .platform-topbar__nav-btn {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-primary);
+        cursor: pointer;
+      }
+
+      .platform-topbar__nav-icon {
+        display: grid;
+        gap: 4px;
+        width: 18px;
+      }
+
+      .platform-topbar__nav-icon span {
+        display: block;
+        height: 2px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
       .platform-topbar__menu {
         position: relative;
       }
@@ -285,6 +315,42 @@ function PlatformLayoutStyles() {
         box-sizing: border-box;
       }
 
+      .platform-shell input,
+      .platform-shell textarea,
+      .platform-shell select {
+        background: var(--surface);
+        color: var(--text-primary);
+        border-color: var(--border);
+        color-scheme: light;
+      }
+
+      .platform-shell input::placeholder,
+      .platform-shell textarea::placeholder {
+        color: var(--text-muted);
+        opacity: 1;
+      }
+
+      [data-theme="dark"] .platform-shell input,
+      [data-theme="dark"] .platform-shell textarea,
+      [data-theme="dark"] .platform-shell select {
+        background: var(--surface);
+        color: var(--text-primary);
+        border-color: var(--border);
+        color-scheme: dark;
+      }
+
+      [data-theme="dark"] .platform-shell input:-webkit-autofill,
+      [data-theme="dark"] .platform-shell textarea:-webkit-autofill,
+      [data-theme="dark"] .platform-shell select:-webkit-autofill {
+        -webkit-text-fill-color: var(--text-primary);
+        box-shadow: 0 0 0 1000px var(--surface) inset;
+      }
+
+      [data-theme="dark"] .platform-shell select option {
+        background: var(--surface);
+        color: var(--text-primary);
+      }
+
       .platform-mobile-banner {
         display: none;
         flex-shrink: 0;
@@ -295,12 +361,38 @@ function PlatformLayoutStyles() {
 
       @media (max-width: 900px) {
         .platform-sidebar {
-          display: none;
+          display: flex;
+          transform: translateX(-105%);
+          transition: transform 0.2s ease;
+          box-shadow: 18px 0 40px rgba(15, 23, 42, 0.26);
+        }
+
+        .platform-sidebar--open {
+          transform: translateX(0);
+        }
+
+        .platform-sidebar-backdrop {
+          display: block;
+          position: fixed;
+          inset: 0;
+          z-index: 25;
+          border: 0;
+          background: rgba(15, 23, 42, 0.52);
+          cursor: pointer;
         }
 
         .platform-main {
           margin-left: 0;
           width: 100%;
+        }
+
+        .platform-topbar {
+          justify-content: space-between;
+          padding: 8px 12px;
+        }
+
+        .platform-topbar__nav-btn {
+          display: inline-flex;
         }
 
         .platform-mobile-banner {
@@ -316,6 +408,7 @@ function PlatformLayout() {
   const user = getPlatformUser();
   const displayName = user?.nama || user?.username || "Platform Admin";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const menuRef = useRef(null);
 
   const handleLogout = () => {
@@ -336,12 +429,33 @@ function PlatformLayout() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen]);
+
   return (
     <>
       <PlatformThemeStyles />
       <PlatformLayoutStyles />
       <div className="platform-shell">
-        <aside className="platform-sidebar">
+        {sidebarOpen && (
+          <button
+            type="button"
+            className="platform-sidebar-backdrop"
+            aria-label="Tutup menu platform"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        <aside className={`platform-sidebar${sidebarOpen ? " platform-sidebar--open" : ""}`}>
           <div className="platform-brand">
             <span className="platform-brand__badge">Platform</span>
             <h1 className="platform-brand__title">KlikSantri</h1>
@@ -353,6 +467,7 @@ function PlatformLayout() {
               items={[
                 { to: "/platform/dashboard", label: "Dashboard", end: true },
               ]}
+              onNavigate={() => setSidebarOpen(false)}
             />
             <NavSection
               label="Tenants"
@@ -360,6 +475,7 @@ function PlatformLayout() {
                 { to: "/platform/tenants", label: "Semua Tenant", end: true },
                 { to: "/platform/tenants/health", label: "Tenant Health" },
               ]}
+              onNavigate={() => setSidebarOpen(false)}
             />
             <NavSection
               label="Billing"
@@ -368,6 +484,7 @@ function PlatformLayout() {
                 { to: "/platform/billing/overdue", label: "Overdue" },
                 { to: "/platform/billing/expiring-soon", label: "Expiring Soon" },
               ]}
+              onNavigate={() => setSidebarOpen(false)}
             />
             <NavSection
               label="System"
@@ -377,11 +494,13 @@ function PlatformLayout() {
                 { to: "/platform/system/backup-restore", label: "Backup & Restore" },
                 { to: "/platform/system/announcements", label: "Pengumuman Platform" },
               ]}
+              onNavigate={() => setSidebarOpen(false)}
             />
             <NavSection
               items={[
                 { to: "/platform/profile", label: "Profile Platform" },
               ]}
+              onNavigate={() => setSidebarOpen(false)}
             />
           </nav>
 
@@ -404,6 +523,19 @@ function PlatformLayout() {
           </div>
 
           <header className="platform-topbar">
+            <button
+              type="button"
+              className="platform-topbar__nav-btn"
+              aria-label="Buka menu platform"
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen((open) => !open)}
+            >
+              <span className="platform-topbar__nav-icon" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            </button>
             <ThemeToggle size="sm" />
             <div className="platform-topbar__menu" ref={menuRef}>
               <button
@@ -450,7 +582,7 @@ function PlatformLayout() {
   );
 }
 
-function NavSection({ label, items }) {
+function NavSection({ label, items, onNavigate }) {
   return (
     <div className="platform-nav__group">
       {label && <div className="platform-nav__group-label">{label}</div>}
@@ -459,6 +591,7 @@ function NavSection({ label, items }) {
           key={item.to}
           to={item.to}
           end={item.end}
+          onClick={onNavigate}
           className={({ isActive }) =>
             `platform-nav__link${isActive ? " active" : ""}`
           }
