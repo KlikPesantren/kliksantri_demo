@@ -108,18 +108,14 @@ export const tabBarOptions = {
     backgroundColor: colors.surface,
     borderTopColor: 'rgba(226, 232, 240, 0.65)',
     borderTopWidth: 1,
-    height: 68,
+    height: 72,
     paddingBottom: 10,
     paddingTop: 8,
-    marginHorizontal: 14,
-    marginBottom: 10,
-    borderRadius: radius['2xl'],
-    position: 'absolute',
     shadowColor: colors.navy,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.09,
-    shadowRadius: 18,
-    elevation: 10,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 8,
   },
   tabBarLabelStyle: typography.tab,
 };
@@ -131,15 +127,15 @@ export function buildTabBarScreenOptions(insets) {
     ...tabBarOptions,
     tabBarStyle: {
       ...tabBarOptions.tabBarStyle,
-      marginBottom: 10 + safeBottom,
+      height: 72 + safeBottom,
+      paddingBottom: 10 + safeBottom,
     },
   };
 }
 
-/** Scroll content inset below floating tab bar + safe area. */
+/** Scroll content spacing above the native bottom tab bar. */
 export function getTabBarScrollInset(insets) {
-  const safeBottom = Math.max(insets?.bottom ?? 0, 0);
-  return 68 + 10 + safeBottom + 24;
+  return 24 + Math.min(Math.max(insets?.bottom ?? 0, 0), 12);
 }
 
 /** @deprecated use getTabBarScrollInset(insets) */

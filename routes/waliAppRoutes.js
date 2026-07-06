@@ -31,9 +31,58 @@ const {
 } = require("../services/tenantService");
 
 const requireTenantFeature = require("../middleware/requireTenantFeature");
-const { isFeatureEnabled } = require("../services/tenantFeatureService");
+const {
+  getTenantFeaturesForPlatform,
+  isFeatureEnabled,
+} = require("../services/tenantFeatureService");
 
 const withWaliAuth = [waliAppAuthMiddleware, requireTenantFeature("wali_app")];
+
+function buildWaliFeatureConfig(features = []) {
+  const featureMap = new Map(
+    features.map((feature) => [feature.key, feature.enabled === true])
+  );
+  const enabled = (key, fallback = false) =>
+    featureMap.has(key) ? featureMap.get(key) : fallback;
+
+  const pendidikan = enabled("pendidikan", true);
+  const keamanan = enabled("keamanan", true);
+  const pembayaran = enabled("pembayaran", true);
+
+  return {
+    absensi: pendidikan,
+    nilai: pendidikan,
+    hafalan: pendidikan,
+    perizinan: enabled("perizinan", true),
+    pelanggaran: enabled("pelanggaran", true),
+    kesehatan: keamanan,
+    sahriyah: enabled("sahriyah", pembayaran),
+    rfid: enabled("rfid", false),
+    pengumuman: enabled("pengumuman", true),
+  };
+}
+
+function getYoutubeVideoId(url) {
+  try {
+    const parsed = new URL(String(url || ""));
+    if (parsed.hostname.includes("youtu.be")) {
+      return parsed.pathname.split("/").filter(Boolean)[0] || null;
+    }
+    if (parsed.hostname.includes("youtube.com")) {
+      return parsed.searchParams.get("v");
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function resolveHomeLinkThumbnail(row) {
+  if (row.thumbnail_url) return row.thumbnail_url;
+  if (String(row.type || "").toLowerCase() !== "youtube") return null;
+  const videoId = getYoutubeVideoId(row.url);
+  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
+}
 
 // =====================
 // POST /wali-app/login
@@ -267,6 +316,49 @@ router.post(
   }
 
 );
+
+router.get("/features", ...withWaliAuth, async (req, res) => {
+  try {
+    const features = await getTenantFeaturesForPlatform(req.wali.tenant_id);
+    res.json({
+      success: true,
+      data: buildWaliFeatureConfig(features),
+    });
+  } catch (err) {
+    console.error("[wali-app features]", err);
+    res.status(500).json({
+      success: false,
+      error: "Gagal memuat fitur aplikasi wali",
+    });
+  }
+});
+
+router.get("/home-links", ...withWaliAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, title, description, url, type, thumbnail_url, sort_order, created_at
+       FROM wali_home_links
+       WHERE tenant_id = $1
+         AND is_active = true
+       ORDER BY sort_order ASC, id ASC`,
+      [req.wali.tenant_id]
+    );
+
+    res.json({
+      success: true,
+      data: rows.map((row) => ({
+        ...row,
+        resolved_thumbnail_url: resolveHomeLinkThumbnail(row),
+      })),
+    });
+  } catch (err) {
+    console.error("[wali-app home-links]", err);
+    res.status(500).json({
+      success: false,
+      error: "Gagal memuat tautan beranda wali",
+    });
+  }
+});
 
 // =====================
 // GET /wali-app/me

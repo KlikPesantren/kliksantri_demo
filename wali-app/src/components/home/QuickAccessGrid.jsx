@@ -6,14 +6,14 @@ import { colors } from '../../constants/colors';
 import { interaction, radius, spacing } from '../../constants/theme';
 
 const QUICK_ITEMS = [
-  { key: 'Absensi', label: 'Absensi', icon: 'calendar-outline', tab: 'Monitoring', screen: 'Absensi' },
-  { key: 'Nilai', label: 'Nilai', icon: 'school-outline', tab: 'Monitoring', screen: 'Nilai' },
-  { key: 'Hafalan', label: 'Hafalan', icon: 'book-outline', tab: 'Monitoring', screen: 'Hafalan' },
-  { key: 'Perizinan', label: 'Perizinan', icon: 'document-text-outline', tab: 'Monitoring', screen: 'Perizinan' },
-  { key: 'Pelanggaran', label: 'Pelanggaran', icon: 'alert-circle-outline', tab: 'Monitoring', screen: 'Pelanggaran' },
-  { key: 'Kesehatan', label: 'Kesehatan', icon: 'heart-outline', tab: 'Monitoring', screen: 'Kesehatan' },
-  { key: 'Sahriyah', label: 'Sahriyah', icon: 'receipt-outline', tab: 'Keuangan', screen: 'Sahriyah' },
-  { key: 'RFID', label: 'RFID & Saldo', icon: 'card-outline', tab: 'Keuangan', screen: 'RFID' },
+  { key: 'Absensi', featureKey: 'absensi', label: 'Absensi', icon: 'calendar-outline', tab: 'Monitoring', screen: 'Absensi' },
+  { key: 'Nilai', featureKey: 'nilai', label: 'Nilai', icon: 'school-outline', tab: 'Monitoring', screen: 'Nilai' },
+  { key: 'Hafalan', featureKey: 'hafalan', label: 'Hafalan', icon: 'book-outline', tab: 'Monitoring', screen: 'Hafalan' },
+  { key: 'Perizinan', featureKey: 'perizinan', label: 'Perizinan', icon: 'document-text-outline', tab: 'Monitoring', screen: 'Perizinan' },
+  { key: 'Pelanggaran', featureKey: 'pelanggaran', label: 'Pelanggaran', icon: 'alert-circle-outline', tab: 'Monitoring', screen: 'Pelanggaran' },
+  { key: 'Kesehatan', featureKey: 'kesehatan', label: 'Kesehatan', icon: 'heart-outline', tab: 'Monitoring', screen: 'Kesehatan' },
+  { key: 'Sahriyah', featureKey: 'sahriyah', label: 'Sahriyah', icon: 'receipt-outline', tab: 'Keuangan', screen: 'Sahriyah' },
+  { key: 'RFID', featureKey: 'rfid', label: 'RFID & Saldo', icon: 'card-outline', tab: 'Keuangan', screen: 'RFID' },
 ];
 
 const COLS = 4;
@@ -28,11 +28,15 @@ const cellShadow = {
   elevation: 1,
 };
 
-export function QuickAccessGrid({ navigation }) {
+export function QuickAccessGrid({ navigation, features }) {
   const { width } = useWindowDimensions();
   const cellWidth = useMemo(
     () => Math.floor((width - H_PADDING * 2 - GAP * (COLS - 1)) / COLS),
     [width]
+  );
+  const visibleItems = useMemo(
+    () => QUICK_ITEMS.filter((item) => features?.[item.featureKey] !== false),
+    [features],
   );
 
   function handlePress(item) {
@@ -45,7 +49,7 @@ export function QuickAccessGrid({ navigation }) {
 
   return (
     <View style={styles.grid}>
-      {QUICK_ITEMS.map((item) => (
+      {visibleItems.map((item) => (
         <Pressable
           key={item.key}
           style={({ pressed }) => [

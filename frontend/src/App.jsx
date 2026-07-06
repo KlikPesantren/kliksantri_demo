@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const PembayaranPage = lazy(() => import("./pages/PembayaranPage"));
 const PengumumanPage = lazy(() => import("./pages/PengumumanPage"));
+const WaliHomeLinksPage = lazy(() => import("./pages/WaliHomeLinksPage"));
 
 const RFIDMonitorPage = lazy(() => import("./pages/RFIDMonitorPage"));
 const RFIDDashboardPage = lazy(() => import("./pages/RFIDDashboardPage"));
@@ -418,6 +419,17 @@ function App() {
             <ProtectedRoute>
               <LazyPage>
                 <PengumumanPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/wali-home-links"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <WaliHomeLinksPage />
               </LazyPage>
             </ProtectedRoute>
           }

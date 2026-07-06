@@ -42,6 +42,7 @@ const MENU = [
   { name: "Kelas", path: "/kelas", perm: "kelas.view", feature: "kelas", icon: <FaSchool /> },
   { name: "Profil Pesantren", path: "/profil-pesantren", perm: "profil.view", feature: "profil", icon: <FaSchool /> },
   { name: "Pengumuman", path: "/pengumuman", perm: "pengumuman.view", feature: "pengumuman", icon: <FaClipboardList /> },
+  { name: "Konten Pesantren", path: "/wali-home-links", perm: "pengumuman.view", feature: "pengumuman", icon: <FaClipboardList /> },
   { name: "Nilai", path: "/nilai", perm: "nilai.view", feature: "pendidikan", icon: <FaClipboardList /> },
   { name: "Hafalan", path: "/hafalan", perm: "hafalan.view", feature: "pendidikan", icon: <FaClipboardList /> },
   { name: "Program Unit", path: "/program-unit", perm: "program_unit.view", feature: "program_unit", icon: <FaClipboardList /> },
@@ -82,7 +83,7 @@ const MENU_GROUPS = [
     id: "data-utama",
     title: "Data Utama",
     collapsible: true,
-    items: ["Santri", "Wali Santri", "Guru", "Kelas", "Profil Pesantren", "Pengumuman"],
+    items: ["Santri", "Wali Santri", "Guru", "Kelas", "Profil Pesantren", "Pengumuman", "Konten Pesantren"],
   },
   {
     id: "akademik",

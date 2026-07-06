@@ -3,6 +3,8 @@ export const ENDPOINTS = {
   ME: '/wali-app/me',
   ANAK: '/wali-app/anak',
   DASHBOARD: '/wali-app/dashboard',
+  FEATURES: '/wali-app/features',
+  HOME_LINKS: '/wali-app/home-links',
   SANTRI_PROFIL: '/wali-app/santri/profil',
   SAHRIYAH: '/wali-app/sahriyah',
   SAHRIYAH_RIWAYAT: (id) => `/wali-app/sahriyah/${id}/riwayat`,

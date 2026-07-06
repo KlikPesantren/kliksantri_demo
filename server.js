@@ -162,6 +162,9 @@ require("./routes/waliAppRoutes");
 const pengumumanRoutes =
 require("./routes/pengumumanRoutes");
 
+const waliHomeLinkRoutes =
+require("./routes/waliHomeLinkRoutes");
+
 const path = require("path");
 
 const uploadRoutes =
@@ -450,6 +453,14 @@ app.use(
   tenantMiddleware,
   requirePermission("pengumuman.view"),
   pengumumanRoutes
+);
+
+app.use(
+  "/wali-home-links",
+  authMiddleware,
+  tenantMiddleware,
+  requirePermission("pengumuman.view"),
+  waliHomeLinkRoutes
 );
 
 app.use(

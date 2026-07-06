@@ -12,11 +12,14 @@ import { useDashboard } from '../../hooks/useDashboard';
 import { usePengumuman } from '../../hooks/usePengumuman';
 import { useProfilPesantren } from '../../hooks/useProfilPesantren';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useWaliFeatures } from '../../hooks/useWaliFeatures';
+import { useHomeLinks } from '../../hooks/useHomeLinks';
 import { SantriHeroCard } from '../../components/home/SantriHeroCard';
 import { PesantrenImageCard } from '../../components/home/PesantrenImageCard';
 import { QuickAccessGrid } from '../../components/home/QuickAccessGrid';
 import { StatusHariIni } from '../../components/home/StatusHariIni';
 import { PengumumanTerbaruList } from '../../components/home/PengumumanTerbaruList';
+import { HomeLinksFeed } from '../../components/home/HomeLinksFeed';
 import {
   ScreenContainer,
   SectionHeading,
@@ -36,6 +39,8 @@ export function DashboardScreen({ navigation: tabNavigation }) {
   const { data: pengumuman, refresh: refreshPengumuman } = usePengumuman();
   const { data: pesantren, refresh: refreshPesantren } = useProfilPesantren();
   const { unreadCount, refreshUnreadCount } = useNotifications({ limit: 1 });
+  const { features, refresh: refreshFeatures } = useWaliFeatures();
+  const { data: homeLinks, refresh: refreshHomeLinks } = useHomeLinks();
 
   const hasPengumuman = (pengumuman?.length ?? 0) > 0;
   const showGanti = anak.length > 1;
@@ -123,6 +128,8 @@ export function DashboardScreen({ navigation: tabNavigation }) {
               refreshPengumuman();
               refreshPesantren();
               refreshUnreadCount();
+              refreshFeatures();
+              refreshHomeLinks();
             }}
             colors={[colors.primary]}
             tintColor={colors.primary}
@@ -153,7 +160,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
           actionLabel="Lihat Semua Menu"
           onAction={() => tabNavigation.navigate('Monitoring')}
         />
-        <QuickAccessGrid navigation={tabNavigation} />
+        <QuickAccessGrid navigation={tabNavigation} features={features} />
 
         {hasPengumuman ? (
           <PengumumanTerbaruList
@@ -162,6 +169,8 @@ export function DashboardScreen({ navigation: tabNavigation }) {
             onLihatSemua={() => tabNavigation.navigate('Pengumuman')}
           />
         ) : null}
+
+        <HomeLinksFeed items={homeLinks} />
 
         <View style={styles.bottomPad} />
       </ScrollView>
