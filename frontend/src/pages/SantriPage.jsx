@@ -516,7 +516,7 @@ function SantriPage() {
             />
           ) : (
             <>
-              <TableScroll>
+              <TableScroll stickyScrollbar>
                 <Table translate="no">
                   <thead>
                     <tr>

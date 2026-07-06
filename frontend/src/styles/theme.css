@@ -1069,9 +1069,32 @@ select.form-control-v3 option,
   min-width: 0;
 }
 
+.table-scroll-v3__wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .table-scroll-v3 > .table-v3 {
   width: max-content;
   min-width: 100%;
+}
+
+.table-scroll-v3__sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 16px;
+  max-width: 100%;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 14px rgba(15, 23, 42, 0.08);
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-theme="dark"] .table-scroll-v3__sticky-bar {
+  box-shadow: 0 -6px 14px rgba(0, 0, 0, 0.24);
 }
 
 .table-v3 {

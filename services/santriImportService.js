@@ -8,6 +8,7 @@ const TEMPLATE_HEADERS = [
   "nis",
   "jenis_kelamin",
   "tanggal_lahir",
+  "tanggal_masuk_pesantren",
   "alamat",
   "nama_wali",
   "no_hp_wali",
@@ -32,7 +33,7 @@ function cellToString(value) {
   return String(value).trim();
 }
 
-function parseDateValue(value) {
+function parseDateValue(value, fieldName = "tanggal_lahir") {
   if (value === null || value === undefined || value === "") {
     return { ok: true, value: null };
   }
@@ -66,7 +67,7 @@ function parseDateValue(value) {
     return { ok: true, value: `${dmyMatch[3]}-${mm}-${dd}` };
   }
 
-  return { ok: false, error: "Format tanggal_lahir tidak valid (gunakan YYYY-MM-DD)" };
+  return { ok: false, error: `Format ${fieldName} tidak valid (gunakan YYYY-MM-DD)` };
 }
 
 function normalizeJenisKelamin(value) {
@@ -107,6 +108,7 @@ function buildTemplateWorkbook() {
       "2026001",
       "L",
       "2012-05-15",
+      "2026-07-01",
       "Jl. Pesantren No. 1",
       "Bapak Fauzi",
       "081234567890",
@@ -169,9 +171,17 @@ function validateRow(mapped, context) {
     errors.push(jk.error);
   }
 
-  const dateParsed = parseDateValue(mapped.tanggal_lahir);
+  const dateParsed = parseDateValue(mapped.tanggal_lahir, "tanggal_lahir");
   if (!dateParsed.ok) {
     errors.push(dateParsed.error);
+  }
+
+  const masukParsed = parseDateValue(
+    mapped.tanggal_masuk_pesantren || mapped.tanggal_masuk,
+    "tanggal_masuk_pesantren"
+  );
+  if (!masukParsed.ok) {
+    errors.push(masukParsed.error);
   }
 
   if (!kelasName) {
@@ -221,6 +231,7 @@ function validateRow(mapped, context) {
       nis: nis || null,
       jenis_kelamin: jk.value,
       tanggal_lahir: dateParsed.value,
+      tanggal_masuk_pesantren: masukParsed.value,
       alamat: alamat || null,
       nama_wali: namaWali || null,
       no_hp_wali: normalizedHp,
@@ -289,6 +300,7 @@ async function validateCommitRow(tenantId, rowData, context) {
     nis: rowData.nis,
     jenis_kelamin: rowData.jenis_kelamin,
     tanggal_lahir: rowData.tanggal_lahir,
+    tanggal_masuk_pesantren: rowData.tanggal_masuk_pesantren,
     alamat: rowData.alamat,
     nama_wali: rowData.nama_wali,
     no_hp_wali: rowData.no_hp_wali,
@@ -358,9 +370,9 @@ async function commitImport(tenantId, inputRows) {
       const insertResult = await client.query(
         `INSERT INTO santri (
            nis, nama, alamat, kelas_id, status, tenant_id,
-           jenis_kelamin, tanggal_lahir, orang_tua, nomor_hp_ortu
+           jenis_kelamin, tanggal_lahir, tanggal_masuk_pesantren, orang_tua, nomor_hp_ortu
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING *`,
         [
           data.nis,
@@ -371,6 +383,7 @@ async function commitImport(tenantId, inputRows) {
           tenantId,
           data.jenis_kelamin,
           data.tanggal_lahir,
+          data.tanggal_masuk_pesantren,
           data.nama_wali,
           data.no_hp_wali,
         ]
