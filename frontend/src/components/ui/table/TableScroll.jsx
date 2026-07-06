@@ -57,12 +57,19 @@ function TableScroll({
       resizeObserver?.observe(scrollEl.firstElementChild);
     }
 
+    const handleWindowScroll = (event) => {
+      if (stickyRef.current && stickyRef.current.contains(event.target)) {
+        return;
+      }
+      updateMetrics();
+    };
+
     window.addEventListener("resize", updateMetrics);
-    window.addEventListener("scroll", updateMetrics, true);
+    window.addEventListener("scroll", handleWindowScroll, true);
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateMetrics);
-      window.removeEventListener("scroll", updateMetrics, true);
+      window.removeEventListener("scroll", handleWindowScroll, true);
     };
   }, [stickyScrollbar, children]);
 
