@@ -11,6 +11,7 @@ function TableScroll({
   const stickyRef = useRef(null);
   const syncingRef = useRef(false);
   const [scrollWidth, setScrollWidth] = useState(0);
+  const [stickyBarStyle, setStickyBarStyle] = useState({});
   const [showStickyScrollbar, setShowStickyScrollbar] = useState(false);
 
   const classes = [
@@ -29,8 +30,16 @@ function TableScroll({
     const scrollEl = scrollRef.current;
 
     const updateMetrics = () => {
+      const rect = scrollEl.getBoundingClientRect();
+      const hasHorizontalScroll = scrollEl.scrollWidth > scrollEl.clientWidth + 1;
+      const isVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+
       setScrollWidth(scrollEl.scrollWidth);
-      setShowStickyScrollbar(scrollEl.scrollWidth > scrollEl.clientWidth + 1);
+      setStickyBarStyle({
+        left: `${Math.max(rect.left, 0)}px`,
+        width: `${Math.min(rect.width, window.innerWidth - Math.max(rect.left, 0))}px`,
+      });
+      setShowStickyScrollbar(hasHorizontalScroll && isVisible);
       if (stickyRef.current) {
         stickyRef.current.scrollLeft = scrollEl.scrollLeft;
       }
@@ -49,9 +58,11 @@ function TableScroll({
     }
 
     window.addEventListener("resize", updateMetrics);
+    window.addEventListener("scroll", updateMetrics, true);
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateMetrics);
+      window.removeEventListener("scroll", updateMetrics, true);
     };
   }, [stickyScrollbar, children]);
 
@@ -78,6 +89,7 @@ function TableScroll({
           ref={stickyRef}
           className="table-scroll-v3__sticky-bar"
           aria-hidden="true"
+          style={stickyBarStyle}
           onScroll={(event) => syncScroll(event.currentTarget, scrollRef.current)}
         >
           <div style={{ width: scrollWidth, height: 1 }} />
