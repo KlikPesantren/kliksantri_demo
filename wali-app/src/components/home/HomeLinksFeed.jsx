@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import {
+  Alert,
   Image,
   Linking,
   StyleSheet,
@@ -34,15 +35,28 @@ function trimText(value, max = 86) {
   return `${text.slice(0, max).trim()}...`;
 }
 
+function isValidLink(url) {
+  const text = String(url || '').trim();
+  return /^(https?:\/\/|whatsapp:\/\/)/i.test(text);
+}
+
 async function openUrl(url) {
-  if (!url) return;
+  const target = String(url || '').trim();
+  if (!isValidLink(target)) {
+    Alert.alert('Tautan tidak valid', 'Link konten belum benar atau belum tersedia.');
+    return;
+  }
+
   try {
-    const supported = await Linking.canOpenURL(url);
+    const supported = await Linking.canOpenURL(target);
     if (supported) {
-      await Linking.openURL(url);
+      await Linking.openURL(target);
+      return;
     }
+    Alert.alert('Tidak bisa membuka tautan', 'Perangkat belum mendukung link ini.');
   } catch (err) {
     console.log('[HOME LINKS] open url error', err?.message);
+    Alert.alert('Gagal membuka tautan', 'Coba buka kembali beberapa saat lagi.');
   }
 }
 

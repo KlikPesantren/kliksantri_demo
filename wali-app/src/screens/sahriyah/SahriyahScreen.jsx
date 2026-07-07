@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, FlatList, RefreshControl, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useActiveChild } from '../../context/ActiveChildContext';
 import { useSahriyah } from '../../hooks/useSahriyah';
 import { ChildSwitcherBar } from '../../components/dashboard/ChildSwitcherBar';
@@ -12,11 +13,10 @@ import {
   AppText,
   StatusBadge,
   EmptyState,
-  KpiTile,
   ListSectionHeader,
 } from '../../components/ui';
 import { colors } from '../../constants/colors';
-import { spacing } from '../../constants/theme';
+import { radius, shadows, spacing } from '../../constants/theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { monthName } from '../../utils/formatDate';
 
@@ -29,11 +29,11 @@ function SummaryHeader({ data }) {
 
   return (
     <View style={styles.summaryWrap}>
-      <View style={styles.kpiRow}>
-        <KpiTile label="Tagihan" value={String(data.length)} icon="receipt-outline" accent="primary" iconColor={colors.primary} />
-        <KpiTile label="Lunas" value={String(lunas)} icon="checkmark-circle-outline" accent="success" iconColor={colors.success} />
-        <KpiTile label="Sebagian" value={String(sebagian)} icon="pie-chart-outline" accent="warning" iconColor={colors.warning} />
-        <KpiTile label="Belum" value={String(belum)} icon="alert-circle-outline" accent="danger" iconColor={colors.danger} />
+      <View style={styles.miniStatsGrid}>
+        <MiniStat label="Tagihan" value={String(data.length)} icon="receipt-outline" color={colors.primary} bg={colors.primarySoft} />
+        <MiniStat label="Lunas" value={String(lunas)} icon="checkmark-circle-outline" color={colors.success} bg={colors.successSoft} />
+        <MiniStat label="Sebagian" value={String(sebagian)} icon="pie-chart-outline" color={colors.warning} bg={colors.warningSoft} />
+        <MiniStat label="Belum" value={String(belum)} icon="alert-circle-outline" color={colors.danger} bg={colors.dangerSoft} />
       </View>
       <AppCard padding="md">
         <View style={styles.financeRow}>
@@ -47,6 +47,24 @@ function SummaryHeader({ data }) {
           </View>
         </View>
       </AppCard>
+    </View>
+  );
+}
+
+function MiniStat({ label, value, icon, color, bg }) {
+  return (
+    <View style={[styles.miniStat, shadows.sm]}>
+      <View style={[styles.miniIcon, { backgroundColor: bg }]}>
+        <Ionicons name={icon} size={16} color={color} />
+      </View>
+      <View style={styles.miniCopy}>
+        <AppText variant="h3" numberOfLines={1} style={styles.miniValue}>
+          {value}
+        </AppText>
+        <AppText variant="caption" color="muted" numberOfLines={1} style={styles.miniLabel}>
+          {label}
+        </AppText>
+      </View>
     </View>
   );
 }
@@ -161,7 +179,45 @@ const styles = StyleSheet.create({
   list: { paddingBottom: spacing['3xl'] },
   sep: { height: spacing.sm },
   summaryWrap: { paddingTop: spacing.md, gap: spacing.sm },
-  kpiRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.lg, gap: spacing.sm },
+  miniStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  miniStat: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minHeight: 58,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  miniIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  miniValue: {
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: '900',
+  },
+  miniLabel: {
+    lineHeight: 15,
+  },
   financeRow: { flexDirection: 'row', gap: spacing.md },
   financeCell: { flex: 1 },
   tagihan: { marginHorizontal: spacing.lg, gap: spacing.sm },

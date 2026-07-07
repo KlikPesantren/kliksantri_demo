@@ -21,6 +21,8 @@ import {
   registerPushTokenBackground,
 } from '../../services/pushNotificationService';
 
+const SHOW_PUSH_DEBUG = false;
+
 function PesantrenLogo({ logoUrl, nama }) {
   const uri = resolveMediaUrl(logoUrl);
   const initials = (nama ?? 'PP')
@@ -75,6 +77,7 @@ export function ProfilHubScreen() {
   }, []);
 
   useEffect(() => {
+    if (!SHOW_PUSH_DEBUG) return;
     loadPushDebug();
   }, [loadPushDebug]);
 
@@ -177,64 +180,66 @@ export function ProfilHubScreen() {
           />
         </AppCard>
 
-        <AppCard padding="lg" style={styles.debugCard}>
-          <AppText variant="h3">Debug Push Notification</AppText>
-          <View style={styles.debugRows}>
-            <DebugRow label="Permission" value={pushDebug?.permission_status || '-'} />
-            <DebugRow
-              label="Expo Token"
-              value={
-                pushDebug?.registration_status?.expo_push_token
-                  ? `${String(pushDebug.registration_status.expo_push_token).slice(0, 20)}...`
-                  : '-'
-              }
-            />
-            <DebugRow
-              label="Register Lokal"
-              value={pushDebug?.registration_status?.ok ? 'OK' : pushDebug?.registration_status?.reason || pushDebug?.registration_status?.error || '-'}
-            />
-            <DebugRow
-              label="Token Server"
-              value={pushServerStatus?.has_active_token ? `Aktif (${pushServerStatus.active_token_count})` : 'Belum ada'}
-            />
-            <DebugRow label="Server Token" value={pushServerStatus?.latest_token_prefix || '-'} />
-            <DebugRow label="Platform" value={pushServerStatus?.latest_platform || '-'} />
-            <DebugRow label="Last Seen" value={pushServerStatus?.latest_last_seen || '-'} />
-          </View>
-          {pushMessage ? (
-            <AppText variant="caption" color="secondary">
-              {pushMessage}
-            </AppText>
-          ) : null}
-          <View style={styles.debugActions}>
-            <AppButton
-              size="sm"
-              onPress={handleManualRegisterPush}
-              loading={pushLoading}
-              fullWidth
-            >
-              Register Push Token
-            </AppButton>
-            <AppButton
-              size="sm"
-              variant="outline"
-              onPress={handleTestPush}
-              loading={pushLoading}
-              fullWidth
-            >
-              Test Push
-            </AppButton>
-            <AppButton
-              size="sm"
-              variant="ghost"
-              onPress={loadPushDebug}
-              disabled={pushLoading}
-              fullWidth
-            >
-              Refresh Status
-            </AppButton>
-          </View>
-        </AppCard>
+        {SHOW_PUSH_DEBUG ? (
+          <AppCard padding="lg" style={styles.debugCard}>
+            <AppText variant="h3">Debug Push Notification</AppText>
+            <View style={styles.debugRows}>
+              <DebugRow label="Permission" value={pushDebug?.permission_status || '-'} />
+              <DebugRow
+                label="Expo Token"
+                value={
+                  pushDebug?.registration_status?.expo_push_token
+                    ? `${String(pushDebug.registration_status.expo_push_token).slice(0, 20)}...`
+                    : '-'
+                }
+              />
+              <DebugRow
+                label="Register Lokal"
+                value={pushDebug?.registration_status?.ok ? 'OK' : pushDebug?.registration_status?.reason || pushDebug?.registration_status?.error || '-'}
+              />
+              <DebugRow
+                label="Token Server"
+                value={pushServerStatus?.has_active_token ? `Aktif (${pushServerStatus.active_token_count})` : 'Belum ada'}
+              />
+              <DebugRow label="Server Token" value={pushServerStatus?.latest_token_prefix || '-'} />
+              <DebugRow label="Platform" value={pushServerStatus?.latest_platform || '-'} />
+              <DebugRow label="Last Seen" value={pushServerStatus?.latest_last_seen || '-'} />
+            </View>
+            {pushMessage ? (
+              <AppText variant="caption" color="secondary">
+                {pushMessage}
+              </AppText>
+            ) : null}
+            <View style={styles.debugActions}>
+              <AppButton
+                size="sm"
+                onPress={handleManualRegisterPush}
+                loading={pushLoading}
+                fullWidth
+              >
+                Register Push Token
+              </AppButton>
+              <AppButton
+                size="sm"
+                variant="outline"
+                onPress={handleTestPush}
+                loading={pushLoading}
+                fullWidth
+              >
+                Test Push
+              </AppButton>
+              <AppButton
+                size="sm"
+                variant="ghost"
+                onPress={loadPushDebug}
+                disabled={pushLoading}
+                fullWidth
+              >
+                Refresh Status
+              </AppButton>
+            </View>
+          </AppCard>
+        ) : null}
       </ScrollView>
     </ScreenContainer>
   );
