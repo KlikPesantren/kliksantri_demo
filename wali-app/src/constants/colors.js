@@ -1,6 +1,6 @@
 /**
  * Wali App V2 — Brand Palette
- * Aligns with KlikSantri Admin Design System V3
+ * Aligns with KlikPesantren Admin Design System V3
  */
 export const colors = {
   // Brand core

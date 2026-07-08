@@ -458,7 +458,7 @@ function PlatformLayout() {
         <aside className={`platform-sidebar${sidebarOpen ? " platform-sidebar--open" : ""}`}>
           <div className="platform-brand">
             <span className="platform-brand__badge">Platform</span>
-            <h1 className="platform-brand__title">KlikSantri</h1>
+            <h1 className="platform-brand__title">KlikPesantren</h1>
             <p className="platform-brand__subtitle">Platform Console</p>
           </div>
 
@@ -518,7 +518,7 @@ function PlatformLayout() {
         <div className="platform-main">
           <div className="platform-mobile-banner">
             <span style={{ color: "#E2E8F0", fontSize: 13, fontWeight: 700 }}>
-              KlikSantri Platform
+              KlikPesantren Platform
             </span>
           </div>
 

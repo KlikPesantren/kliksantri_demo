@@ -8,7 +8,7 @@ export const TENANT_FALLBACKS = {
 };
 
 export const KLIKSANTRI_LOGIN_BRANDING = {
-  name: "KlikSantri",
+  name: "KlikPesantren",
   address: "Administrasi Pesantren Digital",
   tagline: "Sistem Administrasi Pesantren Modern",
   logo: null,

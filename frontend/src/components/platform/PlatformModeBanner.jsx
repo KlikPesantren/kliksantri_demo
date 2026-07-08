@@ -162,13 +162,13 @@ function PlatformModeBanner({ compact = false, variant = "light" }) {
 
       <PlatformModeBannerStyles />
 
-      <div className={className} role="status" aria-label="Mode platform KlikSantri">
+      <div className={className} role="status" aria-label="Mode platform KlikPesantren">
 
         <span className="platform-mode-banner__badge">Platform</span>
 
         <div className="platform-mode-banner__text">
 
-          <p className="platform-mode-banner__title">KlikSantri Platform</p>
+          <p className="platform-mode-banner__title">KlikPesantren Platform</p>
 
           {!compact ? (
 

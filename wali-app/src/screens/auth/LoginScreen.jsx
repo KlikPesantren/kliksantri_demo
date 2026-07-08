@@ -280,7 +280,7 @@ export function LoginScreen() {
 
             <View style={styles.vendorFooter}>
               <AppText variant="caption" color="muted" style={styles.vendorText}>
-                Powered by KlikSantri
+                Powered by KlikPesantren
               </AppText>
               <AppText variant="caption" color="muted">
                 Versi {APP_VERSION}

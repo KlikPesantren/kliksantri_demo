@@ -1,5 +1,5 @@
 export const TENANT_INACTIVE_MESSAGE =
-  "Layanan KlikSantri untuk pesantren ini sedang tidak aktif.";
+  "Layanan KlikPesantren untuk pesantren ini sedang tidak aktif.";
 
 export const TENANT_SUSPEND_SESSION_KEY = "kliksantri:tenant-suspend-message";
 

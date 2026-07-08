@@ -48,11 +48,17 @@ async function openUrl(url) {
   }
 
   try {
+    if (/^https?:\/\//i.test(target)) {
+      await Linking.openURL(target);
+      return;
+    }
+
     const supported = await Linking.canOpenURL(target);
     if (supported) {
       await Linking.openURL(target);
       return;
     }
+
     Alert.alert('Tidak bisa membuka tautan', 'Perangkat belum mendukung link ini.');
   } catch (err) {
     console.log('[HOME LINKS] open url error', err?.message);

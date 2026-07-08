@@ -100,7 +100,7 @@ export function ProfilHubScreen() {
     setPushMessage('');
     try {
       const result = await pushApi.sendTestNotification({
-        title: 'Test KlikSantri',
+        title: 'Test KlikPesantren',
         body: 'Push notification test dari aplikasi Wali.',
       });
       await loadPushDebug();

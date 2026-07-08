@@ -56,14 +56,14 @@ const modules = [
 const benefits = [
   "Harga khusus Founding Partner selama periode awal.",
   "Prioritas onboarding dan pendampingan setup data.",
-  "Masukan pesantren ikut membentuk roadmap KlikSantri.",
+  "Masukan pesantren ikut membentuk roadmap KlikPesantren.",
   "Akses lebih awal ke modul baru yang relevan.",
   "Badge Founding Partner untuk profil pesantren.",
 ];
 
 const faqs = [
   {
-    question: "Apakah KlikSantri cocok untuk pesantren kecil?",
+    question: "Apakah KlikPesantren cocok untuk pesantren kecil?",
     answer:
       "Cocok. Sistem dibuat bertahap, jadi pesantren bisa mulai dari data santri, pembayaran, dan aplikasi wali dulu.",
   },
@@ -75,12 +75,12 @@ const faqs = [
   {
     question: "Apakah data pesantren dipisah antar lembaga?",
     answer:
-      "Ya. KlikSantri dirancang multi-tenant sehingga setiap pesantren memiliki ruang data masing-masing.",
+      "Ya. KlikPesantren dirancang multi-tenant sehingga setiap pesantren memiliki ruang data masing-masing.",
   },
   {
     question: "Bagaimana cara daftar Founding Partner?",
     answer:
-      "Klik tombol WhatsApp, lalu tim KlikSantri akan membantu cek kebutuhan dan jadwal onboarding.",
+      "Klik tombol WhatsApp, lalu tim KlikPesantren akan membantu cek kebutuhan dan jadwal onboarding.",
   },
 ];
 
@@ -730,11 +730,11 @@ export default function LandingPage() {
 
       <header className="ks-nav">
         <div className="ks-container ks-nav-inner">
-          <a className="ks-brand" href="#hero" aria-label="KlikSantri">
+          <a className="ks-brand" href="#hero" aria-label="KlikPesantren">
             <span className="ks-brand-mark">
               <img className="ks-brand-logo" src="/landing/logo.png" alt="" />
             </span>
-            <span>KlikSantri</span>
+            <span>KlikPesantren</span>
           </a>
           <nav className="ks-nav-links" aria-label="Navigasi landing">
             <a href="#solusi">Solusi</a>
@@ -755,7 +755,7 @@ export default function LandingPage() {
             <div className="ks-kicker">
               <img className="ks-kicker-logo" src="/landing/logo.png" alt="" /> Platform administrasi pesantren modern
             </div>
-            <h1>KlikSantri</h1>
+            <h1>KlikPesantren</h1>
             <p>
               Sistem SaaS untuk membantu pesantren mengelola data santri,
               pembayaran, absensi, RFID, laporan, dan komunikasi wali dalam
@@ -776,11 +776,11 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="ks-hero-visual" aria-label="Mockup dashboard KlikSantri">
+          <div className="ks-hero-visual" aria-label="Mockup dashboard KlikPesantren">
             <img
               className="ks-dashboard-image"
               src="/landing/dashboard-admin.png"
-              alt="Mockup dashboard admin KlikSantri"
+              alt="Mockup dashboard admin KlikPesantren"
             />
           </div>
         </div>
@@ -809,7 +809,7 @@ export default function LandingPage() {
           <div className="ks-solution-panel">
             <h3>Satu pusat kerja untuk pengurus, operator, unit, dan wali santri.</h3>
             <p>
-              KlikSantri menyatukan administrasi inti pesantren dalam platform
+              KlikPesantren menyatukan administrasi inti pesantren dalam platform
               yang bisa dipakai bertahap, sesuai kesiapan tim dan kebutuhan
               lembaga.
             </p>
@@ -820,7 +820,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="ks-section-head">
-            <div className="ks-kicker">Solusi KlikSantri</div>
+            <div className="ks-kicker">Solusi KlikPesantren</div>
             <h2>Modern secara teknologi, tetap dekat dengan cara kerja pesantren.</h2>
             <p>
               Desainnya dibuat untuk operasional harian: mudah dicari,
@@ -874,14 +874,14 @@ export default function LandingPage() {
                 <img
                   className="ks-dashboard-image"
                   src="/landing/dashboard-admin.png"
-                  alt="Screenshot dashboard admin KlikSantri"
+                  alt="Screenshot dashboard admin KlikPesantren"
                 />
               </div>
               <div className="ks-phone">
                 <img
                   className="ks-phone-image"
                   src="/landing/wali-app.png"
-                  alt="Mockup APK Wali Santri KlikSantri"
+                  alt="Mockup APK Wali Santri KlikPesantren"
                 />
               </div>
             </div>
@@ -894,7 +894,7 @@ export default function LandingPage() {
           <div className="ks-partner">
             <div>
               <div className="ks-kicker">Program Terbatas</div>
-              <h2>Founding Partner KlikSantri untuk 5 pesantren pertama.</h2>
+              <h2>Founding Partner KlikPesantren untuk 5 pesantren pertama.</h2>
               <p>
                 Kami membuka kolaborasi awal untuk pesantren yang ingin ikut
                 membangun sistem administrasi digital yang benar-benar cocok
@@ -950,7 +950,7 @@ export default function LandingPage() {
             <article className="ks-price-card featured">
               <h3>Founding Partner</h3>
               <div className="ks-price">Khusus 5 awal</div>
-              <p>Harga dan onboarding khusus untuk pesantren pertama yang ikut membangun KlikSantri.</p>
+              <p>Harga dan onboarding khusus untuk pesantren pertama yang ikut membangun KlikPesantren.</p>
               <ul>
                 <li>Prioritas setup awal</li>
                 <li>Pendampingan implementasi</li>
@@ -983,10 +983,10 @@ export default function LandingPage() {
 
       <section className="ks-cta" id="kontak">
         <div className="ks-container">
-          <h2>Siap jadi salah satu dari 5 Founding Partner KlikSantri?</h2>
+          <h2>Siap jadi salah satu dari 5 Founding Partner KlikPesantren?</h2>
           <p>
             Ceritakan kondisi pesantren, modul yang paling dibutuhkan, dan target
-            implementasi. Tim KlikSantri akan bantu susun langkah awalnya.
+            implementasi. Tim KlikPesantren akan bantu susun langkah awalnya.
           </p>
           <a className="ks-button ks-button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
             Hubungi via WhatsApp <FaWhatsapp />

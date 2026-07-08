@@ -127,7 +127,7 @@ function PlatformDashboardPage() {
       <div className="platform-dashboard-v2">
         <section className="pd-header">
           <div>
-            <h1>KlikSantri Platform</h1>
+            <h1>KlikPesantren Platform</h1>
             <p>Kelola tenant dan layanan dari satu tempat.</p>
           </div>
           <div className="pd-header__actions">

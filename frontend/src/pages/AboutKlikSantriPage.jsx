@@ -17,7 +17,7 @@ function AboutKlikSantriPage() {
         if (!cancelled) setSettings(data);
       })
       .catch(() => {
-        if (!cancelled) setError("Gagal memuat informasi KlikSantri.");
+        if (!cancelled) setError("Gagal memuat informasi KlikPesantren.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -31,7 +31,7 @@ function AboutKlikSantriPage() {
   const logoUrl = settings?.logo_url ? resolveMediaUrl(settings.logo_url) : null;
 
   return (
-    <AppShell title="Tentang KlikSantri" breadcrumb="Tentang KlikSantri">
+    <AppShell title="Tentang KlikPesantren" breadcrumb="Tentang KlikPesantren">
       <Card padding="md" shadow="card" radius="xl">
         {loading ? (
           <p style={mutedStyle}>Memuat...</p>
@@ -48,7 +48,7 @@ function AboutKlikSantriPage() {
                 </div>
               )}
               <div>
-                <h1 style={titleStyle}>{settings?.platform_name || "KlikSantri"}</h1>
+                <h1 style={titleStyle}>{settings?.platform_name || "KlikPesantren"}</h1>
                 {settings?.tagline ? (
                   <p style={taglineStyle}>{settings.tagline}</p>
                 ) : null}

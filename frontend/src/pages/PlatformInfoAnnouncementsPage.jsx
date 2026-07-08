@@ -18,7 +18,7 @@ function PlatformInfoAnnouncementsPage() {
         if (!cancelled) setItems(data);
       })
       .catch(() => {
-        if (!cancelled) setError("Gagal memuat info dari KlikSantri.");
+        if (!cancelled) setError("Gagal memuat info dari KlikPesantren.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -30,10 +30,10 @@ function PlatformInfoAnnouncementsPage() {
   }, []);
 
   return (
-    <AppShell title="Info dari KlikSantri" breadcrumb="Info dari KlikSantri">
+    <AppShell title="Info dari KlikPesantren" breadcrumb="Info dari KlikPesantren">
       <p style={introStyle}>
-        Pengumuman resmi dari tim KlikSantri untuk admin pesantren.{" "}
-        <Link to="/about">Tentang KlikSantri</Link>
+        Pengumuman resmi dari tim KlikPesantren untuk admin pesantren.{" "}
+        <Link to="/about">Tentang KlikPesantren</Link>
       </p>
 
       {loading ? (
@@ -42,7 +42,7 @@ function PlatformInfoAnnouncementsPage() {
         <p style={errorStyle}>{error}</p>
       ) : items.length === 0 ? (
         <Card padding="md" shadow="card" radius="xl">
-          <p style={mutedStyle}>Belum ada pengumuman dari KlikSantri.</p>
+          <p style={mutedStyle}>Belum ada pengumuman dari KlikPesantren.</p>
         </Card>
       ) : (
         <div style={listStyle}>

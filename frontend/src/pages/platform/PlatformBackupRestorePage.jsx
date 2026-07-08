@@ -126,7 +126,7 @@ function PlatformBackupRestorePage() {
     <PlatformConsoleShell
       badge="System"
       title="Backup & Restore"
-      subtitle="Kelola backup PostgreSQL KlikSantri dari Platform Console."
+      subtitle="Kelola backup PostgreSQL KlikPesantren dari Platform Console."
       secondaryLink="/platform/system/deployment-checklist"
       secondaryLabel="Deployment Checklist"
     >
@@ -152,7 +152,7 @@ function PlatformBackupRestorePage() {
         <ConsoleCard title="Restore" tone="warn">
           <p>
             Restore akan menjalankan <code>pg_restore --clean --if-exists</code>.
-            Pastikan file berasal dari backup KlikSantri yang valid.
+            Pastikan file berasal dari backup KlikPesantren yang valid.
           </p>
           <div className="platform-backup-form">
             <input

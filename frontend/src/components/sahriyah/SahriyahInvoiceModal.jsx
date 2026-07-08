@@ -215,7 +215,7 @@ function SahriyahInvoiceModal({
               <strong className="invoice-preview__footer-main">
                 Dicetak secara digital oleh {tenantName}
               </strong>
-              <p className="invoice-preview__powered">Didukung oleh KlikSantri</p>
+              <p className="invoice-preview__powered">Didukung oleh KlikPesantren</p>
             </div>
           </div>
 

@@ -239,10 +239,10 @@ function PlatformLoginPage() {
       <div className="platform-login">
         <div className="platform-login-brand">
           <span className="platform-login-brand__badge">Platform Mode</span>
-          <p className="platform-login-brand__eyebrow">KlikSantri Platform</p>
+          <p className="platform-login-brand__eyebrow">KlikPesantren Platform</p>
           <h1>Platform Console</h1>
           <p>
-            Console administrasi multi-tenant untuk operator KlikSantri.
+            Console administrasi multi-tenant untuk operator KlikPesantren.
             Kelola pesantren, pantau statistik, dan kontrol status layanan.
             Bukan panel operasional santri harian.
           </p>
@@ -250,7 +250,7 @@ function PlatformLoginPage() {
 
         <div className="platform-login-panel">
           <div className="platform-login-mobile-banner">
-            <span style={{ color: "#E2E8F0", fontSize: 12, fontWeight: 700 }}>KlikSantri Platform</span>
+            <span style={{ color: "#E2E8F0", fontSize: 12, fontWeight: 700 }}>KlikPesantren Platform</span>
           </div>
           <div className="platform-login-card">
             <h2>Masuk Platform Console</h2>

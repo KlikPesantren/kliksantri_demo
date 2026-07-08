@@ -3,7 +3,7 @@ const pool = require("../db");
 const DEFAULT_TENANT_SLUG = "default";
 
 const TENANT_INACTIVE_MESSAGE =
-  "Layanan KlikSantri untuk pesantren ini sedang tidak aktif.";
+  "Layanan KlikPesantren untuk pesantren ini sedang tidak aktif.";
 
 function buildInactiveTenantPayload() {
   return {

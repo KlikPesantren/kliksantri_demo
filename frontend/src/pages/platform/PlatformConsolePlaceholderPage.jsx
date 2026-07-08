@@ -42,7 +42,7 @@ const PAGE_COPY = {
     badge: "SUPPORT OPS",
     title: "Support Center",
     subtitle:
-      "Tempat kerja support KlikSantri untuk membantu admin pesantren.",
+      "Tempat kerja support KlikPesantren untuk membantu admin pesantren.",
     active: [
       "Open tenant portal dari Tenant Detail",
       "Reset admin tenant password aktif",

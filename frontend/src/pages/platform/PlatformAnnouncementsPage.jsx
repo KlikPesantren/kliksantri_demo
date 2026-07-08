@@ -86,7 +86,7 @@ function PlatformAnnouncementsPage() {
         <div>
           <h1 style={pageTitleStyle}>Pengumuman Platform</h1>
           <p style={pageSubtitleStyle}>
-            Informasi dan tutorial dari owner KlikSantri untuk semua admin pesantren.
+            Informasi dan tutorial dari owner KlikPesantren untuk semua admin pesantren.
           </p>
         </div>
         <PlatformButton variant="primary" onClick={openCreate}>

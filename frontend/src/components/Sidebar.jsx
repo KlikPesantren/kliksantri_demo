@@ -68,8 +68,8 @@ const MENU = [
   { name: "Users", path: "/users", perm: "user.view", feature: "sistem", icon: <FaUserShield /> },
   { name: "Roles", path: "/roles", perm: "role.manage", feature: "sistem", icon: <FaUserShield /> },
   { name: "Audit", path: "/audit", perm: "audit.view", feature: "audit", icon: <FaClipboardList /> },
-  { name: "Info dari KlikSantri", path: "/platform-announcements", perm: null, feature: null, icon: <FaClipboardList /> },
-  { name: "Tentang KlikSantri", path: "/about", perm: null, feature: null, icon: <FaSchool /> },
+  { name: "Info dari KlikPesantren", path: "/platform-announcements", perm: null, feature: null, icon: <FaClipboardList /> },
+  { name: "Tentang KlikPesantren", path: "/about", perm: null, feature: null, icon: <FaSchool /> },
 ];
 
 const MENU_GROUPS = [
@@ -121,7 +121,7 @@ const MENU_GROUPS = [
     id: "sistem",
     title: "Sistem",
     collapsible: true,
-    items: ["Users", "Roles", "Audit", "Info dari KlikSantri", "Tentang KlikSantri"],
+    items: ["Users", "Roles", "Audit", "Info dari KlikPesantren", "Tentang KlikPesantren"],
   },
 ];
 
@@ -510,7 +510,7 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
         </button>
 
         <Link to="/about" style={platformMarkWrapStyle} className="sidebar-platform">
-          Powered by KlikSantri
+          Powered by KlikPesantren
         </Link>
       </div>
     </div>

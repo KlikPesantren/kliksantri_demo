@@ -1,5 +1,5 @@
 export const TENANT_INACTIVE_MESSAGE =
-  'Layanan KlikSantri untuk pesantren ini sedang tidak aktif.';
+  'Layanan KlikPesantren untuk pesantren ini sedang tidak aktif.';
 
 export function isTenantSuspendedResponse(status, data) {
   if (status !== 403) return false;

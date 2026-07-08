@@ -221,7 +221,7 @@ function WaliPage() {
           <div>
             <p style={infoTitleStyle}>Akun wali tidak perlu dibuat manual.</p>
             <p style={infoTextStyle}>
-              Saat data santri diisi dengan Nama Wali dan Nomor HP Wali, KlikSantri
+              Saat data santri diisi dengan Nama Wali dan Nomor HP Wali, KlikPesantren
               akan otomatis membuat akun login aplikasi wali.
             </p>
           </div>

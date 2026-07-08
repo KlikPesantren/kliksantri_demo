@@ -269,7 +269,7 @@ function LoginPage() {
         setSlugStatus("suspended");
         setSlugMessage(
           data.message ||
-            "Layanan KlikSantri untuk pesantren ini sedang tidak aktif."
+            "Layanan KlikPesantren untuk pesantren ini sedang tidak aktif."
         );
         return;
       }
@@ -405,7 +405,7 @@ function LoginPage() {
       <p className="login-tagline">
         {display.tagline || KLIKSANTRI_LOGIN_BRANDING.tagline}
       </p>
-      <p className="login-powered">Powered by KlikSantri</p>
+      <p className="login-powered">Powered by KlikPesantren</p>
     </>
   );
 
@@ -470,7 +470,7 @@ function LoginPage() {
                 autoCorrect="off"
               />
               <p className="login-helper">
-                Masukkan kode pesantren yang diberikan admin KlikSantri
+                Masukkan kode pesantren yang diberikan admin KlikPesantren
               </p>
             </div>
 

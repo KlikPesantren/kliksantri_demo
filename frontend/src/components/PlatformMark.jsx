@@ -1,7 +1,7 @@
 function PlatformMark() {
   return (
     <div style={containerStyle}>
-      <div style={poweredStyle}>Powered by KlikSantri</div>
+      <div style={poweredStyle}>Powered by KlikPesantren</div>
       <div style={taglineStyle}>Amanah Kita Bersama</div>
     </div>
   );

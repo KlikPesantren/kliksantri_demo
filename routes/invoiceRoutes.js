@@ -230,7 +230,7 @@ function renderSahriyahPrintHtml(invoice) {
     <footer class="footer">
       <p>Terima kasih</p>
       <p class="footer-main">Dicetak secara digital oleh ${escapeHtml(tenantName)}</p>
-      <p class="powered">Didukung oleh KlikSantri</p>
+      <p class="powered">Didukung oleh KlikPesantren</p>
     </footer>
   </main>
 </body>

@@ -107,14 +107,14 @@ function PlatformProfilePage() {
     <div>
       <h1 className="platform-page-title">Profile Platform</h1>
       <p className="platform-page-subtitle">
-        Branding dan informasi KlikSantri yang ditampilkan ke admin pesantren.
+        Branding dan informasi KlikPesantren yang ditampilkan ke admin pesantren.
       </p>
 
       {error ? <div className="theme-alert theme-alert--danger">{error}</div> : null}
       {success ? <div className="theme-alert theme-alert--success">{success}</div> : null}
 
       <div className="platform-compact-card">
-        <h2 className="theme-section-title">Branding KlikSantri</h2>
+        <h2 className="theme-section-title">Branding KlikPesantren</h2>
 
         {loading ? (
           <p className="theme-muted">Memuat...</p>

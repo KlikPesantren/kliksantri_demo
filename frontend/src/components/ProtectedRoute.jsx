@@ -126,7 +126,7 @@ function ProtectedRoute({ children }) {
           FITUR TIDAK AKTIF
         </div>
         <p style={{ margin: 0, color: "var(--text-secondary)", maxWidth: 420 }}>
-          Modul ini tidak diaktifkan untuk pesantren Anda. Hubungi operator KlikSantri.
+          Modul ini tidak diaktifkan untuk pesantren Anda. Hubungi operator KlikPesantren.
         </p>
       </div>
     );

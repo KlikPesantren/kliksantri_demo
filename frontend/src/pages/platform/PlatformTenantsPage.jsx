@@ -191,7 +191,7 @@ function PlatformTenantsPage({ initialCreate = false }) {
       <div style={toolbarStyle}>
         <div>
           <h1 style={pageTitleStyle}>Tenants</h1>
-          <p style={pageSubtitleStyle}>Kelola pesantren terdaftar di KlikSantri</p>
+          <p style={pageSubtitleStyle}>Kelola pesantren terdaftar di KlikPesantren</p>
         </div>
         <PlatformButton onClick={openCreate}>+ Create Tenant</PlatformButton>
       </div>

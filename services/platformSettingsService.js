@@ -1,7 +1,7 @@
 const pool = require("../db");
 
 const DEFAULT_SETTINGS = {
-  platform_name: "KlikSantri",
+  platform_name: "KlikPesantren",
   tagline: "Sistem Administrasi Pesantren Modern",
   description: "Platform administrasi digital untuk pesantren.",
   logo_url: null,
@@ -9,7 +9,7 @@ const DEFAULT_SETTINGS = {
   support_email: null,
   website_url: null,
   about_text:
-    "KlikSantri membantu pesantren mengelola administrasi santri, keuangan, dan komunikasi wali santri.",
+    "KlikPesantren membantu pesantren mengelola administrasi santri, keuangan, dan komunikasi wali santri.",
   tutorial_video_url: null,
 };
 

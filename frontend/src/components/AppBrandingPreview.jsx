@@ -144,7 +144,7 @@ function SplashLoginMock({ profile, compact = false }) {
               color: 'var(--text-muted)',
             }}
           >
-            Powered by KlikSantri
+            Powered by KlikPesantren
           </div>
         </div>
       </div>
