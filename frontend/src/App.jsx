@@ -71,13 +71,17 @@ function LazyPage({ children }) {
 }
 
 function RootRoute() {
-  const hostname = window.location.hostname;
+  const hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
+
+  if (import.meta.env.DEV) {
+    console.info("[RootRoute] hostname:", hostname);
+  }
 
   if (hostname === "platform.klikpesantren.com") {
     return <Navigate to="/platform" replace />;
   }
 
-  if (hostname === "klikpesantren.com" || hostname === "www.klikpesantren.com") {
+  if (hostname === "klikpesantren.com") {
     return <LandingPage />;
   }
 
