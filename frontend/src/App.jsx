@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { TenantProfileProvider } from "./context/TenantProfileContext";
 
 import LoginPage from "./pages/LoginPage";
@@ -70,12 +70,30 @@ function LazyPage({ children }) {
   return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
 }
 
+function RootRoute() {
+  const hostname = window.location.hostname;
+
+  if (hostname === "platform.klikpesantren.com") {
+    return <Navigate to="/platform" replace />;
+  }
+
+  if (hostname === "klikpesantren.com" || hostname === "www.klikpesantren.com") {
+    return <LandingPage />;
+  }
+
+  if (hostname === "app.klikpesantren.com") {
+    return <LoginPage />;
+  }
+
+  return <LoginPage />;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <TenantProfileProvider>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/" element={<RootRoute />} />
         <Route path="/landing" element={<LandingPage />} />
 
         {/* Platform Console — auth terpisah dari tenant admin */}
