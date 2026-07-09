@@ -1,0 +1,17 @@
+{
+  "name": "KlikPesantren",
+  "short_name": "KlikPesantren",
+  "description": "Platform administrasi pesantren modern.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b5d3a",
+  "icons": [
+    {
+      "src": "/landing/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

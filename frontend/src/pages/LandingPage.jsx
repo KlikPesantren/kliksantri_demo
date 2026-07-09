@@ -1,13 +1,15 @@
 import {
   FaArrowRight,
-  FaBookOpen,
+  FaChartLine,
   FaCheck,
   FaChevronDown,
   FaClipboardCheck,
   FaCreditCard,
   FaGraduationCap,
+  FaLayerGroup,
   FaRegBell,
   FaShieldAlt,
+  FaUserCheck,
   FaWhatsapp,
 } from "react-icons/fa";
 
@@ -23,40 +25,50 @@ const problemItems = [
 const modules = [
   {
     icon: <FaGraduationCap />,
-    title: "Data Santri",
-    text: "Profil santri, kelas, wali, status, dan riwayat penting dalam satu tempat.",
-  },
-  {
-    icon: <FaCreditCard />,
-    title: "Pembayaran",
-    text: "Sahriyah, tagihan, kwitansi digital, dan rekap pembayaran yang mudah dilacak.",
-  },
-  {
-    icon: <FaClipboardCheck />,
-    title: "Absensi & Kedisiplinan",
-    text: "Absensi, pelanggaran, izin, dan kesehatan santri tersusun rapi per unit.",
+    title: "Administrasi Santri",
+    text: "Profil santri, kelas, wali, status, dan riwayat penting tersusun dalam satu pusat data.",
   },
   {
     icon: <FaRegBell />,
-    title: "Aplikasi Wali",
-    text: "Wali santri menerima kabar penting, pengumuman, dan notifikasi dari pesantren.",
+    title: "Wali Santri App",
+    text: "APK wali untuk pengumuman, kabar anak, tagihan, dan notifikasi penting dari pesantren.",
   },
   {
     icon: <FaShieldAlt />,
-    title: "RFID & Kas",
-    text: "Jajan santri, limit harian, topup, refund, dan ledger RFID terpisah dari buku kas.",
+    title: "RFID",
+    text: "Kartu santri, saldo, limit harian, topup, refund, dan riwayat transaksi RFID.",
   },
   {
-    icon: <FaBookOpen />,
-    title: "Laporan Pesantren",
-    text: "Dashboard, buku kas, program unit, dan data operasional siap dipantau.",
+    icon: <FaCreditCard />,
+    title: "Keuangan",
+    text: "Sahriyah, tagihan, kwitansi digital, buku kas, dan laporan pembayaran yang mudah dilacak.",
+  },
+  {
+    icon: <FaUserCheck />,
+    title: "Perizinan",
+    text: "Pengajuan dan monitoring izin santri agar status keluar-masuk lebih jelas.",
+  },
+  {
+    icon: <FaClipboardCheck />,
+    title: "Pelanggaran",
+    text: "Catatan kedisiplinan, riwayat pembinaan, dan rekap pelanggaran santri per periode.",
+  },
+  {
+    icon: <FaChartLine />,
+    title: "Dashboard",
+    text: "Ringkasan operasional, keuangan, akademik, dan kedisiplinan untuk pimpinan pesantren.",
+  },
+  {
+    icon: <FaLayerGroup />,
+    title: "Multi Tenant",
+    text: "Satu platform untuk banyak pesantren dengan ruang data, fitur, dan akses yang terpisah.",
   },
 ];
 
 const benefits = [
   "Harga khusus Founding Partner selama periode awal.",
   "Prioritas onboarding dan pendampingan setup data.",
-  "Masukan pesantren ikut membentuk roadmap KlikPesantren.",
+  "Masukan pesantren ikut membentuk roadmap produk KlikPesantren.",
   "Akses lebih awal ke modul baru yang relevan.",
   "Badge Founding Partner untuk profil pesantren.",
 ];
@@ -425,7 +437,7 @@ function LandingStyles() {
 
       .ks-modules {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 16px;
       }
 
@@ -641,6 +653,48 @@ function LandingStyles() {
         line-height: 1.7;
       }
 
+      .ks-footer {
+        background: #061729;
+        color: rgba(255, 255, 255, 0.72);
+        padding: 34px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .ks-footer-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .ks-footer-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #ffffff;
+        font-weight: 900;
+      }
+
+      .ks-footer-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: var(--ks-green);
+      }
+
+      .ks-footer-logo {
+        width: 27px;
+        height: 27px;
+        object-fit: contain;
+      }
+
+      .ks-footer-tagline {
+        margin: 6px 0 0;
+        font-weight: 700;
+      }
+
       @media (max-width: 980px) {
         .ks-nav-links {
           display: none;
@@ -696,6 +750,11 @@ function LandingStyles() {
         .ks-modules,
         .ks-benefits {
           grid-template-columns: 1fr;
+        }
+
+        .ks-footer-inner {
+          align-items: flex-start;
+          flex-direction: column;
         }
 
         .ks-section {
@@ -755,11 +814,11 @@ export default function LandingPage() {
             <div className="ks-kicker">
               <img className="ks-kicker-logo" src="/landing/logo.png" alt="" /> Platform administrasi pesantren modern
             </div>
-            <h1>KlikPesantren</h1>
+            <h1>Digitalisasi Pesantren Dimulai dari Sini</h1>
             <p>
-              Sistem SaaS untuk membantu pesantren mengelola data santri,
-              pembayaran, absensi, RFID, laporan, dan komunikasi wali dalam
-              satu platform yang rapi, aman, dan mudah dipakai.
+              KlikPesantren adalah platform administrasi pesantren modern untuk
+              mengelola data santri, keuangan, RFID, perizinan, pelanggaran,
+              dashboard, dan komunikasi wali dalam satu ekosistem SaaS.
             </p>
             <div className="ks-hero-actions">
               <a className="ks-button ks-button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
@@ -770,9 +829,9 @@ export default function LandingPage() {
               </a>
             </div>
             <div className="ks-trust-row">
-              <span><FaCheck /> Dibuat untuk operasional pesantren</span>
-              <span><FaCheck /> Web admin + APK wali</span>
-              <span><FaCheck /> Kuota awal 5 pesantren</span>
+              <span><FaCheck /> SaaS untuk operasional pesantren</span>
+              <span><FaCheck /> Web admin + Wali Santri App</span>
+              <span><FaCheck /> Siap multi tenant</span>
             </div>
           </div>
 
@@ -789,7 +848,7 @@ export default function LandingPage() {
       <section className="ks-section ks-section-alt" id="masalah">
         <div className="ks-container ks-two-col">
           <div className="ks-section-head">
-            <div className="ks-kicker">Masalah Pesantren</div>
+            <div className="ks-kicker">Tantangan Operasional</div>
             <h2>Administrasi yang penting sering tersendat karena terlalu banyak tempat kerja.</h2>
             <p>
               Pesantren bergerak cepat setiap hari. Data, pembayaran, izin,
@@ -820,12 +879,13 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="ks-section-head">
-            <div className="ks-kicker">Solusi KlikPesantren</div>
-            <h2>Modern secara teknologi, tetap dekat dengan cara kerja pesantren.</h2>
+            <div className="ks-kicker">Tentang KlikPesantren</div>
+            <h2>Startup SaaS untuk pesantren yang ingin bekerja lebih cepat dan terukur.</h2>
             <p>
-              Desainnya dibuat untuk operasional harian: mudah dicari,
-              terstruktur, multi-role, dan siap dikembangkan bersama pesantren
-              pertama yang menjadi mitra awal.
+              KlikPesantren membantu lembaga pendidikan pesantren merapikan
+              administrasi, menyambungkan informasi ke wali santri, dan memberi
+              pimpinan visibilitas operasional tanpa mengubah budaya kerja yang
+              sudah berjalan.
             </p>
             <div className="ks-hero-actions">
               <a className="ks-button ks-button-dark" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
@@ -840,10 +900,11 @@ export default function LandingPage() {
         <div className="ks-container">
           <div className="ks-section-head center">
             <div className="ks-kicker">Modul Utama</div>
-            <h2>Semua modul inti pesantren dalam satu ekosistem.</h2>
+            <h2>Fitur inti untuk operasional pesantren modern.</h2>
             <p>
-              Mulai dari administrasi dasar sampai komunikasi wali, dashboard,
-              dan pengelolaan transaksi operasional.
+              Dari administrasi santri sampai multi tenant, semua dirancang
+              untuk membantu tim pesantren bekerja lebih rapi, cepat, dan
+              transparan.
             </p>
           </div>
           <div className="ks-modules">
@@ -861,11 +922,11 @@ export default function LandingPage() {
       <section className="ks-section" id="mockup">
         <div className="ks-container">
           <div className="ks-section-head center">
-            <div className="ks-kicker">Screenshot / Mockup Area</div>
-            <h2>Tampilan admin dan APK wali yang siap untuk kerja harian.</h2>
+            <div className="ks-kicker">Produk</div>
+            <h2>Tampilan admin dan Wali Santri App yang siap untuk kerja harian.</h2>
             <p>
-              Area ini bisa diganti dengan screenshot asli saat materi promosi
-              sudah final.
+              Dashboard admin membantu operator dan pimpinan memantau data,
+              sementara aplikasi wali menjaga komunikasi tetap cepat dan jelas.
             </p>
           </div>
           <div className="ks-mockup-band">
@@ -929,8 +990,8 @@ export default function LandingPage() {
       <section className="ks-section ks-section-alt" id="harga">
         <div className="ks-container">
           <div className="ks-section-head center">
-            <div className="ks-kicker">Pricing Placeholder</div>
-            <h2>Paket harga akan disesuaikan dengan kebutuhan pesantren.</h2>
+            <div className="ks-kicker">Paket</div>
+            <h2>Mulai sesuai kebutuhan, berkembang bersama operasional pesantren.</h2>
             <p>
               Untuk tahap awal, Founding Partner akan mendapatkan penawaran
               khusus setelah sesi konsultasi kebutuhan.
@@ -993,6 +1054,21 @@ export default function LandingPage() {
           </a>
         </div>
       </section>
+
+      <footer className="ks-footer">
+        <div className="ks-container ks-footer-inner">
+          <div>
+            <div className="ks-footer-brand">
+              <span className="ks-footer-mark">
+                <img className="ks-footer-logo" src="/landing/logo.png" alt="" />
+              </span>
+              <span>KlikPesantren</span>
+            </div>
+            <p className="ks-footer-tagline">Satu Klik, Semua Terhubung.</p>
+          </div>
+          <div>Platform administrasi pesantren modern.</div>
+        </div>
+      </footer>
     </main>
   );
 }
