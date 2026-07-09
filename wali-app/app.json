@@ -31,7 +31,7 @@
     "android": {
       "package": "com.kliksantri.wali",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 2,
+      "versionCode": 3,
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.INTERNET",
