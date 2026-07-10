@@ -59,6 +59,11 @@ const platformSettingsRoutes =
 const platformAnnouncementRoutes =
   require("./routes/platformAnnouncementRoutes");
 
+const {
+  platformWebsiteRoutes,
+  publicWebsiteRoutes,
+} = require("./routes/platformWebsiteRoutes");
+
 const platformBackupRoutes =
   require("./routes/platformBackupRoutes");
 
@@ -314,6 +319,11 @@ app.use(
 );
 
 app.use(
+  "/platform/website",
+  platformWebsiteRoutes
+);
+
+app.use(
   "/platform/backup",
   platformBackupRoutes
 );
@@ -326,6 +336,11 @@ app.use(
 app.use(
   "/public/platform",
   publicPlatformRoutes
+);
+
+app.use(
+  "/public/website",
+  publicWebsiteRoutes
 );
 
 app.use(

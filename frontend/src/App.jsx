@@ -58,6 +58,7 @@ import PlatformUploadStoragePage from "./pages/platform/PlatformUploadStoragePag
 import PlatformBackupRestorePage from "./pages/platform/PlatformBackupRestorePage";
 import PlatformProfilePage from "./pages/platform/PlatformProfilePage";
 import PlatformAnnouncementsPage from "./pages/platform/PlatformAnnouncementsPage";
+import PlatformWebsitePage from "./pages/platform/PlatformWebsitePage";
 import AboutKlikSantriPage from "./pages/AboutKlikSantriPage";
 import PlatformInfoAnnouncementsPage from "./pages/PlatformInfoAnnouncementsPage";
 import LandingPage from "./pages/LandingPage";
@@ -203,6 +204,7 @@ function App() {
             path="system/announcements"
             element={<PlatformAnnouncementsPage />}
           />
+          <Route path="website" element={<PlatformWebsitePage />} />
           <Route
             path="system/migration-status"
             element={<PlatformConsolePlaceholderPage type="system" />}

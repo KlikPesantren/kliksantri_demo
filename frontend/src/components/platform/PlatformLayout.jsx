@@ -487,6 +487,13 @@ function PlatformLayout() {
               onNavigate={() => setSidebarOpen(false)}
             />
             <NavSection
+              label="Website"
+              items={[
+                { to: "/platform/website", label: "Website Resmi" },
+              ]}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+            <NavSection
               label="System"
               items={[
                 { to: "/platform/system/deployment-checklist", label: "Deployment Checklist" },

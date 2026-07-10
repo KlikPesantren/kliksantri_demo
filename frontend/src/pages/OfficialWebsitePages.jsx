@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FaArrowRight,
   FaChartLine,
@@ -19,9 +19,15 @@ import {
 import { Link } from "react-router-dom";
 import PublicLayout from "../components/public/PublicLayout";
 import Seo, { breadcrumbJsonLd } from "../components/public/Seo";
+import { fetchPublicWebsiteContent } from "../services/platformPublicApi";
 
 const whatsappNumber = "6281383919797";
 const whatsappBaseUrl = `https://wa.me/${whatsappNumber}`;
+const defaultContact = {
+  whatsapp: whatsappNumber,
+  email: "hello@klikpesantren.com",
+  instagram: "https://instagram.com/klikpesantren",
+};
 
 const features = [
   {
@@ -176,6 +182,32 @@ const blogPosts = [
     text: "Bagaimana aplikasi wali membantu pengumuman, tagihan, dan informasi anak sampai lebih cepat.",
   },
 ];
+
+function usePublicWebsiteContact() {
+  const [contact, setContact] = useState(defaultContact);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchPublicWebsiteContent()
+      .then((content) => {
+        if (cancelled) return;
+        setContact({
+          ...defaultContact,
+          ...(content?.contact || {}),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setContact(defaultContact);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return contact;
+}
 
 function PublicPageStyles() {
   return (
@@ -1085,6 +1117,9 @@ export function AboutPage() {
 }
 
 export function ContactPage() {
+  const contact = usePublicWebsiteContact();
+  const contactWhatsappUrl = `https://wa.me/${String(contact.whatsapp || whatsappNumber).replace(/\D/g, "")}`;
+
   return (
     <PublicPageShell>
       <Seo
@@ -1120,7 +1155,7 @@ export function ContactPage() {
               Jalur tercepat untuk bertanya, menjadwalkan demo, atau membahas
               kebutuhan awal.
             </p>
-            <a className="kp-contact-link" href={whatsappBaseUrl} target="_blank" rel="noreferrer">
+            <a className="kp-contact-link" href={contactWhatsappUrl} target="_blank" rel="noreferrer">
               Chat WhatsApp
             </a>
           </article>
@@ -1134,8 +1169,8 @@ export function ContactPage() {
               Gunakan email untuk kebutuhan resmi, proposal, atau komunikasi
               tertulis.
             </p>
-            <a className="kp-contact-link" href="mailto:hello@klikpesantren.com">
-              hello@klikpesantren.com
+            <a className="kp-contact-link" href={`mailto:${contact.email || defaultContact.email}`}>
+              {contact.email || defaultContact.email}
             </a>
           </article>
 
@@ -1148,8 +1183,8 @@ export function ContactPage() {
               Kanal sosial untuk update produk, edukasi digitalisasi pesantren,
               dan informasi campaign.
             </p>
-            <a className="kp-contact-link" href="https://instagram.com/klikpesantren" target="_blank" rel="noreferrer">
-              @klikpesantren
+            <a className="kp-contact-link" href={contact.instagram || defaultContact.instagram} target="_blank" rel="noreferrer">
+              {String(contact.instagram || defaultContact.instagram).replace("https://instagram.com/", "@")}
             </a>
           </article>
         </div>

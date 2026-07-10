@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   FaArrowRight,
   FaChartLine,
@@ -14,6 +15,33 @@ import {
 import { Link } from "react-router-dom";
 import PublicLayout from "../components/public/PublicLayout";
 import Seo, { homepageJsonLd } from "../components/public/Seo";
+import { fetchPublicWebsiteContent } from "../services/platformPublicApi";
+
+const STATIC_WEBSITE_CONTENT = {
+  brand: {
+    website_name: "KlikPesantren",
+    tagline: "Platform administrasi pesantren modern",
+  },
+  seo: {
+    default_title: "KlikPesantren | Platform SaaS Operasional Pesantren Modern",
+    default_description:
+      "KlikPesantren membantu pesantren mengelola administrasi santri, keuangan, Wali Santri App, RFID, perizinan, pelanggaran, dan dashboard operasional.",
+  },
+  homepage: {
+    hero_title: "Platform SaaS untuk Operasional Pesantren Modern",
+    hero_subtitle:
+      "KlikPesantren membantu pesantren mengelola administrasi santri, keuangan, wali santri, RFID, perizinan, pelanggaran, dan dashboard operasional dalam satu sistem terintegrasi.",
+    primary_cta_label: "Minta Demo",
+    primary_cta_url: "/demo",
+    secondary_cta_label: "Daftar Founding Partner",
+    secondary_cta_url: "/founding-partner",
+  },
+  contact: {
+    whatsapp: "6281383919797",
+    email: "hello@klikpesantren.com",
+    instagram: "https://instagram.com/klikpesantren",
+  },
+};
 
 const productProof = [
   {
@@ -90,6 +118,20 @@ const reasons = [
   "Menghubungkan web admin, app wali, RFID, dan dashboard dalam satu ekosistem.",
   "Siap berkembang dari satu unit operasional menuju banyak tenant dan unit.",
 ];
+
+function mergeWebsiteContent(content = {}) {
+  return {
+    ...STATIC_WEBSITE_CONTENT,
+    ...content,
+    brand: { ...STATIC_WEBSITE_CONTENT.brand, ...(content.brand || {}) },
+    seo: { ...STATIC_WEBSITE_CONTENT.seo, ...(content.seo || {}) },
+    homepage: {
+      ...STATIC_WEBSITE_CONTENT.homepage,
+      ...(content.homepage || {}),
+    },
+    contact: { ...STATIC_WEBSITE_CONTENT.contact, ...(content.contact || {}) },
+  };
+}
 
 function HomepageStyles() {
   return (
@@ -557,6 +599,34 @@ function CheckItem({ children }) {
 }
 
 export default function LandingPage() {
+  const [remoteContent, setRemoteContent] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchPublicWebsiteContent()
+      .then((content) => {
+        if (!cancelled && content) {
+          setRemoteContent(content);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRemoteContent(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const websiteContent = useMemo(
+    () => mergeWebsiteContent(remoteContent || {}),
+    [remoteContent]
+  );
+  const homepage = websiteContent.homepage;
+
   return (
     <PublicLayout>
       <Seo
@@ -574,18 +644,19 @@ export default function LandingPage() {
               <div className="kp-eyebrow">
                 <FaRegBell /> SaaS operasional pesantren
               </div>
-              <h1>Platform SaaS untuk Operasional Pesantren Modern</h1>
+              <h1>{homepage.hero_title}</h1>
               <p className="kp-hero-copy">
-                KlikPesantren membantu pesantren mengelola administrasi santri,
-                keuangan, wali santri, RFID, perizinan, pelanggaran, dan
-                dashboard operasional dalam satu sistem terintegrasi.
+                {homepage.hero_subtitle}
               </p>
               <div className="kp-hero-actions">
-                <Link className="kp-btn kp-btn-primary" to="/demo">
-                  Minta Demo <FaArrowRight />
+                <Link className="kp-btn kp-btn-primary" to={homepage.primary_cta_url || "/demo"}>
+                  {homepage.primary_cta_label} <FaArrowRight />
                 </Link>
-                <Link className="kp-btn kp-btn-secondary" to="/founding-partner">
-                  Daftar Founding Partner
+                <Link
+                  className="kp-btn kp-btn-secondary"
+                  to={homepage.secondary_cta_url || "/founding-partner"}
+                >
+                  {homepage.secondary_cta_label}
                 </Link>
               </div>
               <div className="kp-hero-trust">

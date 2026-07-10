@@ -10,3 +10,8 @@ export async function fetchPublicPlatformAnnouncements() {
   const res = await axios.get(`${API_BASE_URL}/public/platform/announcements`);
   return res.data?.data || [];
 }
+
+export async function fetchPublicWebsiteContent() {
+  const res = await axios.get(`${API_BASE_URL}/public/website/content`);
+  return res.data?.data || null;
+}
