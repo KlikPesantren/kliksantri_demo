@@ -2,769 +2,543 @@ import {
   FaArrowRight,
   FaChartLine,
   FaCheck,
-  FaChevronDown,
   FaClipboardCheck,
   FaCreditCard,
   FaGraduationCap,
   FaLayerGroup,
+  FaMobileAlt,
   FaRegBell,
   FaShieldAlt,
   FaUserCheck,
-  FaWhatsapp,
 } from "react-icons/fa";
+import { Link } from "react-router-dom";
+import PublicLayout from "../components/public/PublicLayout";
+import Seo, { homepageJsonLd } from "../components/public/Seo";
 
-const WHATSAPP_URL = "https://wa.me/6281383919797";
-
-const problemItems = [
-  "Data santri tersebar di buku, Excel, dan grup chat.",
-  "Pembayaran, izin, kesehatan, dan pelanggaran sulit dipantau real-time.",
-  "Wali santri sering menunggu kabar karena informasi belum terpusat.",
-  "Pimpinan pesantren butuh laporan cepat tanpa membebani operator.",
+const productProof = [
+  {
+    title: "Web Admin",
+    text: "Pusat kerja operator dan pengurus untuk data, tagihan, laporan, dan kontrol operasional.",
+  },
+  {
+    title: "Wali Santri App",
+    text: "Akses informasi anak, pengumuman, tagihan, dan notifikasi penting untuk wali santri.",
+  },
+  {
+    title: "RFID",
+    text: "Kartu santri, saldo, limit harian, topup, refund, dan riwayat transaksi yang terpantau.",
+  },
+  {
+    title: "Multi Tenant",
+    text: "Satu platform untuk banyak pesantren dengan data, fitur, dan akses yang terpisah.",
+  },
 ];
 
-const modules = [
+const problems = [
+  "Data santri, wali, kelas, dan status administrasi masih tersebar di banyak tempat.",
+  "Pembayaran, perizinan, pelanggaran, dan RFID sulit dipantau secara cepat.",
+  "Wali santri menunggu informasi karena komunikasi belum terhubung ke sistem.",
+  "Pimpinan membutuhkan ringkasan operasional tanpa menambah beban operator.",
+];
+
+const features = [
   {
     icon: <FaGraduationCap />,
     title: "Administrasi Santri",
-    text: "Profil santri, kelas, wali, status, dan riwayat penting tersusun dalam satu pusat data.",
+    text: "Data santri, wali, kelas, status, dan riwayat penting dalam satu pusat data.",
   },
   {
-    icon: <FaRegBell />,
-    title: "Wali Santri App",
-    text: "APK wali untuk pengumuman, kabar anak, tagihan, dan notifikasi penting dari pesantren.",
+    icon: <FaCreditCard />,
+    title: "Keuangan Pesantren",
+    text: "Tagihan, pembayaran, sahriyah, buku kas, kwitansi, dan laporan keuangan.",
   },
   {
     icon: <FaShieldAlt />,
     title: "RFID",
-    text: "Kartu santri, saldo, limit harian, topup, refund, dan riwayat transaksi RFID.",
+    text: "Transaksi kartu santri, merchant, topup, refund, limit, dan audit mutasi.",
   },
   {
-    icon: <FaCreditCard />,
-    title: "Keuangan",
-    text: "Sahriyah, tagihan, kwitansi digital, buku kas, dan laporan pembayaran yang mudah dilacak.",
+    icon: <FaMobileAlt />,
+    title: "Wali Santri App",
+    text: "Aplikasi wali untuk memantau kabar anak, tagihan, pengumuman, dan notifikasi.",
   },
   {
     icon: <FaUserCheck />,
     title: "Perizinan",
-    text: "Pengajuan dan monitoring izin santri agar status keluar-masuk lebih jelas.",
+    text: "Pengajuan, approval, dan monitoring izin santri dengan status yang jelas.",
   },
   {
     icon: <FaClipboardCheck />,
     title: "Pelanggaran",
-    text: "Catatan kedisiplinan, riwayat pembinaan, dan rekap pelanggaran santri per periode.",
+    text: "Catatan kedisiplinan, pembinaan, dan rekap pelanggaran per periode.",
   },
   {
     icon: <FaChartLine />,
     title: "Dashboard",
-    text: "Ringkasan operasional, keuangan, akademik, dan kedisiplinan untuk pimpinan pesantren.",
+    text: "Ringkasan operasional, keuangan, akademik, dan kedisiplinan untuk pimpinan.",
   },
   {
     icon: <FaLayerGroup />,
     title: "Multi Tenant",
-    text: "Satu platform untuk banyak pesantren dengan ruang data, fitur, dan akses yang terpisah.",
+    text: "Arsitektur SaaS untuk banyak pesantren dengan ruang data yang terpisah.",
   },
 ];
 
-const benefits = [
-  "Harga khusus Founding Partner selama periode awal.",
-  "Prioritas onboarding dan pendampingan setup data.",
-  "Masukan pesantren ikut membentuk roadmap produk KlikPesantren.",
-  "Akses lebih awal ke modul baru yang relevan.",
-  "Badge Founding Partner untuk profil pesantren.",
+const reasons = [
+  "Modular, sehingga pesantren bisa mulai dari kebutuhan paling mendesak.",
+  "Dirancang untuk kerja harian operator, pengurus, bendahara, dan pimpinan.",
+  "Menghubungkan web admin, app wali, RFID, dan dashboard dalam satu ekosistem.",
+  "Siap berkembang dari satu unit operasional menuju banyak tenant dan unit.",
 ];
 
-const faqs = [
-  {
-    question: "Apakah KlikPesantren cocok untuk pesantren kecil?",
-    answer:
-      "Cocok. Sistem dibuat bertahap, jadi pesantren bisa mulai dari data santri, pembayaran, dan aplikasi wali dulu.",
-  },
-  {
-    question: "Apakah harus langsung memakai semua modul?",
-    answer:
-      "Tidak. Modul bisa diaktifkan sesuai kebutuhan operasional pesantren.",
-  },
-  {
-    question: "Apakah data pesantren dipisah antar lembaga?",
-    answer:
-      "Ya. KlikPesantren dirancang multi-tenant sehingga setiap pesantren memiliki ruang data masing-masing.",
-  },
-  {
-    question: "Bagaimana cara daftar Founding Partner?",
-    answer:
-      "Klik tombol WhatsApp, lalu tim KlikPesantren akan membantu cek kebutuhan dan jadwal onboarding.",
-  },
-];
-
-function LandingStyles() {
+function HomepageStyles() {
   return (
     <style>{`
-      :root {
-        --ks-green: #0b5d3a;
-        --ks-green-2: #0f8a53;
-        --ks-navy: #071b33;
-        --ks-cream: #f7f0df;
-        --ks-mint: #e7f5ee;
-        --ks-ink: #102033;
-        --ks-muted: #607082;
-        --ks-line: rgba(7, 27, 51, 0.12);
-        --ks-white: #ffffff;
+      .kp-home {
+        background: #ffffff;
       }
 
-      .ks-landing {
-        min-height: 100vh;
-        background: var(--ks-white);
-        color: var(--ks-ink);
-        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-        overflow-x: hidden;
-      }
-
-      .ks-container {
-        width: min(1120px, calc(100% - 40px));
-        margin: 0 auto;
-      }
-
-      .ks-nav {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        backdrop-filter: blur(18px);
-        background: rgba(255, 255, 255, 0.88);
-        border-bottom: 1px solid rgba(7, 27, 51, 0.08);
-      }
-
-      .ks-nav-inner {
-        height: 76px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 24px;
-      }
-
-      .ks-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        font-weight: 900;
-        color: var(--ks-navy);
-        text-decoration: none;
-        letter-spacing: 0;
-      }
-
-      .ks-brand-mark {
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
-        display: grid;
-        place-items: center;
-        color: white;
-        background: var(--ks-green);
-        box-shadow: 0 14px 30px rgba(11, 93, 58, 0.22);
-      }
-
-      .ks-brand-logo {
-        width: 30px;
-        height: 30px;
-        object-fit: contain;
-        display: block;
-      }
-
-      .ks-kicker-logo {
-        width: 18px;
-        height: 18px;
-        object-fit: contain;
-        display: block;
-      }
-
-      .ks-nav-links {
-        display: flex;
-        align-items: center;
-        gap: 22px;
-        font-size: 14px;
-        font-weight: 700;
-      }
-
-      .ks-nav-links a {
-        color: var(--ks-muted);
-        text-decoration: none;
-      }
-
-      .ks-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        min-height: 46px;
-        padding: 0 18px;
-        border-radius: 999px;
-        border: 1px solid transparent;
-        font-weight: 800;
-        font-size: 14px;
-        text-decoration: none;
-        cursor: pointer;
-        transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
-      }
-
-      .ks-button:hover {
-        transform: translateY(-1px);
-      }
-
-      .ks-button-primary {
-        background: var(--ks-green);
-        color: white;
-        box-shadow: 0 18px 36px rgba(11, 93, 58, 0.24);
-      }
-
-      .ks-button-dark {
-        background: var(--ks-navy);
-        color: white;
-        box-shadow: 0 18px 36px rgba(7, 27, 51, 0.22);
-      }
-
-      .ks-button-soft {
-        background: var(--ks-mint);
-        color: var(--ks-green);
-        border-color: rgba(11, 93, 58, 0.12);
-      }
-
-      .ks-hero {
+      .kp-home-hero {
         position: relative;
-        padding: 72px 0 56px;
+        overflow: hidden;
+        padding: 86px 0 70px;
         background:
-          linear-gradient(180deg, rgba(247, 240, 223, 0.62) 0%, rgba(255, 255, 255, 0) 72%),
-          url("/landing/hero-bg.jpg") center top / cover no-repeat,
-          var(--ks-white);
+          linear-gradient(180deg, rgba(236, 253, 245, 0.78) 0%, rgba(255, 255, 255, 0) 54%),
+          #ffffff;
       }
 
-      .ks-hero-grid {
+      .kp-hero-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
         align-items: center;
-        gap: 54px;
+        gap: 56px;
       }
 
-      .ks-kicker {
-        width: fit-content;
+      .kp-eyebrow {
         display: inline-flex;
+        width: fit-content;
         align-items: center;
         gap: 9px;
-        padding: 8px 12px;
+        border: 1px solid rgba(11, 93, 58, 0.14);
         border-radius: 999px;
-        background: rgba(11, 93, 58, 0.08);
-        color: var(--ks-green);
+        background: #ffffff;
+        color: #0b5d3a;
+        padding: 8px 12px;
         font-size: 13px;
-        font-weight: 800;
-        margin-bottom: 18px;
+        font-weight: 850;
       }
 
-      .ks-hero h1 {
+      .kp-home h1,
+      .kp-home h2,
+      .kp-home h3 {
         margin: 0;
-        max-width: 720px;
-        color: var(--ks-navy);
-        font-size: clamp(42px, 7vw, 76px);
-        line-height: 0.98;
+        color: #0f172a;
         letter-spacing: 0;
+      }
+
+      .kp-home h1 {
+        max-width: 760px;
+        margin-top: 18px;
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 0.98;
         font-weight: 950;
       }
 
-      .ks-hero p {
+      .kp-hero-copy {
+        max-width: 670px;
         margin: 24px 0 0;
-        max-width: 600px;
-        color: var(--ks-muted);
+        color: #475569;
         font-size: 18px;
-        line-height: 1.72;
+        line-height: 1.75;
       }
 
-      .ks-hero-actions {
+      .kp-hero-actions,
+      .kp-section-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 14px;
-        margin-top: 32px;
-      }
-
-      .ks-trust-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
+        gap: 13px;
         margin-top: 30px;
-        color: var(--ks-muted);
-        font-size: 13px;
-        font-weight: 700;
       }
 
-      .ks-trust-row span {
-        display: inline-flex;
+      .kp-hero-trust {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .kp-hero-trust span {
+        display: flex;
         align-items: center;
         gap: 8px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.78);
+        padding: 13px 14px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 800;
       }
 
-      .ks-hero-visual {
-        border-radius: 30px;
+      .kp-hero-trust svg {
+        color: #0b5d3a;
+      }
+
+      .kp-hero-visual {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 28px;
+        background: #0b1220;
         padding: 16px;
-        background: var(--ks-navy);
-        box-shadow: 0 30px 80px rgba(7, 27, 51, 0.28);
+        box-shadow: 0 34px 80px rgba(15, 23, 42, 0.2);
       }
 
-      .ks-dashboard-image,
-      .ks-phone-image {
+      .kp-hero-visual img,
+      .kp-preview-window img,
+      .kp-phone-frame img {
+        display: block;
         width: 100%;
         height: auto;
-        display: block;
       }
 
-      .ks-dashboard-image {
-        border-radius: 22px;
-        object-fit: cover;
+      .kp-hero-visual img {
+        border-radius: 20px;
       }
 
-      .ks-phone-image {
-        border-radius: 28px;
-        object-fit: contain;
+      .kp-section {
+        padding: 76px 0;
       }
 
-      .ks-app-window {
-        overflow: hidden;
-        border-radius: 22px;
-        background: #f7faf8;
-        border: 1px solid rgba(255, 255, 255, 0.18);
+      .kp-section-muted {
+        background: #f8fafc;
       }
 
-      .ks-section {
-        padding: 72px 0;
-      }
-
-      .ks-section-alt {
-        background: #f8faf8;
-      }
-
-      .ks-section-cream {
-        background: var(--ks-cream);
-      }
-
-      .ks-section-head {
-        max-width: 720px;
+      .kp-section-head {
+        max-width: 760px;
         margin-bottom: 34px;
       }
 
-      .ks-section-head.center {
-        text-align: center;
+      .kp-section-head.center {
         margin-left: auto;
         margin-right: auto;
+        text-align: center;
       }
 
-      .ks-section-head h2 {
-        margin: 0;
-        color: var(--ks-navy);
-        font-size: clamp(30px, 4vw, 46px);
+      .kp-section-head h2 {
+        font-size: clamp(30px, 4vw, 48px);
         line-height: 1.08;
         font-weight: 950;
-        letter-spacing: 0;
       }
 
-      .ks-section-head p {
+      .kp-section-head p {
         margin: 16px 0 0;
-        color: var(--ks-muted);
+        color: #64748b;
         font-size: 16px;
-        line-height: 1.72;
+        line-height: 1.75;
       }
 
-      .ks-two-col {
+      .kp-proof-grid {
         display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-        gap: 36px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .kp-proof-card,
+      .kp-feature-card,
+      .kp-reason-card,
+      .kp-teaser-card {
+        border: 1px solid rgba(15, 23, 42, 0.09);
+        border-radius: 20px;
+        background: #ffffff;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.04);
+      }
+
+      .kp-proof-card {
+        padding: 22px;
+      }
+
+      .kp-proof-card strong {
+        display: block;
+        color: #0f172a;
+        font-size: 17px;
+      }
+
+      .kp-proof-card p {
+        margin: 10px 0 0;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .kp-two-col {
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
         align-items: start;
+        gap: 38px;
       }
 
-      .ks-list {
+      .kp-list {
         display: grid;
-        gap: 14px;
-      }
-
-      .ks-list-item {
-        display: flex;
-        align-items: flex-start;
         gap: 12px;
-        padding: 18px;
-        border-radius: 18px;
-        background: white;
-        border: 1px solid var(--ks-line);
-        color: var(--ks-muted);
-        line-height: 1.58;
-        font-weight: 650;
       }
 
-      .ks-list-icon {
+      .kp-list-item {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        border: 1px solid rgba(15, 23, 42, 0.09);
+        border-radius: 18px;
+        background: #ffffff;
+        padding: 17px 18px;
+        color: #475569;
+        font-weight: 700;
+        line-height: 1.6;
+      }
+
+      .kp-list-icon {
         width: 28px;
         height: 28px;
         flex: 0 0 auto;
         display: grid;
         place-items: center;
         border-radius: 999px;
-        color: var(--ks-green);
-        background: var(--ks-mint);
+        background: #ecfdf5;
+        color: #0b5d3a;
       }
 
-      .ks-solution-panel {
+      .kp-solution-panel {
         border-radius: 28px;
+        background: #0b1220;
+        color: #ffffff;
         padding: 30px;
-        background: var(--ks-navy);
-        color: white;
       }
 
-      .ks-solution-panel h3 {
-        margin: 0;
-        font-size: 26px;
+      .kp-solution-panel h3 {
+        color: #ffffff;
+        font-size: 28px;
         line-height: 1.2;
       }
 
-      .ks-solution-panel p {
-        color: rgba(255, 255, 255, 0.76);
-        line-height: 1.72;
+      .kp-solution-panel p {
+        margin: 16px 0 0;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.75;
       }
 
-      .ks-solution-steps {
+      .kp-solution-steps {
         display: grid;
         gap: 12px;
-        margin-top: 22px;
+        margin-top: 24px;
       }
 
-      .ks-solution-steps div {
-        padding: 14px 16px;
+      .kp-solution-steps div {
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.09);
-        font-weight: 750;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 14px 16px;
+        font-weight: 800;
       }
 
-      .ks-modules {
+      .kp-feature-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 16px;
       }
 
-      .ks-module-card {
+      .kp-feature-card {
         padding: 22px;
-        border-radius: 20px;
-        background: white;
-        border: 1px solid var(--ks-line);
       }
 
-      .ks-module-icon {
+      .kp-feature-icon {
         width: 46px;
         height: 46px;
         display: grid;
         place-items: center;
         border-radius: 15px;
-        color: var(--ks-green);
-        background: var(--ks-mint);
+        background: #ecfdf5;
+        color: #0b5d3a;
+        font-size: 19px;
         margin-bottom: 16px;
-        font-size: 20px;
       }
 
-      .ks-module-card h3 {
-        margin: 0;
-        color: var(--ks-navy);
+      .kp-feature-card h3 {
         font-size: 18px;
+        line-height: 1.25;
       }
 
-      .ks-module-card p {
+      .kp-feature-card p {
         margin: 10px 0 0;
-        color: var(--ks-muted);
-        line-height: 1.62;
+        color: #64748b;
         font-size: 14px;
+        line-height: 1.65;
       }
 
-      .ks-mockup-band {
-        border-radius: 32px;
-        padding: 24px;
-        background: var(--ks-navy);
-        box-shadow: 0 28px 70px rgba(7, 27, 51, 0.24);
+      .kp-preview {
+        border-radius: 30px;
+        background: #0b1220;
+        padding: 18px;
+        box-shadow: 0 30px 72px rgba(15, 23, 42, 0.2);
       }
 
-      .ks-mockup-grid {
+      .kp-preview-grid {
         display: grid;
-        grid-template-columns: 1.1fr 0.9fr;
+        grid-template-columns: 1.1fr 0.55fr;
+        gap: 18px;
+        align-items: center;
+      }
+
+      .kp-preview-window {
+        overflow: hidden;
+        border-radius: 22px;
+        background: #ffffff;
+      }
+
+      .kp-phone-frame {
+        width: min(230px, 100%);
+        justify-self: center;
+        border-radius: 34px;
+        background: #111827;
+        padding: 11px;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+      }
+
+      .kp-phone-frame img {
+        border-radius: 25px;
+      }
+
+      .kp-reason-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .kp-reason-card {
+        padding: 20px;
+        color: #475569;
+        font-weight: 750;
+        line-height: 1.6;
+      }
+
+      .kp-teaser-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 18px;
       }
 
-      .ks-phone {
-        width: min(250px, 100%);
-        justify-self: center;
-        border-radius: 34px;
-        padding: 12px;
-        background: #111827;
-        box-shadow: 0 24px 54px rgba(0, 0, 0, 0.28);
-      }
-
-      .ks-partner {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 320px;
-        gap: 28px;
-        align-items: center;
-        padding: 34px;
-        border-radius: 30px;
-        background: var(--ks-navy);
-        color: white;
-      }
-
-      .ks-partner h2 {
-        margin: 0;
-        font-size: clamp(30px, 4vw, 48px);
-        line-height: 1.08;
-      }
-
-      .ks-partner p {
-        color: rgba(255, 255, 255, 0.76);
-        line-height: 1.7;
-      }
-
-      .ks-slots {
-        border-radius: 24px;
-        background: white;
-        color: var(--ks-navy);
-        padding: 24px;
-      }
-
-      .ks-slots strong {
-        display: block;
-        font-size: 58px;
-        line-height: 1;
-      }
-
-      .ks-benefits {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 12px;
-      }
-
-      .ks-benefit {
-        padding: 18px;
-        border-radius: 18px;
-        background: white;
-        border: 1px solid var(--ks-line);
-        color: var(--ks-muted);
-        line-height: 1.56;
-        font-weight: 700;
-      }
-
-      .ks-pricing {
-        display: grid;
-        grid-template-columns: 0.9fr 1.1fr;
-        gap: 20px;
-        align-items: stretch;
-      }
-
-      .ks-price-card {
+      .kp-teaser-card {
         padding: 28px;
-        border-radius: 26px;
-        border: 1px solid var(--ks-line);
-        background: white;
       }
 
-      .ks-price-card.featured {
-        background: var(--ks-green);
-        color: white;
+      .kp-teaser-card.accent {
+        background: #0b5d3a;
+        color: #ffffff;
         border-color: transparent;
       }
 
-      .ks-price-card h3 {
-        margin: 0;
-        font-size: 24px;
+      .kp-teaser-card h3 {
+        font-size: 25px;
+        line-height: 1.2;
       }
 
-      .ks-price {
-        margin: 20px 0;
-        font-size: 36px;
-        font-weight: 950;
-        letter-spacing: 0;
+      .kp-teaser-card.accent h3 {
+        color: #ffffff;
       }
 
-      .ks-price-card p,
-      .ks-price-card li {
-        line-height: 1.65;
-      }
-
-      .ks-price-card:not(.featured) p,
-      .ks-price-card:not(.featured) li {
-        color: var(--ks-muted);
-      }
-
-      .ks-price-card.featured p,
-      .ks-price-card.featured li {
-        color: rgba(255, 255, 255, 0.82);
-      }
-
-      .ks-price-card ul {
-        margin: 18px 0 0;
-        padding-left: 18px;
-      }
-
-      .ks-faq {
-        display: grid;
-        gap: 12px;
-      }
-
-      .ks-faq details {
-        border: 1px solid var(--ks-line);
-        border-radius: 18px;
-        background: white;
-        padding: 18px 20px;
-      }
-
-      .ks-faq summary {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        cursor: pointer;
-        color: var(--ks-navy);
-        font-weight: 850;
-        list-style: none;
-      }
-
-      .ks-faq summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .ks-faq p {
-        margin: 12px 0 0;
-        color: var(--ks-muted);
-        line-height: 1.65;
-      }
-
-      .ks-cta {
-        padding: 72px 0;
-        background: var(--ks-navy);
-        color: white;
-        text-align: center;
-      }
-
-      .ks-cta h2 {
-        margin: 0 auto;
-        max-width: 760px;
-        font-size: clamp(34px, 5vw, 58px);
-        line-height: 1.05;
-        letter-spacing: 0;
-      }
-
-      .ks-cta p {
-        max-width: 620px;
-        margin: 18px auto 28px;
-        color: rgba(255, 255, 255, 0.74);
+      .kp-teaser-card p {
+        margin: 14px 0 0;
+        color: #64748b;
         line-height: 1.7;
       }
 
-      .ks-footer {
-        background: #061729;
-        color: rgba(255, 255, 255, 0.72);
-        padding: 34px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      .kp-teaser-card.accent p {
+        color: rgba(255, 255, 255, 0.78);
       }
 
-      .ks-footer-inner {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 18px;
-      }
-
-      .ks-footer-brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
+      .kp-final-cta {
+        padding: 78px 0;
+        background: #0b1220;
         color: #ffffff;
-        font-weight: 900;
+        text-align: center;
       }
 
-      .ks-footer-mark {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
-        display: grid;
-        place-items: center;
-        background: var(--ks-green);
+      .kp-final-cta h2 {
+        max-width: 800px;
+        margin: 0 auto;
+        color: #ffffff;
+        font-size: clamp(34px, 5vw, 58px);
+        line-height: 1.06;
+        font-weight: 950;
       }
 
-      .ks-footer-logo {
-        width: 27px;
-        height: 27px;
-        object-fit: contain;
+      .kp-final-cta p {
+        max-width: 660px;
+        margin: 18px auto 0;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.75;
       }
 
-      .ks-footer-tagline {
-        margin: 6px 0 0;
-        font-weight: 700;
+      .kp-final-actions {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 13px;
+        margin-top: 30px;
       }
 
       @media (max-width: 980px) {
-        .ks-nav-links {
-          display: none;
-        }
-
-        .ks-hero-grid,
-        .ks-two-col,
-        .ks-mockup-grid,
-        .ks-partner,
-        .ks-pricing {
+        .kp-hero-grid,
+        .kp-two-col,
+        .kp-preview-grid,
+        .kp-teaser-grid {
           grid-template-columns: 1fr;
         }
 
-        .ks-hero-visual {
-          max-width: 680px;
+        .kp-proof-grid,
+        .kp-feature-grid,
+        .kp-reason-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .kp-hero-visual {
+          max-width: 720px;
           margin: 0 auto;
-        }
-
-        .ks-modules {
-          grid-template-columns: repeat(2, 1fr);
-        }
-
-        .ks-benefits {
-          grid-template-columns: repeat(2, 1fr);
         }
       }
 
       @media (max-width: 640px) {
-        .ks-container {
-          width: min(100% - 28px, 1120px);
+        .kp-home-hero {
+          padding: 52px 0 48px;
         }
 
-        .ks-nav-inner {
-          height: 68px;
+        .kp-home h1 {
+          font-size: 42px;
         }
 
-        .ks-brand span:last-child {
-          font-size: 15px;
-        }
-
-        .ks-hero {
-          padding: 44px 0 42px;
-        }
-
-        .ks-hero p {
+        .kp-hero-copy {
           font-size: 16px;
         }
 
-        .ks-hero-actions .ks-button {
+        .kp-hero-actions .kp-btn,
+        .kp-section-actions .kp-btn,
+        .kp-final-actions .kp-btn {
           width: 100%;
         }
 
-        .ks-modules,
-        .ks-benefits {
+        .kp-hero-trust,
+        .kp-proof-grid,
+        .kp-feature-grid,
+        .kp-reason-grid {
           grid-template-columns: 1fr;
         }
 
-        .ks-footer-inner {
-          align-items: flex-start;
-          flex-direction: column;
+        .kp-section {
+          padding: 56px 0;
         }
 
-        .ks-section {
-          padding: 52px 0;
-        }
-
-        .ks-partner,
-        .ks-mockup-band {
-          padding: 20px;
+        .kp-preview,
+        .kp-solution-panel,
+        .kp-teaser-card {
           border-radius: 24px;
+          padding: 22px;
         }
       }
     `}</style>
@@ -773,8 +547,8 @@ function LandingStyles() {
 
 function CheckItem({ children }) {
   return (
-    <div className="ks-list-item">
-      <span className="ks-list-icon">
+    <div className="kp-list-item">
+      <span className="kp-list-icon">
         <FaCheck size={12} />
       </span>
       <span>{children}</span>
@@ -784,291 +558,241 @@ function CheckItem({ children }) {
 
 export default function LandingPage() {
   return (
-    <main className="ks-landing">
-      <LandingStyles />
+    <PublicLayout>
+      <Seo
+        title="KlikPesantren | Platform SaaS Operasional Pesantren Modern"
+        description="KlikPesantren membantu pesantren mengelola administrasi santri, keuangan, Wali Santri App, RFID, perizinan, pelanggaran, dan dashboard operasional."
+        path="/"
+        jsonLd={homepageJsonLd}
+      />
+      <main className="kp-home">
+        <HomepageStyles />
 
-      <header className="ks-nav">
-        <div className="ks-container ks-nav-inner">
-          <a className="ks-brand" href="#hero" aria-label="KlikPesantren">
-            <span className="ks-brand-mark">
-              <img className="ks-brand-logo" src="/landing/logo.png" alt="" />
-            </span>
-            <span>KlikPesantren</span>
-          </a>
-          <nav className="ks-nav-links" aria-label="Navigasi landing">
-            <a href="#solusi">Solusi</a>
-            <a href="#modul">Modul</a>
-            <a href="#founding">Founding Partner</a>
-            <a href="#harga">Harga</a>
-            <a href="#faq">FAQ</a>
-          </nav>
-          <a className="ks-button ks-button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
-            <FaWhatsapp /> Konsultasi
-          </a>
-        </div>
-      </header>
-
-      <section className="ks-hero" id="hero">
-        <div className="ks-container ks-hero-grid">
-          <div>
-            <div className="ks-kicker">
-              <img className="ks-kicker-logo" src="/landing/logo.png" alt="" /> Platform administrasi pesantren modern
-            </div>
-            <h1>Digitalisasi Pesantren Dimulai dari Sini</h1>
-            <p>
-              KlikPesantren adalah platform administrasi pesantren modern untuk
-              mengelola data santri, keuangan, RFID, perizinan, pelanggaran,
-              dashboard, dan komunikasi wali dalam satu ekosistem SaaS.
-            </p>
-            <div className="ks-hero-actions">
-              <a className="ks-button ks-button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
-                Daftar Founding Partner <FaArrowRight />
-              </a>
-              <a className="ks-button ks-button-soft" href="#mockup">
-                Lihat Gambaran Sistem
-              </a>
-            </div>
-            <div className="ks-trust-row">
-              <span><FaCheck /> SaaS untuk operasional pesantren</span>
-              <span><FaCheck /> Web admin + Wali Santri App</span>
-              <span><FaCheck /> Siap multi tenant</span>
-            </div>
-          </div>
-
-          <div className="ks-hero-visual" aria-label="Mockup dashboard KlikPesantren">
-            <img
-              className="ks-dashboard-image"
-              src="/landing/dashboard-admin.png"
-              alt="Mockup dashboard admin KlikPesantren"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="ks-section ks-section-alt" id="masalah">
-        <div className="ks-container ks-two-col">
-          <div className="ks-section-head">
-            <div className="ks-kicker">Tantangan Operasional</div>
-            <h2>Administrasi yang penting sering tersendat karena terlalu banyak tempat kerja.</h2>
-            <p>
-              Pesantren bergerak cepat setiap hari. Data, pembayaran, izin,
-              kesehatan, dan komunikasi wali perlu satu alur yang lebih tenang.
-            </p>
-          </div>
-          <div className="ks-list">
-            {problemItems.map((item) => (
-              <CheckItem key={item}>{item}</CheckItem>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="ks-section" id="solusi">
-        <div className="ks-container ks-two-col">
-          <div className="ks-solution-panel">
-            <h3>Satu pusat kerja untuk pengurus, operator, unit, dan wali santri.</h3>
-            <p>
-              KlikPesantren menyatukan administrasi inti pesantren dalam platform
-              yang bisa dipakai bertahap, sesuai kesiapan tim dan kebutuhan
-              lembaga.
-            </p>
-            <div className="ks-solution-steps">
-              <div>1. Rapikan data santri dan wali</div>
-              <div>2. Aktifkan pembayaran dan laporan</div>
-              <div>3. Hubungkan informasi ke APK wali</div>
-            </div>
-          </div>
-          <div className="ks-section-head">
-            <div className="ks-kicker">Tentang KlikPesantren</div>
-            <h2>Startup SaaS untuk pesantren yang ingin bekerja lebih cepat dan terukur.</h2>
-            <p>
-              KlikPesantren membantu lembaga pendidikan pesantren merapikan
-              administrasi, menyambungkan informasi ke wali santri, dan memberi
-              pimpinan visibilitas operasional tanpa mengubah budaya kerja yang
-              sudah berjalan.
-            </p>
-            <div className="ks-hero-actions">
-              <a className="ks-button ks-button-dark" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
-                Bicara Kebutuhan Pesantren
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ks-section ks-section-alt" id="modul">
-        <div className="ks-container">
-          <div className="ks-section-head center">
-            <div className="ks-kicker">Modul Utama</div>
-            <h2>Fitur inti untuk operasional pesantren modern.</h2>
-            <p>
-              Dari administrasi santri sampai multi tenant, semua dirancang
-              untuk membantu tim pesantren bekerja lebih rapi, cepat, dan
-              transparan.
-            </p>
-          </div>
-          <div className="ks-modules">
-            {modules.map((module) => (
-              <article className="ks-module-card" key={module.title}>
-                <div className="ks-module-icon">{module.icon}</div>
-                <h3>{module.title}</h3>
-                <p>{module.text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="ks-section" id="mockup">
-        <div className="ks-container">
-          <div className="ks-section-head center">
-            <div className="ks-kicker">Produk</div>
-            <h2>Tampilan admin dan Wali Santri App yang siap untuk kerja harian.</h2>
-            <p>
-              Dashboard admin membantu operator dan pimpinan memantau data,
-              sementara aplikasi wali menjaga komunikasi tetap cepat dan jelas.
-            </p>
-          </div>
-          <div className="ks-mockup-band">
-            <div className="ks-mockup-grid">
-              <div className="ks-app-window">
-                <img
-                  className="ks-dashboard-image"
-                  src="/landing/dashboard-admin.png"
-                  alt="Screenshot dashboard admin KlikPesantren"
-                />
-              </div>
-              <div className="ks-phone">
-                <img
-                  className="ks-phone-image"
-                  src="/landing/wali-app.png"
-                  alt="Mockup APK Wali Santri KlikPesantren"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ks-section ks-section-cream" id="founding">
-        <div className="ks-container">
-          <div className="ks-partner">
+        <section className="kp-home-hero">
+          <div className="kp-shell kp-hero-grid">
             <div>
-              <div className="ks-kicker">Program Terbatas</div>
-              <h2>Founding Partner KlikPesantren untuk 5 pesantren pertama.</h2>
-              <p>
-                Kami membuka kolaborasi awal untuk pesantren yang ingin ikut
-                membangun sistem administrasi digital yang benar-benar cocok
-                dengan kebutuhan lapangan.
+              <div className="kp-eyebrow">
+                <FaRegBell /> SaaS operasional pesantren
+              </div>
+              <h1>Platform SaaS untuk Operasional Pesantren Modern</h1>
+              <p className="kp-hero-copy">
+                KlikPesantren membantu pesantren mengelola administrasi santri,
+                keuangan, wali santri, RFID, perizinan, pelanggaran, dan
+                dashboard operasional dalam satu sistem terintegrasi.
               </p>
-              <a className="ks-button ks-button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
-                Ambil Slot Founding Partner <FaWhatsapp />
-              </a>
+              <div className="kp-hero-actions">
+                <Link className="kp-btn kp-btn-primary" to="/demo">
+                  Minta Demo <FaArrowRight />
+                </Link>
+                <Link className="kp-btn kp-btn-secondary" to="/founding-partner">
+                  Daftar Founding Partner
+                </Link>
+              </div>
+              <div className="kp-hero-trust">
+                <span><FaCheck /> Web Admin</span>
+                <span><FaCheck /> Wali Santri App</span>
+                <span><FaCheck /> RFID & Multi Tenant</span>
+              </div>
             </div>
-            <div className="ks-slots">
-              <strong>5</strong>
-              <p>slot pesantren pertama untuk fase Founding Partner.</p>
+
+            <div className="kp-hero-visual" aria-label="Dashboard KlikPesantren">
+              <img
+                src="/landing/dashboard-admin.png"
+                alt="Dashboard admin KlikPesantren"
+                fetchPriority="high"
+              />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="ks-section" id="benefit">
-        <div className="ks-container">
-          <div className="ks-section-head center">
-            <div className="ks-kicker">Benefit Founding Partner</div>
-            <h2>Lebih dekat dengan tim produk, lebih awal merasakan manfaatnya.</h2>
+        <section className="kp-section">
+          <div className="kp-shell">
+            <div className="kp-section-head center">
+              <div className="kp-eyebrow">Product Proof</div>
+              <h2>Satu ekosistem untuk kerja harian pesantren.</h2>
+              <p>
+                KlikPesantren menghubungkan tim internal pesantren, wali
+                santri, dan perangkat operasional dalam alur yang lebih rapi.
+              </p>
+            </div>
+            <div className="kp-proof-grid">
+              {productProof.map((item) => (
+                <article className="kp-proof-card" key={item.title}>
+                  <strong>{item.title}</strong>
+                  <p>{item.text}</p>
+                </article>
+              ))}
+            </div>
           </div>
-          <div className="ks-benefits">
-            {benefits.map((benefit) => (
-              <div className="ks-benefit" key={benefit}>{benefit}</div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="ks-section ks-section-alt" id="harga">
-        <div className="ks-container">
-          <div className="ks-section-head center">
-            <div className="ks-kicker">Paket</div>
-            <h2>Mulai sesuai kebutuhan, berkembang bersama operasional pesantren.</h2>
+        <section className="kp-section kp-section-muted">
+          <div className="kp-shell kp-two-col">
+            <div className="kp-section-head">
+              <div className="kp-eyebrow">Problem</div>
+              <h2>Operasional pesantren sering berat karena informasi tersebar.</h2>
+              <p>
+                Banyak pekerjaan penting berjalan paralel setiap hari. Ketika
+                data, transaksi, dan komunikasi tidak berada di satu sistem,
+                keputusan menjadi lebih lambat.
+              </p>
+            </div>
+            <div className="kp-list">
+              {problems.map((item) => (
+                <CheckItem key={item}>{item}</CheckItem>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="kp-section">
+          <div className="kp-shell kp-two-col">
+            <div className="kp-solution-panel">
+              <h3>Dari pencatatan tersebar menjadi sistem kerja terintegrasi.</h3>
+              <p>
+                KlikPesantren membantu pesantren memulai digitalisasi secara
+                bertahap, dari data santri dan pembayaran sampai app wali,
+                RFID, dan dashboard pimpinan.
+              </p>
+              <div className="kp-solution-steps">
+                <div>1. Rapikan data inti santri dan wali.</div>
+                <div>2. Hubungkan pembayaran, izin, dan kedisiplinan.</div>
+                <div>3. Pantau operasional lewat dashboard dan app wali.</div>
+              </div>
+            </div>
+            <div className="kp-section-head">
+              <div className="kp-eyebrow">Solution</div>
+              <h2>Platform SaaS yang mengikuti cara kerja pesantren.</h2>
+              <p>
+                Bukan website sekolah dan bukan profil yayasan. KlikPesantren
+                adalah produk operasional untuk pengurus, operator, bendahara,
+                pimpinan, dan wali santri.
+              </p>
+              <div className="kp-section-actions">
+                <Link className="kp-btn kp-btn-primary" to="/fitur">
+                  Lihat Fitur <FaArrowRight />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="kp-section kp-section-muted">
+          <div className="kp-shell">
+            <div className="kp-section-head center">
+              <div className="kp-eyebrow">Fitur Utama</div>
+              <h2>Modul inti untuk operasional pesantren modern.</h2>
+              <p>
+                Fitur disusun dari kebutuhan produk yang sudah ada agar pesantren
+                bisa mulai dari administrasi dasar dan berkembang bertahap.
+              </p>
+            </div>
+            <div className="kp-feature-grid">
+              {features.map((feature) => (
+                <article className="kp-feature-card" key={feature.title}>
+                  <div className="kp-feature-icon">{feature.icon}</div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="kp-section">
+          <div className="kp-shell">
+            <div className="kp-section-head center">
+              <div className="kp-eyebrow">Product Preview</div>
+              <h2>Web admin dan aplikasi wali dalam satu alur operasional.</h2>
+              <p>
+                Dashboard membantu tim internal memantau pekerjaan, sementara
+                aplikasi wali menjaga informasi tetap sampai ke orang tua.
+              </p>
+            </div>
+            <div className="kp-preview">
+              <div className="kp-preview-grid">
+                <div className="kp-preview-window">
+                  <img
+                    src="/landing/dashboard-admin.png"
+                    alt="Preview web admin KlikPesantren"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="kp-phone-frame">
+                  <img
+                    src="/landing/wali-app.png"
+                    alt="Preview Wali Santri App KlikPesantren"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="kp-section kp-section-muted">
+          <div className="kp-shell">
+            <div className="kp-section-head center">
+              <div className="kp-eyebrow">Why KlikPesantren</div>
+              <h2>Dibangun sebagai produk SaaS, bukan sekadar halaman profil.</h2>
+            </div>
+            <div className="kp-reason-grid">
+              {reasons.map((item) => (
+                <div className="kp-reason-card" key={item}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="kp-section">
+          <div className="kp-shell kp-teaser-grid">
+            <article className="kp-teaser-card">
+              <h3>Paket dibuat bertahap sesuai kebutuhan pesantren.</h3>
+              <p>
+                Mulai dari modul dasar, lalu berkembang ke perizinan,
+                pelanggaran, sahriyah, RFID, Wali App, dan kebutuhan custom.
+              </p>
+              <div className="kp-section-actions">
+                <Link className="kp-btn kp-btn-secondary" to="/harga">
+                  Lihat Harga
+                </Link>
+              </div>
+            </article>
+            <article className="kp-teaser-card accent">
+              <h3>Program Founding Partner tetap tersedia.</h3>
+              <p>
+                Campaign lama dipertahankan untuk pesantren yang ingin ikut
+                fase awal dan mendapatkan pendampingan prioritas.
+              </p>
+              <div className="kp-section-actions">
+                <Link className="kp-btn kp-btn-secondary" to="/founding-partner">
+                  Daftar Founding Partner
+                </Link>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section className="kp-final-cta">
+          <div className="kp-shell">
+            <h2>Siap melihat bagaimana KlikPesantren bekerja untuk operasional harian?</h2>
             <p>
-              Untuk tahap awal, Founding Partner akan mendapatkan penawaran
-              khusus setelah sesi konsultasi kebutuhan.
+              Jadwalkan demo untuk melihat alur admin, keuangan, RFID, app wali,
+              dan dashboard sesuai kebutuhan pesantren.
             </p>
-          </div>
-          <div className="ks-pricing">
-            <article className="ks-price-card">
-              <h3>Paket Reguler</h3>
-              <div className="ks-price">Segera</div>
-              <p>Paket standar untuk pesantren setelah fase awal berjalan.</p>
-              <ul>
-                <li>Admin web</li>
-                <li>Modul inti pesantren</li>
-                <li>APK wali santri</li>
-              </ul>
-            </article>
-            <article className="ks-price-card featured">
-              <h3>Founding Partner</h3>
-              <div className="ks-price">Khusus 5 awal</div>
-              <p>Harga dan onboarding khusus untuk pesantren pertama yang ikut membangun KlikPesantren.</p>
-              <ul>
-                <li>Prioritas setup awal</li>
-                <li>Pendampingan implementasi</li>
-                <li>Masukan prioritas untuk roadmap</li>
-              </ul>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section className="ks-section" id="faq">
-        <div className="ks-container">
-          <div className="ks-section-head center">
-            <div className="ks-kicker">FAQ</div>
-            <h2>Pertanyaan yang sering muncul sebelum mulai.</h2>
-          </div>
-          <div className="ks-faq">
-            {faqs.map((item) => (
-              <details key={item.question}>
-                <summary>
-                  {item.question}
-                  <FaChevronDown />
-                </summary>
-                <p>{item.answer}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="ks-cta" id="kontak">
-        <div className="ks-container">
-          <h2>Siap jadi salah satu dari 5 Founding Partner KlikPesantren?</h2>
-          <p>
-            Ceritakan kondisi pesantren, modul yang paling dibutuhkan, dan target
-            implementasi. Tim KlikPesantren akan bantu susun langkah awalnya.
-          </p>
-          <a className="ks-button ks-button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">
-            Hubungi via WhatsApp <FaWhatsapp />
-          </a>
-        </div>
-      </section>
-
-      <footer className="ks-footer">
-        <div className="ks-container ks-footer-inner">
-          <div>
-            <div className="ks-footer-brand">
-              <span className="ks-footer-mark">
-                <img className="ks-footer-logo" src="/landing/logo.png" alt="" />
-              </span>
-              <span>KlikPesantren</span>
+            <div className="kp-final-actions">
+              <Link className="kp-btn kp-btn-primary" to="/demo">
+                Minta Demo <FaArrowRight />
+              </Link>
+              <Link className="kp-btn kp-btn-secondary" to="/founding-partner">
+                Daftar Founding Partner
+              </Link>
             </div>
-            <p className="ks-footer-tagline">Satu Klik, Semua Terhubung.</p>
           </div>
-          <div>Platform administrasi pesantren modern.</div>
-        </div>
-      </footer>
-    </main>
+        </section>
+      </main>
+    </PublicLayout>
   );
 }

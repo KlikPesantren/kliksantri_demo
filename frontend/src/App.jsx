@@ -61,6 +61,48 @@ import PlatformAnnouncementsPage from "./pages/platform/PlatformAnnouncementsPag
 import AboutKlikSantriPage from "./pages/AboutKlikSantriPage";
 import PlatformInfoAnnouncementsPage from "./pages/PlatformInfoAnnouncementsPage";
 import LandingPage from "./pages/LandingPage";
+import FoundingPartnerPage from "./pages/FoundingPartnerPage";
+
+const FeaturesPage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.FeaturesPage,
+  }))
+);
+const PricingPage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.PricingPage,
+  }))
+);
+const DemoPage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.DemoPage,
+  }))
+);
+const AboutPage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.AboutPage,
+  }))
+);
+const ContactPage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.ContactPage,
+  }))
+);
+const BlogPage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.BlogPage,
+  }))
+);
+const PrivacyPolicyPage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.PrivacyPolicyPage,
+  }))
+);
+const TermsOfServicePage = lazy(() =>
+  import("./pages/OfficialWebsitePages").then((module) => ({
+    default: module.TermsOfServicePage,
+  }))
+);
 
 function RouteFallback() {
   return null;
@@ -81,15 +123,11 @@ function RootRoute() {
     return <Navigate to="/platform" replace />;
   }
 
-  if (hostname === "klikpesantren.com") {
-    return <LandingPage />;
-  }
-
   if (hostname === "app.klikpesantren.com") {
     return <LoginPage />;
   }
 
-  return <LoginPage />;
+  return <LandingPage />;
 }
 
 function App() {
@@ -98,7 +136,16 @@ function App() {
       <TenantProfileProvider>
       <Routes>
         <Route path="/" element={<RootRoute />} />
-        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/landing" element={<Navigate to="/founding-partner" replace />} />
+        <Route path="/founding-partner" element={<FoundingPartnerPage />} />
+        <Route path="/fitur" element={<LazyPage><FeaturesPage /></LazyPage>} />
+        <Route path="/harga" element={<LazyPage><PricingPage /></LazyPage>} />
+        <Route path="/demo" element={<LazyPage><DemoPage /></LazyPage>} />
+        <Route path="/tentang" element={<LazyPage><AboutPage /></LazyPage>} />
+        <Route path="/blog" element={<LazyPage><BlogPage /></LazyPage>} />
+        <Route path="/kontak" element={<LazyPage><ContactPage /></LazyPage>} />
+        <Route path="/privacy-policy" element={<LazyPage><PrivacyPolicyPage /></LazyPage>} />
+        <Route path="/terms-of-service" element={<LazyPage><TermsOfServicePage /></LazyPage>} />
 
         {/* Platform Console — auth terpisah dari tenant admin */}
         <Route path="/platform/login" element={<PlatformLoginPage />} />
