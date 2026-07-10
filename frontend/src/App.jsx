@@ -4,6 +4,8 @@ import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { TenantProfileProvider } from "./context/TenantProfileContext";
 
 import LoginPage from "./pages/LoginPage";
+import TenantPortalErrorPage from "./pages/TenantPortalErrorPage";
+import { getCurrentHostnameRoute } from "./utils/hostnameRouting";
 
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const PembayaranPage = lazy(() => import("./pages/PembayaranPage"));
@@ -114,18 +116,35 @@ function LazyPage({ children }) {
 }
 
 function RootRoute() {
-  const hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
+  const hostnameRoute = getCurrentHostnameRoute();
 
   if (import.meta.env.DEV) {
-    console.info("[RootRoute] hostname:", hostname);
+    console.info("[RootRoute] hostname route:", hostnameRoute);
   }
 
-  if (hostname === "platform.klikpesantren.com") {
+  if (hostnameRoute.type === "platform") {
     return <Navigate to="/platform" replace />;
   }
 
-  if (hostname === "app.klikpesantren.com") {
+  if (hostnameRoute.type === "legacy-app") {
     return <LoginPage />;
+  }
+
+  if (hostnameRoute.type === "tenant") {
+    return (
+      <LoginPage
+        tenantSubdomain
+        hostnameTenantSlug={hostnameRoute.tenantSlug}
+      />
+    );
+  }
+
+  if (hostnameRoute.type === "local" || hostnameRoute.type === "preview") {
+    return <LoginPage />;
+  }
+
+  if (hostnameRoute.type === "reserved" || hostnameRoute.type === "unknown") {
+    return <TenantPortalErrorPage type="not_found" />;
   }
 
   return <LandingPage />;

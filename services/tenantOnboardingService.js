@@ -12,10 +12,13 @@ const {
 
 const RESERVED_SLUGS = new Set([
   "default",
+  "app",
   "platform",
   "admin",
   "api",
   "www",
+  "docs",
+  "status",
   "root",
   "system",
 ]);

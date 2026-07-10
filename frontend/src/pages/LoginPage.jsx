@@ -5,6 +5,7 @@ import { API_BASE_URL } from "../services/api";
 import api from "../services/api";
 import Button from "../components/ui/Button";
 import TenantBrand from "../components/TenantBrand";
+import TenantPortalErrorPage from "./TenantPortalErrorPage";
 import { setUser, getUser, clearSession } from "../utils/storage";
 import { TENANT_SUSPEND_SESSION_KEY } from "../constants/tenant";
 import {
@@ -192,9 +193,11 @@ function LoginPageStyles() {
   );
 }
 
-function LoginPage() {
+function LoginPage({ tenantSubdomain = false, hostnameTenantSlug = "" }) {
   const [searchParams] = useSearchParams();
-  const [tenantSlug, setTenantSlug] = useState("");
+  const [tenantSlug, setTenantSlug] = useState(() =>
+    tenantSubdomain ? normalizeTenantSlugInput(hostnameTenantSlug) : ""
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -205,12 +208,16 @@ function LoginPage() {
   const [tenantSessionConflict, setTenantSessionConflict] = useState(null);
 
   const slugFromUrl = useMemo(
-    () =>
-      normalizeTenantSlugInput(
+    () => {
+      if (tenantSubdomain) {
+        return normalizeTenantSlugInput(hostnameTenantSlug);
+      }
+      return normalizeTenantSlugInput(
         searchParams.get(TENANT_LOGIN_QUERY_KEY) ||
           searchParams.get("tenant_slug")
-      ),
-    [searchParams]
+      );
+    },
+    [hostnameTenantSlug, searchParams, tenantSubdomain]
   );
 
   const display = useMemo(() => {
@@ -316,6 +323,11 @@ function LoginPage() {
   }, [slugFromUrl]);
 
   useEffect(() => {
+    if (tenantSubdomain) {
+      setTenantSlug(normalizeTenantSlugInput(hostnameTenantSlug));
+      return;
+    }
+
     if (slugFromUrl) {
       setTenantSlug(slugFromUrl);
       return;
@@ -325,7 +337,7 @@ function LoginPage() {
     if (savedSlug) {
       setTenantSlug(savedSlug);
     }
-  }, [slugFromUrl]);
+  }, [hostnameTenantSlug, slugFromUrl, tenantSubdomain]);
 
   const handleLogoutTenantSession = () => {
     clearSession();
@@ -345,6 +357,7 @@ function LoginPage() {
   }, [tenantSlug, fetchPublicProfile]);
 
   const handleSlugChange = (value) => {
+    if (tenantSubdomain) return;
     setTenantSlug(normalizeTenantSlugInput(value));
     setLoginError("");
   };
@@ -409,6 +422,18 @@ function LoginPage() {
     </>
   );
 
+  if (tenantSubdomain && slugStatus === "not_found") {
+    return <TenantPortalErrorPage type="not_found" />;
+  }
+
+  if (tenantSubdomain && slugStatus === "suspended") {
+    return (
+      <TenantPortalErrorPage
+        type={publicProfile?.status === "suspended" ? "suspended" : "inactive"}
+      />
+    );
+  }
+
   return (
     <>
       <LoginPageStyles />
@@ -454,25 +479,27 @@ function LoginPage() {
 
             {previewHint}
 
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-tenant-slug">
-                Kode Pesantren
-              </label>
-              <input
-                id="login-tenant-slug"
-                className="login-input"
-                type="text"
-                placeholder="contoh: al-hikmah"
-                value={tenantSlug}
-                onChange={(e) => handleSlugChange(e.target.value)}
-                autoComplete="organization"
-                autoCapitalize="none"
-                autoCorrect="off"
-              />
-              <p className="login-helper">
-                Masukkan kode pesantren yang diberikan admin KlikPesantren
-              </p>
-            </div>
+            {!tenantSubdomain ? (
+              <div className="login-field">
+                <label className="login-label" htmlFor="login-tenant-slug">
+                  Kode Pesantren
+                </label>
+                <input
+                  id="login-tenant-slug"
+                  className="login-input"
+                  type="text"
+                  placeholder="contoh: al-hikmah"
+                  value={tenantSlug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  autoComplete="organization"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+                <p className="login-helper">
+                  Masukkan kode pesantren yang diberikan admin KlikPesantren
+                </p>
+              </div>
+            ) : null}
 
             <div className="login-field">
               <label className="login-label" htmlFor="login-username">

@@ -4,7 +4,8 @@ import api from "../services/api";
 import { ROUTE_PERMISSIONS, ROUTE_FEATURES } from "../constants/permissions";
 import { hasPermission } from "../utils/hasPermission";
 import { hasFeature } from "../utils/hasFeature";
-import { setUser } from "../utils/storage";
+import { clearSession, getUser, setUser } from "../utils/storage";
+import { getCurrentHostnameRoute } from "../utils/hostnameRouting";
 
 let sessionPermissionsPromise = null;
 
@@ -24,7 +25,14 @@ function refreshPermissionsOnce() {
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
+  const user = getUser();
   const location = useLocation();
+  const hostnameRoute = getCurrentHostnameRoute();
+  const tenantHostnameMismatch = Boolean(
+    token &&
+      hostnameRoute.type === "tenant" &&
+      user?.tenant_slug !== hostnameRoute.tenantSlug
+  );
 
   const [hydrating, setHydrating] = useState(Boolean(token));
 
@@ -45,6 +53,14 @@ function ProtectedRoute({ children }) {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (tenantHostnameMismatch) clearSession();
+  }, [tenantHostnameMismatch]);
+
+  if (tenantHostnameMismatch) {
+    return <Navigate to="/" replace />;
+  }
 
   if (!token) {
     return <Navigate to="/" />;

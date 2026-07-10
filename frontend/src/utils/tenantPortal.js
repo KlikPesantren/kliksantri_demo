@@ -2,6 +2,7 @@ import {
   LAST_TENANT_SLUG_KEY,
   normalizeTenantSlugInput,
 } from "./tenantProfile";
+import { getCurrentHostnameRoute } from "./hostnameRouting";
 
 /** Query key for tenant slug on login page: /?tenant=anwarul-huda */
 export const TENANT_LOGIN_QUERY_KEY = "tenant";
@@ -9,6 +10,11 @@ export const TENANT_LOGIN_QUERY_KEY = "tenant";
 export function buildTenantLoginUrl(slug) {
   const normalized = normalizeTenantSlugInput(slug);
   if (!normalized) return "/";
+
+  const hostnameRoute = getCurrentHostnameRoute();
+  if (hostnameRoute.type !== "local" && hostnameRoute.type !== "preview") {
+    return `https://${normalized}.klikpesantren.com`;
+  }
 
   const params = new URLSearchParams({ [TENANT_LOGIN_QUERY_KEY]: normalized });
   return `/?${params.toString()}`;
