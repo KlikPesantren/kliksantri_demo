@@ -115,7 +115,7 @@ export default function PlatformTenantDomainsPage() {
       <div style={styles.header}>
         <div><p style={styles.eyebrow}>Platform Console</p><h1 style={styles.title}>Tenant Domains</h1>
           <p style={styles.subtitle}>Kelola provisioning DNS Cloudflare, domain Vercel, dan SSL tenant.</p></div>
-        <div style={styles.actions}><PlatformButton onClick={() => setCustomOpen(true)}>Tambah Custom Domain</PlatformButton><PlatformButton variant="secondary" onClick={load}>Refresh</PlatformButton></div>
+        <div style={styles.actions}><PlatformButton onClick={() => setCustomOpen(true)}>+ Tambah Custom Domain</PlatformButton><PlatformButton variant="secondary" onClick={load}>Refresh</PlatformButton></div>
       </div>
       {error && <div style={styles.error}>{error}</div>}
       {copyFeedback && <div role="status" style={styles.success}>{copyFeedback}</div>}
@@ -212,7 +212,7 @@ export default function PlatformTenantDomainsPage() {
         <form onSubmit={submitCustomDomain} style={styles.customForm}>
           <p style={styles.modalText}>Gunakan subdomain seperti app.domaincustomer.com agar website dan email utama customer tidak terganggu.</p>
           <label>Tenant<select required value={customForm.tenantId} onChange={(e) => setCustomForm((form) => ({ ...form, tenantId: e.target.value }))} style={styles.formInput}><option value="">Pilih tenant</option>{tenantOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
-          <label>Hostname<input required placeholder="app.domaincustomer.com" value={customForm.hostname} onChange={(e) => setCustomForm((form) => ({ ...form, hostname: e.target.value }))} style={styles.formInput} /></label>
+          <label>Hostname<input required placeholder="app.alfalah.id" value={customForm.hostname} onChange={(e) => setCustomForm((form) => ({ ...form, hostname: e.target.value }))} style={styles.formInput} /></label>
           <div style={styles.modalActions}><PlatformButton variant="secondary" type="button" onClick={() => setCustomOpen(false)}>Batal</PlatformButton><PlatformButton type="submit">Tambah Domain</PlatformButton></div>
         </form>
       </Modal>
