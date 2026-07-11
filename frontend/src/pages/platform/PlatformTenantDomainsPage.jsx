@@ -6,6 +6,7 @@ import Card from "../../components/ui/Card";
 import PlatformButton from "../../components/platform/PlatformButton";
 import Modal from "../../components/Modal";
 import { RESERVED_SUBDOMAINS, ROOT_DOMAIN } from "../../utils/hostnameRouting";
+import { copyActiveTenantUrl, getActiveTenantUrl } from "../../utils/tenantDomainUrl";
 
 const STATUS_OPTIONS = {
   dns_status: ["pending", "creating", "active", "failed"],
@@ -35,6 +36,7 @@ export default function PlatformTenantDomainsPage() {
   const [error, setError] = useState("");
   const [busyTenant, setBusyTenant] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
+  const [copyFeedback, setCopyFeedback] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -73,20 +75,43 @@ export default function PlatformTenantDomainsPage() {
     await runDnsAction(row, action);
   };
 
+  const fallbackCopy = async (value) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = value; textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed"; textarea.style.opacity = "0";
+    document.body.appendChild(textarea); textarea.select();
+    let copied = false;
+    try { copied = document.execCommand("copy"); } finally { document.body.removeChild(textarea); }
+    return copied;
+  };
+
+  const handleCopyUrl = async (row) => {
+    try {
+      await copyActiveTenantUrl(row, { clipboard: navigator.clipboard, fallbackCopy });
+      setCopyFeedback("URL berhasil disalin");
+    } catch {
+      setCopyFeedback("URL tidak dapat disalin");
+    }
+    window.setTimeout(() => setCopyFeedback(""), 2200);
+  };
+
   return (
     <div>
       <div style={styles.header}>
         <div><p style={styles.eyebrow}>Platform Console</p><h1 style={styles.title}>Tenant Domains</h1>
-          <p style={styles.subtitle}>Provisioning DNS Cloudflare per tenant. Integrasi Vercel belum diaktifkan.</p></div>
+          <p style={styles.subtitle}>Kelola provisioning DNS Cloudflare, domain Vercel, dan SSL tenant.</p></div>
         <PlatformButton variant="secondary" onClick={load}>Refresh</PlatformButton>
       </div>
       {error && <div style={styles.error}>{error}</div>}
+      {copyFeedback && <div role="status" style={styles.success}>{copyFeedback}</div>}
       <Card padding="none" shadow="card" radius="xl">
         <div style={styles.scroll}>
           <table style={styles.table}>
             <thead><tr>{["Tenant", "Hostname", "DNS", "Vercel", "SSL", "Overall", "Updated", "Action"].map((x) => <th key={x} style={styles.th}>{x}</th>)}</tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan="8" style={styles.empty}>Memuat domain tenant...</td></tr> : rows.map((row) => (
+              {loading ? <tr><td colSpan="8" style={styles.empty}>Memuat domain tenant...</td></tr> : rows.map((row) => {
+                const activeUrl = getActiveTenantUrl(row);
+                return (
                 <tr key={row.tenant_id}>
                   <td style={styles.td}><strong>{row.tenant_nama}</strong><div style={styles.slug}>{row.slug}</div></td>
                   <td style={styles.td}><code>{row.hostname || "Belum ada draft"}</code></td>
@@ -99,9 +124,10 @@ export default function PlatformTenantDomainsPage() {
                   <td style={styles.td}>{row.updated_at ? new Date(row.updated_at).toLocaleString("id-ID") : "-"}</td>
                   <td style={styles.td}><div style={styles.actions}>
                     <Link to={`/platform/tenants/${row.tenant_id}`} style={styles.link}>Detail</Link>
+                    {activeUrl && <a style={styles.link} href={activeUrl} target="_blank" rel="noopener noreferrer">Open Site</a>}
+                    {activeUrl && <button style={styles.action} onClick={() => handleCopyUrl(row)}>Copy URL</button>}
                     {!row.id ? <button style={styles.action} disabled={busyTenant === row.tenant_id} onClick={() => run(row.tenant_id, () => platformApi.post(`/platform/tenants/${row.tenant_id}/domain/draft`))}>Generate draft</button>
-                      : <button style={styles.action} disabled={busyTenant === row.tenant_id} onClick={() => run(row.tenant_id, () => platformApi.post(`/platform/tenants/${row.tenant_id}/domain/regenerate`))}>Regenerate</button>}
-                    {row.hostname && <button style={styles.action} onClick={() => navigator.clipboard.writeText(row.hostname)}>Copy</button>}
+                      : row.overall_status !== "active" && <button style={styles.action} disabled={busyTenant === row.tenant_id} onClick={() => run(row.tenant_id, () => platformApi.post(`/platform/tenants/${row.tenant_id}/domain/regenerate`))}>Regenerate</button>}
                     {row.id && row.overall_status !== "disabled" && row.dns_status !== "creating" && row.dns_status !== "active" && row.dns_status !== "failed" && isProvisionableHostname(row.hostname) && (
                       <button style={styles.primaryAction} onClick={() => setConfirmation({ row, action: "provision" })}>Provision DNS</button>
                     )}
@@ -129,10 +155,10 @@ export default function PlatformTenantDomainsPage() {
                     {row.id && ["adding", "verified"].includes(row.vercel_status) && (
                       <button style={styles.dangerAction} onClick={() => runDomainAction(row, "rollback-vercel")}>Rollback Vercel</button>
                     )}
-                    {row.hostname && row.overall_status === "active" && <a style={styles.link} href={`https://${row.hostname}`} target="_blank" rel="noreferrer">Buka</a>}
                   </div></td>
                 </tr>
-              ))}
+                );
+              })}
               {!loading && rows.length === 0 && <tr><td colSpan="8" style={styles.empty}>Belum ada tenant.</td></tr>}
             </tbody>
           </table>
@@ -165,6 +191,7 @@ const styles = {
   eyebrow: { margin: 0, color: "var(--primary)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em" },
   title: { margin: "6px 0", fontSize: 30, color: "var(--text-primary)" }, subtitle: { margin: 0, color: "var(--text-secondary)" },
   error: { padding: 12, marginBottom: 16, borderRadius: 10, color: "var(--danger)", background: "var(--danger-subtle)", fontWeight: 600 },
+  success: { padding: 10, marginBottom: 16, borderRadius: 10, color: "#166534", background: "var(--success-subtle)", fontWeight: 700 },
   scroll: { overflowX: "auto" }, table: { width: "100%", minWidth: 1120, borderCollapse: "collapse", fontSize: 13 },
   th: { padding: "13px 14px", textAlign: "left", color: "var(--text-secondary)", background: "var(--surface-muted)", borderBottom: "1px solid var(--border)" },
   td: { padding: 14, verticalAlign: "top", color: "var(--text-primary)", borderBottom: "1px solid var(--border)" },

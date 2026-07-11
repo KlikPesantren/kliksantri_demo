@@ -29,6 +29,7 @@ const {
   provisionFullTenantDomain,
   syncTenantDomainDisabledStatus,
 } = require("../services/tenantDomainService");
+const { createTenantWithDomainAutomation } = require("../services/tenantCreationDomainService");
 
 const router = express.Router();
 
@@ -138,16 +139,15 @@ router.post(
         });
       }
 
-      const result = await createTenantWithDefaults(body, req.platformUser);
-      let tenantDomain = null;
-      let tenantDomainError = null;
-      try {
-        tenantDomain = await createDraftDomainForTenant(result.tenant, req.platformUser);
-        tenantDomain = await provisionFullTenantDomain(tenantDomain.id, req.platformUser.id);
-      } catch (domainError) {
-        tenantDomainError = domainError.message;
-        console.error("[tenant-domain] Draft domain gagal dibuat:", domainError);
-      }
+      const {
+        tenantResult: result,
+        tenantDomain,
+        tenantDomainError,
+      } = await createTenantWithDomainAutomation(body, req.platformUser, {
+        createTenant: createTenantWithDefaults,
+        createDraftDomain: createDraftDomainForTenant,
+        provisionDomain: provisionFullTenantDomain,
+      });
 
       res.status(201).json({
         success: true,
