@@ -176,10 +176,18 @@ function logCloudflareOperationError(operation, domain, error) {
     domainId: domain.id,
     hostname: domain.hostname,
     cloudflareEndpoint: error.cloudflareEndpoint || null,
+    requestOrigin: error.requestOrigin || "https://api.cloudflare.com",
     providerHttpStatus: error.providerStatus ?? error.status ?? null,
     cloudflareErrorCodes: error.providerErrors || [],
     cloudflareErrorMessages: error.providerMessages || [],
     sanitizedResponseBody: error.sanitizedProviderBody || null,
+    networkErrorName: error.name || null,
+    networkErrorMessage: error.message || null,
+    networkErrorCode: error.code || null,
+    causeCode: error.cause?.code || null,
+    causeMessage: error.safeCauseMessage || null,
+    timedOut: Boolean(error.timedOut),
+    aborted: Boolean(error.aborted),
     stack: error.stack || null,
   });
 }

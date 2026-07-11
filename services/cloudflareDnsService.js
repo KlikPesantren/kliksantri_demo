@@ -31,7 +31,7 @@ function isValidTargetHostname(target) {
   );
 }
 
-function getCloudflareStartupValidation(env = process.env) {
+function getCloudflareStartupValidation(env = process.env, fetchImpl = global.fetch) {
   const config = readConfig(env);
   return {
     tokenConfigured: Boolean(config.token),
@@ -40,7 +40,8 @@ function getCloudflareStartupValidation(env = process.env) {
     targetValid: Boolean(config.target) && isValidTargetHostname(config.target),
     dryRunEnabled: config.dryRun,
     dryRunValueValid: config.dryRunRaw === "" || config.dryRunRaw === "true" || config.dryRunRaw === "false",
-    ready: Boolean(config.target) && isValidTargetHostname(config.target) && (config.dryRun || Boolean(config.token && config.zoneId)),
+    fetchAvailable: typeof fetchImpl === "function",
+    ready: typeof fetchImpl === "function" && Boolean(config.target) && isValidTargetHostname(config.target) && (config.dryRun || Boolean(config.token && config.zoneId)),
   };
 }
 
@@ -74,7 +75,7 @@ function sanitizeProviderBody(value, secrets = [], depth = 0) {
 function normalizeCloudflareError(error) {
   if (error?.code === "DNS_TARGET_CONFLICT") return "Record DNS sudah ada dengan target berbeda";
   if (error?.code === "DNS_RECORD_NOT_FOUND") return "Record DNS tenant tidak ditemukan";
-  if (error?.name === "AbortError") return "Cloudflare tidak merespons tepat waktu";
+  if (error?.timedOut || error?.name === "AbortError") return "Cloudflare tidak merespons tepat waktu";
   if (error?.status === 401 || error?.status === 403) return "Autentikasi Cloudflare ditolak";
   if (error?.status === 429) return "Batas permintaan Cloudflare tercapai";
   return "Operasi DNS Cloudflare gagal";
@@ -98,16 +99,32 @@ function assertConfig(config) {
   }
 }
 
-function createCloudflareDnsService({ fetchImpl = global.fetch, env = process.env } = {}) {
+function createCloudflareDnsService({ fetchImpl = global.fetch, env = process.env, timeoutMs = 12_000 } = {}) {
   const config = readConfig(env);
 
   async function request(path, options = {}) {
     assertConfig(config);
-    const safeEndpoint = `/zones/{zone_id}${path}`;
+    if (typeof fetchImpl !== "function") {
+      const error = new Error("Global fetch tidak tersedia pada runtime Node");
+      error.code = "DNS_FETCH_UNAVAILABLE";
+      error.status = 503;
+      throw error;
+    }
+    const requestUrl = new URL(`${API_BASE}/zones/${encodeURIComponent(config.zoneId)}${path}`);
+    const safeEndpoint = path.startsWith("/dns_records")
+      ? "/zones/{zone_id}/dns_records"
+      : "/zones/{zone_id}";
+    const controller = new AbortController();
+    let timeoutTriggered = false;
+    const timeoutId = setTimeout(() => {
+      timeoutTriggered = true;
+      controller.abort();
+    }, timeoutMs);
     let response;
     try {
-      response = await fetchImpl(`${API_BASE}/zones/${config.zoneId}${path}`, {
+      response = await fetchImpl(requestUrl.href, {
         ...options,
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${config.token}`,
           "Content-Type": "application/json",
@@ -116,12 +133,20 @@ function createCloudflareDnsService({ fetchImpl = global.fetch, env = process.en
       });
     } catch (cause) {
       const error = new Error("Cloudflare network request failed", { cause });
+      error.name = cause?.name || "CloudflareNetworkError";
+      error.code = cause?.code || null;
+      error.safeCauseMessage = sanitizeProviderBody(cause?.message || null, [config.token, config.zoneId]);
       error.cloudflareEndpoint = safeEndpoint;
+      error.requestOrigin = requestUrl.origin;
       error.providerStatus = null;
       error.providerErrors = [];
       error.providerMessages = [];
       error.sanitizedProviderBody = null;
+      error.timedOut = timeoutTriggered || cause?.name === "AbortError";
+      error.aborted = controller.signal.aborted;
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
     let body = null;
     try { body = await response.json(); } catch { body = null; }
@@ -130,6 +155,7 @@ function createCloudflareDnsService({ fetchImpl = global.fetch, env = process.en
       error.status = response.status;
       error.providerStatus = response.status;
       error.cloudflareEndpoint = safeEndpoint;
+      error.requestOrigin = requestUrl.origin;
       error.providerErrors = body?.errors?.map((item) => item?.code).filter((code) => code != null) || [];
       error.providerMessages = body?.errors?.map((item) => item?.message).filter(Boolean).map((message) => sanitizeProviderBody(message, [config.token])) || [];
       error.sanitizedProviderBody = sanitizeProviderBody(body, [config.token]);

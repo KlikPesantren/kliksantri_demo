@@ -17,7 +17,9 @@ function response(result, status = 200) {
 
 (async () => {
   const createdCalls = [];
-  const createService = createCloudflareDnsService({ env, fetchImpl: async (_url, options = {}) => {
+  const createdUrls = [];
+  const createService = createCloudflareDnsService({ env, fetchImpl: async (url, options = {}) => {
+    createdUrls.push(url);
     createdCalls.push(options.method || "GET");
     if (!options.method) return response([]);
     return response({ id: "record-new", name: "anwarulhuda.klikpesantren.com", content: env.TENANT_DOMAIN_TARGET });
@@ -25,6 +27,9 @@ function response(result, status = 200) {
   const created = await createService.createTenantCname("anwarulhuda.klikpesantren.com");
   assert.strictEqual(created.id, "record-new");
   assert.deepStrictEqual(createdCalls, ["GET", "POST"]);
+  assert.strictEqual(createdUrls[0].startsWith("https://api.cloudflare.com/client/v4/zones/test-zone/dns_records?"), true);
+  assert.strictEqual(createdUrls[1], "https://api.cloudflare.com/client/v4/zones/test-zone/dns_records");
+  assert.strictEqual(typeof global.fetch, "function");
 
   const existingService = createCloudflareDnsService({ env, fetchImpl: async () => response([
     { id: "record-existing", name: "anwarulhuda.klikpesantren.com", content: "target.vercel-dns.com" },
@@ -56,12 +61,41 @@ function response(result, status = 200) {
     targetValid: true,
     dryRunEnabled: false,
     dryRunValueValid: true,
+    fetchAvailable: true,
     ready: true,
   });
 
+  const networkFailureService = createCloudflareDnsService({ env, fetchImpl: async () => {
+    const error = new Error("getaddrinfo ENOTFOUND api.cloudflare.com");
+    error.code = "ENOTFOUND";
+    throw error;
+  } });
+  await assert.rejects(
+    networkFailureService.getDnsRecord("anwarulhuda.klikpesantren.com"),
+    (error) => {
+      assert.strictEqual(error.providerStatus, null);
+      assert.strictEqual(error.code, "ENOTFOUND");
+      assert.strictEqual(error.requestOrigin, "https://api.cloudflare.com");
+      assert.strictEqual(error.timedOut, false);
+      return true;
+    }
+  );
+
+  const timeoutService = createCloudflareDnsService({ env, timeoutMs: 5, fetchImpl: async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => {
+        const error = new Error("request aborted"); error.name = "AbortError"; reject(error);
+      });
+    })
+  });
+  await assert.rejects(
+    timeoutService.getDnsRecord("anwarulhuda.klikpesantren.com"),
+    (error) => error.timedOut === true && error.aborted === true && error.providerStatus === null
+  );
+
   const providerFailureService = createCloudflareDnsService({ env, fetchImpl: async () => ({
     ok: false,
-    status: 403,
+    status: 401,
     async json() {
       return { success: false, errors: [{ code: 9109, message: `Denied ${env.CLOUDFLARE_API_TOKEN}` }], authorization: env.CLOUDFLARE_API_TOKEN };
     },
@@ -69,8 +103,8 @@ function response(result, status = 200) {
   await assert.rejects(
     providerFailureService.getDnsRecord("anwarulhuda.klikpesantren.com"),
     (error) => {
-      assert.strictEqual(error.cloudflareEndpoint.startsWith("/zones/{zone_id}/dns_records?"), true);
-      assert.strictEqual(error.providerStatus, 403);
+      assert.strictEqual(error.cloudflareEndpoint, "/zones/{zone_id}/dns_records");
+      assert.strictEqual(error.providerStatus, 401);
       assert.deepStrictEqual(error.providerErrors, [9109]);
       assert.strictEqual(JSON.stringify(error.sanitizedProviderBody).includes(env.CLOUDFLARE_API_TOKEN), false);
       assert.strictEqual(error.providerMessages[0].includes(env.CLOUDFLARE_API_TOKEN), false);
