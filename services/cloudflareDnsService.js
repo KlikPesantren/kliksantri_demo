@@ -13,12 +13,62 @@ function assertTenantHostname(hostname) {
 }
 
 function readConfig(env = process.env) {
+  const dryRunRaw = String(env.CLOUDFLARE_DNS_DRY_RUN || "").trim().toLowerCase();
   return {
     token: String(env.CLOUDFLARE_API_TOKEN || "").trim(),
     zoneId: String(env.CLOUDFLARE_ZONE_ID || "").trim(),
     target: String(env.TENANT_DOMAIN_TARGET || "").trim().toLowerCase().replace(/\.$/, ""),
-    dryRun: String(env.CLOUDFLARE_DNS_DRY_RUN || "").trim().toLowerCase() === "true",
+    dryRun: dryRunRaw === "true",
+    dryRunRaw,
   };
+}
+
+function isValidTargetHostname(target) {
+  const normalized = String(target || "");
+  if (!normalized || normalized.length > 253 || normalized.indexOf(".") === -1) return false;
+  return normalized.split(".").every(
+    (label) => label.length >= 1 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label)
+  );
+}
+
+function getCloudflareStartupValidation(env = process.env) {
+  const config = readConfig(env);
+  return {
+    tokenConfigured: Boolean(config.token),
+    zoneIdConfigured: Boolean(config.zoneId),
+    targetConfigured: Boolean(config.target),
+    targetValid: Boolean(config.target) && isValidTargetHostname(config.target),
+    dryRunEnabled: config.dryRun,
+    dryRunValueValid: config.dryRunRaw === "" || config.dryRunRaw === "true" || config.dryRunRaw === "false",
+    ready: Boolean(config.target) && isValidTargetHostname(config.target) && (config.dryRun || Boolean(config.token && config.zoneId)),
+  };
+}
+
+function logCloudflareStartupValidation(env = process.env) {
+  const validation = getCloudflareStartupValidation(env);
+  const level = validation.ready && validation.dryRunValueValid ? "info" : "warn";
+  console[level]("[cloudflare-dns-config]", validation);
+  return validation;
+}
+
+function sanitizeProviderBody(value, secrets = [], depth = 0) {
+  if (depth > 5) return "[truncated]";
+  if (value == null || typeof value === "boolean" || typeof value === "number") return value;
+  if (typeof value === "string") {
+    let sanitized = value.slice(0, 2000);
+    for (const secret of secrets.filter(Boolean)) sanitized = sanitized.split(secret).join("[redacted]");
+    return sanitized;
+  }
+  if (Array.isArray(value)) return value.slice(0, 20).map((item) => sanitizeProviderBody(item, secrets, depth + 1));
+  if (typeof value === "object") {
+    const result = {};
+    for (const [key, item] of Object.entries(value).slice(0, 40)) {
+      if (/token|authorization|secret|password|api[_-]?key|cookie/i.test(key)) result[key] = "[redacted]";
+      else result[key] = sanitizeProviderBody(item, secrets, depth + 1);
+    }
+    return result;
+  }
+  return String(value).slice(0, 500);
 }
 
 function normalizeCloudflareError(error) {
@@ -37,7 +87,7 @@ function assertConfig(config) {
     error.status = 503;
     throw error;
   }
-  if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(config.target)) {
+  if (!isValidTargetHostname(config.target)) {
     const error = new Error("TENANT_DOMAIN_TARGET tidak valid"); error.code = "DNS_CONFIG_INVALID"; error.status = 503; throw error;
   }
   if (!config.dryRun && (!config.token || !config.zoneId)) {
@@ -53,20 +103,36 @@ function createCloudflareDnsService({ fetchImpl = global.fetch, env = process.en
 
   async function request(path, options = {}) {
     assertConfig(config);
-    const response = await fetchImpl(`${API_BASE}/zones/${config.zoneId}${path}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-      },
-    });
+    const safeEndpoint = `/zones/{zone_id}${path}`;
+    let response;
+    try {
+      response = await fetchImpl(`${API_BASE}/zones/${config.zoneId}${path}`, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${config.token}`,
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        },
+      });
+    } catch (cause) {
+      const error = new Error("Cloudflare network request failed", { cause });
+      error.cloudflareEndpoint = safeEndpoint;
+      error.providerStatus = null;
+      error.providerErrors = [];
+      error.providerMessages = [];
+      error.sanitizedProviderBody = null;
+      throw error;
+    }
     let body = null;
     try { body = await response.json(); } catch { body = null; }
     if (!response.ok || body?.success === false) {
       const error = new Error("Cloudflare request failed");
       error.status = response.status;
-      error.providerErrors = body?.errors?.map((item) => item?.code).filter(Boolean) || [];
+      error.providerStatus = response.status;
+      error.cloudflareEndpoint = safeEndpoint;
+      error.providerErrors = body?.errors?.map((item) => item?.code).filter((code) => code != null) || [];
+      error.providerMessages = body?.errors?.map((item) => item?.message).filter(Boolean).map((message) => sanitizeProviderBody(message, [config.token])) || [];
+      error.sanitizedProviderBody = sanitizeProviderBody(body, [config.token]);
       throw error;
     }
     return body?.result;
@@ -128,4 +194,11 @@ function createCloudflareDnsService({ fetchImpl = global.fetch, env = process.en
 }
 
 const defaultService = createCloudflareDnsService();
-module.exports = { ...defaultService, createCloudflareDnsService, normalizeCloudflareError };
+module.exports = {
+  ...defaultService,
+  createCloudflareDnsService,
+  normalizeCloudflareError,
+  getCloudflareStartupValidation,
+  logCloudflareStartupValidation,
+  sanitizeProviderBody,
+};

@@ -170,6 +170,20 @@ async function writeDnsAudit(client, domain, actorUserId, eventType, outcome, de
   );
 }
 
+function logCloudflareOperationError(operation, domain, error) {
+  console.error("[cloudflare-dns-error]", {
+    operation,
+    domainId: domain.id,
+    hostname: domain.hostname,
+    cloudflareEndpoint: error.cloudflareEndpoint || null,
+    providerHttpStatus: error.providerStatus ?? error.status ?? null,
+    cloudflareErrorCodes: error.providerErrors || [],
+    cloudflareErrorMessages: error.providerMessages || [],
+    sanitizedResponseBody: error.sanitizedProviderBody || null,
+    stack: error.stack || null,
+  });
+}
+
 async function withLockedDomain(domainId, db, operation) {
   const client = await db.connect();
   let committed = false;
@@ -240,6 +254,7 @@ async function provisionDnsForTenantDomain(domainId, actorUserId, options = {}) 
       await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_provision_success", record.reused ? "reused" : "created");
       return { data: updated };
     } catch (error) {
+      logCloudflareOperationError("provision", domain, error);
       const safeError = dns.normalizeCloudflareError(error);
       const updated = await setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: safeError }, actorUserId);
       await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_provision_failed", "failed", { error: safeError });
@@ -266,6 +281,7 @@ async function rollbackDnsProvisioning(domainId, actorUserId, options = {}) {
       await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_rollback_success", result.dryRun ? "dry_run" : result.missing ? "already_missing" : "deleted");
       return { data: updated };
     } catch (error) {
+      logCloudflareOperationError("rollback", domain, error);
       const safeError = dns.normalizeCloudflareError(error);
       const updated = await setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: safeError }, actorUserId);
       await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_rollback_failed", "failed", { error: safeError });
@@ -297,6 +313,7 @@ async function reconcileDnsStatus(domainId, actorUserId, options = {}) {
         cloudflare: { record_id: verification.record.id, target: dns.config.target, dry_run: false, reconciled_at: new Date().toISOString() },
       });
     } catch (error) {
+      logCloudflareOperationError("reconcile", domain, error);
       const safeError = dns.normalizeCloudflareError(error);
       return setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: safeError }, actorUserId);
     }

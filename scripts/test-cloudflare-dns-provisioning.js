@@ -1,5 +1,8 @@
 const assert = require("assert");
-const { createCloudflareDnsService } = require("../services/cloudflareDnsService");
+const {
+  createCloudflareDnsService,
+  getCloudflareStartupValidation,
+} = require("../services/cloudflareDnsService");
 const { validateTenantHostname, retryDnsProvisioning, rollbackDnsProvisioning } = require("../services/tenantDomainService");
 
 const env = {
@@ -39,6 +42,41 @@ function response(result, status = 200) {
   const dryResult = await dryService.createTenantCname("anwarulhuda.klikpesantren.com");
   assert.strictEqual(dryResult.dryRun, true);
   assert.strictEqual(dryFetchCalled, false);
+
+  const startup = getCloudflareStartupValidation({
+    CLOUDFLARE_API_TOKEN: "hidden",
+    CLOUDFLARE_ZONE_ID: "zone",
+    TENANT_DOMAIN_TARGET: "target.vercel-dns.com",
+    CLOUDFLARE_DNS_DRY_RUN: "false",
+  });
+  assert.deepStrictEqual(startup, {
+    tokenConfigured: true,
+    zoneIdConfigured: true,
+    targetConfigured: true,
+    targetValid: true,
+    dryRunEnabled: false,
+    dryRunValueValid: true,
+    ready: true,
+  });
+
+  const providerFailureService = createCloudflareDnsService({ env, fetchImpl: async () => ({
+    ok: false,
+    status: 403,
+    async json() {
+      return { success: false, errors: [{ code: 9109, message: `Denied ${env.CLOUDFLARE_API_TOKEN}` }], authorization: env.CLOUDFLARE_API_TOKEN };
+    },
+  }) });
+  await assert.rejects(
+    providerFailureService.getDnsRecord("anwarulhuda.klikpesantren.com"),
+    (error) => {
+      assert.strictEqual(error.cloudflareEndpoint.startsWith("/zones/{zone_id}/dns_records?"), true);
+      assert.strictEqual(error.providerStatus, 403);
+      assert.deepStrictEqual(error.providerErrors, [9109]);
+      assert.strictEqual(JSON.stringify(error.sanitizedProviderBody).includes(env.CLOUDFLARE_API_TOKEN), false);
+      assert.strictEqual(error.providerMessages[0].includes(env.CLOUDFLARE_API_TOKEN), false);
+      return true;
+    }
+  );
 
   assert.throws(() => validateTenantHostname("klikpesantren.com"));
   assert.throws(() => validateTenantHostname("app.klikpesantren.com"));

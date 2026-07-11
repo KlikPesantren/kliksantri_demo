@@ -31,6 +31,9 @@ const errorHandler =
 const { runStartupSchemaAudit } =
   require("./utils/schemaAudit");
 
+const { logCloudflareStartupValidation } =
+  require("./services/cloudflareDnsService");
+
 // =====================
 // ROUTES
 // =====================
@@ -704,6 +707,8 @@ server.listen(
     console.log("SERVER STARTED");
     console.log("PORT:", PORT);
     console.log("HOST: 0.0.0.0 (all interfaces)");
+
+    logCloudflareStartupValidation();
 
     runStartupSchemaAudit().catch((err) => {
 
