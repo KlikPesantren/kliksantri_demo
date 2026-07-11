@@ -1,5 +1,6 @@
 const pool = require("../db");
 const cloudflareDnsService = require("./cloudflareDnsService");
+const vercelDomainService = require("./vercelDomainService");
 
 const ROOT_DOMAIN = "klikpesantren.com";
 const RESERVED_SLUGS = new Set([
@@ -235,6 +236,131 @@ async function setDnsState(client, domainId, state, actorUserId, metadata = {}) 
   return rows[0];
 }
 
+function calculateOverallStatus(domain) {
+  if (domain.tenant_status && domain.tenant_status !== "active") return "disabled";
+  if ([domain.dns_status, domain.vercel_status, domain.ssl_status].includes("failed")) return "failed";
+  if (domain.dns_status === "active" && domain.vercel_status === "verified" && domain.ssl_status === "active") return "active";
+  if (domain.dns_status === "pending" && domain.vercel_status === "pending" && domain.ssl_status === "pending") return "draft";
+  return "provisioning";
+}
+
+async function setDomainLifecycle(client, domain, patch, actorUserId, metadata = {}) {
+  const next = { ...domain, ...patch };
+  next.overall_status = calculateOverallStatus(next);
+  const { rows } = await client.query(
+    `UPDATE tenant_domains SET dns_status = $1, vercel_status = $2, ssl_status = $3,
+       overall_status = $4, last_error = $5,
+       metadata = COALESCE(metadata, '{}'::jsonb) || $6::jsonb,
+       activated_at = CASE WHEN $4 = 'active' THEN COALESCE(activated_at, NOW()) ELSE activated_at END,
+       updated_by = $7, updated_at = NOW() WHERE id = $8 RETURNING *`,
+    [next.dns_status, next.vercel_status, next.ssl_status, next.overall_status, patch.last_error ?? null, JSON.stringify(metadata), actorUserId || null, domain.id]
+  );
+  const updated = { ...rows[0], tenant_status: domain.tenant_status };
+  if (domain.overall_status !== "active" && updated.overall_status === "active") {
+    await writeDnsAudit(client, domain, actorUserId, "tenant.domain.active", "active");
+  }
+  return updated;
+}
+
+function logVercelError(operation, domain, error) {
+  console.error("[vercel-domain-error]", {
+    operation, domainId: domain.id, hostname: domain.hostname,
+    providerHttpStatus: error.status ?? null, providerCode: error.providerCode || null,
+    providerMessage: error.providerMessage || null, sanitizedResponseBody: error.sanitizedProviderBody || null,
+    timedOut: Boolean(error.timedOut), stack: error.stack || null,
+  });
+}
+
+async function provisionVercelForTenantDomain(domainId, actorUserId, options = {}) {
+  const db = options.db || pool; const vercel = options.vercelService || vercelDomainService;
+  const outcome = await withLockedDomain(domainId, db, async (client, domain) => {
+    if (domain.dns_status !== "active") { const error = new Error("DNS tenant harus aktif sebelum provisioning Vercel"); error.status = 409; throw error; }
+    if (domain.overall_status === "disabled") { const error = new Error("Domain disabled tidak dapat diprovision"); error.status = 409; throw error; }
+    domain = await setDomainLifecycle(client, domain, { vercel_status: "adding", ssl_status: "pending" }, actorUserId);
+    await writeDnsAudit(client, domain, actorUserId, "tenant.domain.vercel.started", "started");
+    try {
+      const added = await vercel.addDomain(domain.hostname);
+      if (added.dryRun) return { data: await setDomainLifecycle(client, domain, { vercel_status: "pending", ssl_status: "pending" }, actorUserId, { vercel: { dry_run: true } }) };
+      const verified = added.verified === true ? added : await vercel.verifyDomain(domain.hostname);
+      const status = verified?.verified === true ? "verified" : "adding";
+      const updated = await setDomainLifecycle(client, domain, { vercel_status: status, ssl_status: "pending" }, actorUserId, { vercel: { dry_run: false, project_domain: true, verified: status === "verified" } });
+      await writeDnsAudit(client, domain, actorUserId, "tenant.domain.vercel.success", status);
+      return { data: updated };
+    } catch (error) {
+      logVercelError("provision", domain, error); const safe = vercel.normalizeVercelError(error);
+      const updated = await setDomainLifecycle(client, domain, { vercel_status: "failed", ssl_status: "pending", last_error: safe }, actorUserId);
+      await writeDnsAudit(client, domain, actorUserId, "tenant.domain.vercel.failed", "failed", { error: safe });
+      return { data: updated, error: safe, status: error.status || 502 };
+    }
+  });
+  if (outcome.error) { const error = new Error(outcome.error); error.status = outcome.status; throw error; }
+  return outcome.data;
+}
+
+async function retryVercelProvisioning(domainId, actorUserId, options = {}) { return provisionVercelForTenantDomain(domainId, actorUserId, options); }
+
+async function reconcileVercelStatus(domainId, actorUserId, options = {}) {
+  const db = options.db || pool; const vercel = options.vercelService || vercelDomainService;
+  return withLockedDomain(domainId, db, async (client, domain) => {
+    try {
+      const existing = await vercel.getDomain(domain.hostname);
+      if (vercel.config.dryRun) return setDomainLifecycle(client, domain, { vercel_status: "pending" }, actorUserId, { vercel: { dry_run: true } });
+      if (!existing) return setDomainLifecycle(client, domain, { vercel_status: "failed", last_error: "Domain Vercel tidak ditemukan" }, actorUserId);
+      const verified = existing.verified ? existing : await vercel.verifyDomain(domain.hostname);
+      const status = verified?.verified ? "verified" : "adding";
+      return setDomainLifecycle(client, domain, { vercel_status: status, last_error: null }, actorUserId, { vercel: { dry_run: false, verified: status === "verified" } });
+    } catch (error) { logVercelError("reconcile", domain, error); return setDomainLifecycle(client, domain, { vercel_status: "failed", last_error: vercel.normalizeVercelError(error) }, actorUserId); }
+  });
+}
+
+async function rollbackVercelProvisioning(domainId, actorUserId, options = {}) {
+  const db = options.db || pool; const vercel = options.vercelService || vercelDomainService;
+  const outcome = await withLockedDomain(domainId, db, async (client, domain) => {
+    try {
+      const result = await vercel.removeDomain(domain.hostname);
+      const updated = await setDomainLifecycle(client, domain, { vercel_status: "pending", ssl_status: "pending", last_error: null }, actorUserId, { vercel: { dry_run: Boolean(result.dryRun), removed: Boolean(result.removed) } });
+      await writeDnsAudit(client, domain, actorUserId, "tenant.domain.rollback", "vercel"); return { data: updated };
+    } catch (error) { logVercelError("rollback", domain, error); const safe = vercel.normalizeVercelError(error); return { data: await setDomainLifecycle(client, domain, { vercel_status: "failed", last_error: safe }, actorUserId), error: safe, status: error.status || 502 }; }
+  });
+  if (outcome.error) { const error = new Error(outcome.error); error.status = outcome.status; throw error; } return outcome.data;
+}
+
+async function reconcileSslStatus(domainId, actorUserId, options = {}) {
+  const db = options.db || pool; const vercel = options.vercelService || vercelDomainService;
+  return withLockedDomain(domainId, db, async (client, domain) => {
+    if (domain.vercel_status !== "verified") { const error = new Error("Domain Vercel harus verified sebelum reconcile SSL"); error.status = 409; throw error; }
+    domain = await setDomainLifecycle(client, domain, { ssl_status: "issuing" }, actorUserId);
+    try {
+      const ssl = await vercel.checkSsl(domain.hostname);
+      const status = ssl.ready ? "active" : "issuing";
+      const updated = await setDomainLifecycle(client, domain, { ssl_status: status, last_error: null }, actorUserId, { vercel_ssl: { dry_run: Boolean(ssl.dryRun), checked_at: new Date().toISOString() } });
+      if (status === "active") await writeDnsAudit(client, domain, actorUserId, "tenant.domain.ssl.active", "active");
+      return updated;
+    } catch (error) { logVercelError("ssl", domain, error); return setDomainLifecycle(client, domain, { ssl_status: "failed", last_error: vercel.normalizeVercelError(error) }, actorUserId); }
+  });
+}
+
+async function provisionFullTenantDomain(domainId, actorUserId, options = {}) {
+  let domain = await provisionDnsForTenantDomain(domainId, actorUserId, options);
+  if (domain.dns_status !== "active") return domain;
+  domain = await provisionVercelForTenantDomain(domainId, actorUserId, options);
+  if (domain.vercel_status !== "verified") return domain;
+  return reconcileSslStatus(domainId, actorUserId, options);
+}
+
+async function syncTenantDomainDisabledStatus(tenantId, tenantStatus, actorUserId, db = pool) {
+  const { rows } = await db.query(
+    `UPDATE tenant_domains SET overall_status = CASE WHEN $1 = 'active' THEN
+       CASE WHEN dns_status = 'active' AND vercel_status = 'verified' AND ssl_status = 'active' THEN 'active'
+            WHEN dns_status = 'failed' OR vercel_status = 'failed' OR ssl_status = 'failed' THEN 'failed'
+            WHEN dns_status = 'pending' AND vercel_status = 'pending' AND ssl_status = 'pending' THEN 'draft'
+            ELSE 'provisioning' END
+       ELSE 'disabled' END, updated_by = $2, updated_at = NOW() WHERE tenant_id = $3 RETURNING *`,
+    [tenantStatus, actorUserId || null, tenantId]
+  );
+  return rows[0] || null;
+}
+
 async function provisionDnsForTenantDomain(domainId, actorUserId, options = {}) {
   const db = options.db || pool;
   const dns = options.dnsService || cloudflareDnsService;
@@ -334,4 +460,7 @@ module.exports = {
   updateDomainStatuses, regenerateDraftDomain, checkHostnameAvailability,
   provisionDnsForTenantDomain, retryDnsProvisioning, rollbackDnsProvisioning,
   reconcileDnsStatus,
+  calculateOverallStatus, provisionVercelForTenantDomain, retryVercelProvisioning,
+  reconcileVercelStatus, rollbackVercelProvisioning, reconcileSslStatus,
+  provisionFullTenantDomain, syncTenantDomainDisabledStatus,
 };

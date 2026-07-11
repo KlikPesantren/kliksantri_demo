@@ -24,7 +24,11 @@ const {
   updateTenantFeatures,
 } = require("../services/tenantFeatureService");
 const { updateTenantFromPlatform } = require("../services/tenantPlatformUpdateService");
-const { createDraftDomainForTenant } = require("../services/tenantDomainService");
+const {
+  createDraftDomainForTenant,
+  provisionFullTenantDomain,
+  syncTenantDomainDisabledStatus,
+} = require("../services/tenantDomainService");
 
 const router = express.Router();
 
@@ -139,6 +143,7 @@ router.post(
       let tenantDomainError = null;
       try {
         tenantDomain = await createDraftDomainForTenant(result.tenant, req.platformUser);
+        tenantDomain = await provisionFullTenantDomain(tenantDomain.id, req.platformUser.id);
       } catch (domainError) {
         tenantDomainError = domainError.message;
         console.error("[tenant-domain] Draft domain gagal dibuat:", domainError);
@@ -637,6 +642,8 @@ router.patch(
         });
       }
 
+      await syncTenantDomainDisabledStatus(result.rows[0].id, status, req.platformUser.id);
+
       res.json({ success: true, data: result.rows[0] });
     } catch (err) {
       console.error(err);
@@ -651,6 +658,9 @@ router.patch(
   async (req, res) => {
     try {
       const tenant = await updateTenantFromPlatform(req.params.id, req.body || {});
+      if (req.body?.status) {
+        await syncTenantDomainDisabledStatus(tenant.id, tenant.status, req.platformUser.id);
+      }
       res.json({ success: true, data: tenant });
     } catch (err) {
       console.error(err);

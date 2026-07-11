@@ -62,6 +62,9 @@ export default function PlatformTenantDomainsPage() {
   const runDnsAction = (row, action) => run(row.tenant_id, () =>
     platformApi.post(`/platform/tenant-domains/${row.id}/${action}-dns`)
   );
+  const runDomainAction = (row, endpoint) => run(row.tenant_id, () =>
+    platformApi.post(`/platform/tenant-domains/${row.id}/${endpoint}`)
+  );
 
   const confirmDnsAction = async () => {
     if (!confirmation) return;
@@ -110,6 +113,21 @@ export default function PlatformTenantDomainsPage() {
                     )}
                     {row.id && row.dns_status === "active" && isProvisionableHostname(row.hostname) && (
                       <button style={styles.dangerAction} onClick={() => setConfirmation({ row, action: "rollback" })}>Rollback DNS</button>
+                    )}
+                    {row.id && row.dns_status === "active" && row.vercel_status === "pending" && row.overall_status !== "disabled" && (
+                      <button style={styles.primaryAction} onClick={() => runDomainAction(row, "provision-vercel")}>Provision Vercel</button>
+                    )}
+                    {row.id && row.vercel_status === "failed" && row.overall_status !== "disabled" && (
+                      <button style={styles.primaryAction} onClick={() => runDomainAction(row, "retry-vercel")}>Retry Vercel</button>
+                    )}
+                    {row.id && row.dns_status === "active" && row.vercel_status !== "pending" && (
+                      <button style={styles.action} onClick={() => runDomainAction(row, "reconcile-vercel")}>Reconcile Vercel</button>
+                    )}
+                    {row.id && row.vercel_status === "verified" && (
+                      <button style={styles.action} onClick={() => runDomainAction(row, "reconcile-ssl")}>Reconcile SSL</button>
+                    )}
+                    {row.id && ["adding", "verified"].includes(row.vercel_status) && (
+                      <button style={styles.dangerAction} onClick={() => runDomainAction(row, "rollback-vercel")}>Rollback Vercel</button>
                     )}
                     {row.hostname && row.overall_status === "active" && <a style={styles.link} href={`https://${row.hostname}`} target="_blank" rel="noreferrer">Buka</a>}
                   </div></td>

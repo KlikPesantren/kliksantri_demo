@@ -5,6 +5,8 @@ const {
   updateDomainStatuses, regenerateDraftDomain,
   provisionDnsForTenantDomain, retryDnsProvisioning, rollbackDnsProvisioning,
   reconcileDnsStatus,
+  provisionVercelForTenantDomain, retryVercelProvisioning, rollbackVercelProvisioning,
+  reconcileVercelStatus, reconcileSslStatus, provisionFullTenantDomain,
 } = require("../services/tenantDomainService");
 
 const router = express.Router();
@@ -65,6 +67,24 @@ router.post("/tenant-domains/:domainId/rollback-dns", dnsProvisionRateLimit, han
 }));
 router.post("/tenant-domains/:domainId/reconcile-dns", dnsProvisionRateLimit, handle(async (req, res) => {
   res.json({ success: true, data: await reconcileDnsStatus(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/provision-vercel", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await provisionVercelForTenantDomain(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/retry-vercel", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await retryVercelProvisioning(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/rollback-vercel", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await rollbackVercelProvisioning(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/reconcile-vercel", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await reconcileVercelStatus(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/reconcile-ssl", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await reconcileSslStatus(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/provision-all", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await provisionFullTenantDomain(req.params.domainId, req.platformUser.id) });
 }));
 
 module.exports = router;

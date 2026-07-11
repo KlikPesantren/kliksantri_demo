@@ -169,6 +169,18 @@ function PlatformTenantDetailPage() {
     }
   };
 
+  const runTenantDomainAction = async (endpoint) => {
+    if (!tenantDomain?.id) return;
+    setDomainLoading(true); setDomainError("");
+    try {
+      const response = await platformApi.post(`/platform/tenant-domains/${tenantDomain.id}/${endpoint}`);
+      setTenantDomain(response.data?.data || tenantDomain);
+    } catch (err) {
+      setDomainError(err.response?.data?.error || "Operasi domain tenant gagal");
+      await loadTenantDomain();
+    } finally { setDomainLoading(false); }
+  };
+
   const loadFeatures = useCallback(async () => {
     setFeaturesLoading(true);
     setFeaturesError("");
@@ -650,12 +662,26 @@ function PlatformTenantDetailPage() {
               <InfoItem label="Overall" value={tenantDomain.overall_status} />
               <div>
                 <div style={infoLabelStyle}>Action</div>
-                <PlatformButton variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(tenantDomain.hostname)}>Copy Hostname</PlatformButton>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <PlatformButton variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(tenantDomain.hostname)}>Copy</PlatformButton>
+                  {tenantDomain.overall_status === "active" && (
+                    <PlatformButton variant="primary" size="sm" onClick={() => window.open(`https://${tenantDomain.hostname}`, "_blank", "noopener,noreferrer")}>Open</PlatformButton>
+                  )}
+                  {tenantDomain.overall_status !== "active" && tenantDomain.overall_status !== "disabled" && (
+                    <PlatformButton variant="primary" size="sm" onClick={() => runTenantDomainAction("provision-all")}>Provision</PlatformButton>
+                  )}
+                  {tenantDomain.dns_status === "failed" && (
+                    <PlatformButton variant="secondary" size="sm" onClick={() => runTenantDomainAction("retry-dns")}>Retry DNS</PlatformButton>
+                  )}
+                  {tenantDomain.vercel_status === "failed" && (
+                    <PlatformButton variant="secondary" size="sm" onClick={() => runTenantDomainAction("retry-vercel")}>Retry Vercel</PlatformButton>
+                  )}
+                </div>
               </div>
             </div>
           ) : <p style={featureHintStyle}>Draft domain belum dibuat.</p>}
           {tenantDomain?.overall_status !== "active" && (
-            <p style={domainWarningStyle}>DNS dan domain Vercel belum diprovision. Status di halaman ini masih fondasi administratif Sprint 1.</p>
+            <p style={domainWarningStyle}>Domain belum aktif sepenuhnya. Selesaikan DNS, verifikasi Vercel, lalu reconcile SSL.</p>
           )}
         </Card>
       </div>
