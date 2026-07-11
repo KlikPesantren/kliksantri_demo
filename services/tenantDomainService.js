@@ -196,6 +196,7 @@ function logCloudflareOperationError(operation, domain, error) {
 async function withLockedDomain(domainId, db, operation) {
   const client = await db.connect();
   let committed = false;
+  let domainContext = null;
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
@@ -205,6 +206,7 @@ async function withLockedDomain(domainId, db, operation) {
       [domainId]
     );
     const domain = rows[0];
+    domainContext = domain || null;
     if (!domain) { const error = new Error("Domain tenant tidak ditemukan"); error.status = 404; throw error; }
     validateTenantHostname(domain.hostname);
     const result = await operation(client, domain);
@@ -212,6 +214,7 @@ async function withLockedDomain(domainId, db, operation) {
     committed = true;
     return result;
   } catch (error) {
+    if (!error.domainContext) error.domainContext = domainContext;
     if (!committed) {
       try { await client.query("ROLLBACK"); } catch { /* rollback best effort */ }
     }
@@ -264,16 +267,31 @@ async function setDomainLifecycle(client, domain, patch, actorUserId, metadata =
 
 function logVercelError(operation, domain, error) {
   console.error("[vercel-domain-error]", {
-    operation, domainId: domain.id, hostname: domain.hostname,
-    providerHttpStatus: error.status ?? null, providerCode: error.providerCode || null,
-    providerMessage: error.providerMessage || null, sanitizedResponseBody: error.sanitizedProviderBody || null,
-    timedOut: Boolean(error.timedOut), stack: error.stack || null,
+    operation,
+    domainId: domain.id,
+    hostname: domain.hostname,
+    vercelEndpoint: error.vercelEndpoint || null,
+    requestOrigin: error.requestOrigin || "https://api.vercel.com",
+    providerHttpStatus: error.status ?? null,
+    vercelErrorCode: error.providerCode || null,
+    vercelErrorMessage: error.providerMessage || null,
+    sanitizedResponseBody: error.sanitizedProviderBody || null,
+    networkErrorName: error.networkErrorName || error.name || null,
+    networkErrorMessage: error.message || null,
+    networkErrorCode: error.networkErrorCode || error.code || null,
+    causeCode: error.cause?.code || null,
+    causeMessage: error.safeCauseMessage || null,
+    timedOut: Boolean(error.timedOut),
+    aborted: Boolean(error.aborted),
+    stack: error.stack || null,
   });
 }
 
 async function provisionVercelForTenantDomain(domainId, actorUserId, options = {}) {
   const db = options.db || pool; const vercel = options.vercelService || vercelDomainService;
-  const outcome = await withLockedDomain(domainId, db, async (client, domain) => {
+  let outcome;
+  try {
+    outcome = await withLockedDomain(domainId, db, async (client, domain) => {
     if (domain.dns_status !== "active") { const error = new Error("DNS tenant harus aktif sebelum provisioning Vercel"); error.status = 409; throw error; }
     if (domain.overall_status === "disabled") { const error = new Error("Domain disabled tidak dapat diprovision"); error.status = 409; throw error; }
     domain = await setDomainLifecycle(client, domain, { vercel_status: "adding", ssl_status: "pending" }, actorUserId);
@@ -292,7 +310,11 @@ async function provisionVercelForTenantDomain(domainId, actorUserId, options = {
       await writeDnsAudit(client, domain, actorUserId, "tenant.domain.vercel.failed", "failed", { error: safe });
       return { data: updated, error: safe, status: error.status || 502 };
     }
-  });
+    });
+  } catch (error) {
+    logVercelError("provision.internal", error.domainContext || { id: domainId, hostname: null }, error);
+    throw error;
+  }
   if (outcome.error) { const error = new Error(outcome.error); error.status = outcome.status; throw error; }
   return outcome.data;
 }

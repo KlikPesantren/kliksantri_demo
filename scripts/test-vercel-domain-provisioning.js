@@ -1,5 +1,5 @@
 const assert = require("assert");
-const { createVercelDomainService } = require("../services/vercelDomainService");
+const { createVercelDomainService, getVercelStartupValidation } = require("../services/vercelDomainService");
 const { calculateOverallStatus, provisionFullTenantDomain, retryVercelProvisioning, validateTenantHostname } = require("../services/tenantDomainService");
 
 const env = { VERCEL_API_TOKEN: "test-secret", VERCEL_PROJECT_ID: "project-test", VERCEL_TEAM_ID: "team-test", VERCEL_DOMAIN_DRY_RUN: "false" };
@@ -7,6 +7,29 @@ const hostname = "anwarulhuda.klikpesantren.com";
 const response = (status, body) => ({ ok: status >= 200 && status < 300, status, async json() { return body; } });
 
 (async () => {
+  assert.deepStrictEqual(getVercelStartupValidation(env), {
+    tokenConfigured: true, projectIdConfigured: true, teamIdConfigured: true,
+    dryRunEnabled: false, dryRunValueValid: true, fetchAvailable: true, ready: true,
+  });
+
+  let invalidTokenFetchCalled = false;
+  const invalidTokenService = createVercelDomainService({ env: { ...env, VERCEL_API_TOKEN: "bad\ntoken" }, fetchImpl: async () => { invalidTokenFetchCalled = true; } });
+  await assert.rejects(invalidTokenService.getDomain(hostname), (error) => error.status === 503);
+  assert.strictEqual(invalidTokenFetchCalled, false);
+
+  const missingProjectService = createVercelDomainService({ env: { ...env, VERCEL_PROJECT_ID: "" }, fetchImpl: async () => response(200, {}) });
+  await assert.rejects(missingProjectService.getDomain(hostname), (error) => error.status === 503);
+
+  let optionalTeamUrl = "";
+  const optionalTeamService = createVercelDomainService({ env: { ...env, VERCEL_TEAM_ID: "" }, fetchImpl: async (url) => { optionalTeamUrl = url; return response(404, {}); } });
+  await optionalTeamService.getDomain(hostname);
+  assert.strictEqual(optionalTeamUrl.includes("teamId="), false);
+
+  let dryRunFetchCalled = false;
+  const dryRunService = createVercelDomainService({ env: { VERCEL_DOMAIN_DRY_RUN: "true" }, fetchImpl: async () => { dryRunFetchCalled = true; } });
+  assert.strictEqual((await dryRunService.addDomain(hostname)).dryRun, true);
+  assert.strictEqual(dryRunFetchCalled, false);
+
   const calls = [];
   const service = createVercelDomainService({ env, fetchImpl: async (url, options = {}) => {
     calls.push({ url, method: options.method || "GET" });
@@ -46,7 +69,16 @@ const response = (status, body) => ({ ok: status >= 200 && status < 300, status,
 
   for (const status of [401, 403]) {
     const authService = createVercelDomainService({ env, fetchImpl: async () => response(status, { error: { code: "forbidden", message: `Denied ${env.VERCEL_API_TOKEN}` }, authorization: env.VERCEL_API_TOKEN }) });
-    await assert.rejects(authService.getDomain(hostname), (error) => error.status === status && !JSON.stringify(error.sanitizedProviderBody).includes(env.VERCEL_API_TOKEN));
+    await assert.rejects(authService.getDomain(hostname), (error) => {
+      assert.strictEqual(error.status, status);
+      assert.strictEqual(error.requestOrigin, "https://api.vercel.com");
+      assert.strictEqual(error.vercelEndpoint.includes("{project_id}"), true);
+      assert.strictEqual(error.vercelEndpoint.includes(env.VERCEL_PROJECT_ID), false);
+      assert.strictEqual(JSON.stringify(error.sanitizedProviderBody).includes(env.VERCEL_API_TOKEN), false);
+      assert.strictEqual(JSON.stringify(error.sanitizedProviderBody).includes(env.VERCEL_PROJECT_ID), false);
+      assert.strictEqual(JSON.stringify(error.sanitizedProviderBody).includes(env.VERCEL_TEAM_ID), false);
+      return true;
+    });
   }
   const missingService = createVercelDomainService({ env, fetchImpl: async () => response(404, { error: { code: "not_found" } }) });
   assert.strictEqual(await missingService.getDomain(hostname), null);

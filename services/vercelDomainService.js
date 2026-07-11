@@ -16,6 +16,37 @@ function readConfig(env = process.env) {
   };
 }
 
+function isValidIdentifier(value) {
+  return /^[A-Za-z0-9_-]+$/.test(String(value || ""));
+}
+
+function isValidToken(value) {
+  const token = String(value || "");
+  return Boolean(token) && token.length <= 2048 && !/[\s\u0000-\u001F\u007F]/.test(token);
+}
+
+function getVercelStartupValidation(env = process.env, fetchImpl = global.fetch) {
+  const config = readConfig(env);
+  const dryRunValueValid = config.dryRaw === "" || config.dryRaw === "true" || config.dryRaw === "false";
+  const fetchAvailable = typeof fetchImpl === "function";
+  const credentialsValid = isValidToken(config.token) && isValidIdentifier(config.projectId) && (!config.teamId || isValidIdentifier(config.teamId));
+  return {
+    tokenConfigured: Boolean(config.token),
+    projectIdConfigured: Boolean(config.projectId),
+    teamIdConfigured: Boolean(config.teamId),
+    dryRunEnabled: config.dryRun,
+    dryRunValueValid,
+    fetchAvailable,
+    ready: fetchAvailable && dryRunValueValid && (config.dryRun || credentialsValid),
+  };
+}
+
+function logVercelStartupValidation(env = process.env) {
+  const validation = getVercelStartupValidation(env);
+  console[validation.ready ? "info" : "warn"]("[vercel-domain-config]", validation);
+  return validation;
+}
+
 function sanitize(value, secrets = [], depth = 0) {
   if (depth > 5) return "[truncated]";
   if (value == null || typeof value === "boolean" || typeof value === "number") return value;
@@ -37,6 +68,9 @@ function normalizeVercelError(error) {
 function createVercelDomainService({ fetchImpl = global.fetch, env = process.env, timeoutMs = 12_000 } = {}) {
   const config = readConfig(env);
   function assertConfig() {
+    if (config.token && !isValidToken(config.token)) { const error = new Error("Format VERCEL_API_TOKEN tidak valid"); error.status = 503; throw error; }
+    if (config.projectId && !isValidIdentifier(config.projectId)) { const error = new Error("Format VERCEL_PROJECT_ID tidak valid"); error.status = 503; throw error; }
+    if (config.teamId && !isValidIdentifier(config.teamId)) { const error = new Error("Format VERCEL_TEAM_ID tidak valid"); error.status = 503; throw error; }
     if (!config.dryRun && (!config.token || !config.projectId)) { const error = new Error("Konfigurasi Vercel belum lengkap"); error.status = 503; throw error; }
     if (typeof fetchImpl !== "function") { const error = new Error("Global fetch tidak tersedia"); error.status = 503; throw error; }
   }
@@ -45,6 +79,9 @@ function createVercelDomainService({ fetchImpl = global.fetch, env = process.env
   async function request(path, options = {}, { allow404 = false } = {}) {
     assertConfig();
     const url = new URL(`${API_BASE}${path}`);
+    const safePath = url.pathname
+      .replace(encodeURIComponent(config.projectId), "{project_id}");
+    const safeEndpoint = safePath || "/";
     const controller = new AbortController(); let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
     let response;
@@ -52,12 +89,18 @@ function createVercelDomainService({ fetchImpl = global.fetch, env = process.env
       response = await fetchImpl(url.href, { ...options, signal: controller.signal, headers: { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json" } });
     } catch (cause) {
       const error = new Error("Vercel network request failed", { cause });
-      error.timedOut = timedOut || cause?.name === "AbortError"; error.status = null; error.providerCode = cause?.code || null; throw error;
+      error.timedOut = timedOut || cause?.name === "AbortError"; error.aborted = controller.signal.aborted;
+      error.status = null; error.providerCode = cause?.code || null; error.vercelEndpoint = safeEndpoint;
+      error.requestOrigin = url.origin; error.networkErrorName = cause?.name || null;
+      error.networkErrorCode = cause?.code || null;
+      error.safeCauseMessage = sanitize(cause?.message || null, [config.token, config.projectId, config.teamId]);
+      throw error;
     } finally { clearTimeout(timer); }
     let body = null; try { body = await response.json(); } catch { body = null; }
     if (allow404 && response.status === 404) return null;
     if (!response.ok) {
       const error = new Error("Vercel API request failed"); error.status = response.status;
+      error.vercelEndpoint = safeEndpoint; error.requestOrigin = url.origin;
       error.providerCode = body?.error?.code || null; error.providerMessage = sanitize(body?.error?.message || null, [config.token, config.projectId, config.teamId]);
       error.sanitizedProviderBody = sanitize(body, [config.token, config.projectId, config.teamId]); throw error;
     }
@@ -108,4 +151,7 @@ function createVercelDomainService({ fetchImpl = global.fetch, env = process.env
   return { addDomain, verifyDomain, getDomain, removeDomain, getDomainConfig, checkSsl, normalizeVercelError, config: { dryRun: config.dryRun } };
 }
 
-module.exports = { ...createVercelDomainService(), createVercelDomainService, normalizeVercelError };
+module.exports = {
+  ...createVercelDomainService(), createVercelDomainService, normalizeVercelError,
+  getVercelStartupValidation, logVercelStartupValidation,
+};

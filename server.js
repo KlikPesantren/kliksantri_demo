@@ -34,6 +34,9 @@ const { runStartupSchemaAudit } =
 const { logCloudflareStartupValidation } =
   require("./services/cloudflareDnsService");
 
+const { logVercelStartupValidation } =
+  require("./services/vercelDomainService");
+
 // =====================
 // ROUTES
 // =====================
@@ -709,6 +712,7 @@ server.listen(
     console.log("HOST: 0.0.0.0 (all interfaces)");
 
     logCloudflareStartupValidation();
+    logVercelStartupValidation();
 
     runStartupSchemaAudit().catch((err) => {
 
