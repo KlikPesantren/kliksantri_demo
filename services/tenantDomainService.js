@@ -1,4 +1,5 @@
 const pool = require("../db");
+const cloudflareDnsService = require("./cloudflareDnsService");
 
 const ROOT_DOMAIN = "klikpesantren.com";
 const RESERVED_SLUGS = new Set([
@@ -156,9 +157,156 @@ async function regenerateDraftDomain(tenantId, platformUser = null, db = pool) {
   return rows[0] || createDraftDomainForTenant(tenant, platformUser, db);
 }
 
+async function writeDnsAudit(client, domain, actorUserId, eventType, outcome, detail = {}) {
+  await client.query(
+    `INSERT INTO audit_logs (device_id, event_type, detail, tenant_id)
+     VALUES ($1, $2, $3, $4)`,
+    [
+      `platform:${actorUserId || "system"}`,
+      eventType,
+      JSON.stringify({ domain_id: domain.id, hostname: domain.hostname, outcome, actor_user_id: actorUserId || null, ...detail }),
+      domain.tenant_id,
+    ]
+  );
+}
+
+async function withLockedDomain(domainId, db, operation) {
+  const client = await db.connect();
+  let committed = false;
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      `SELECT td.*, t.slug, t.status AS tenant_status
+       FROM tenant_domains td JOIN tenants t ON t.id = td.tenant_id
+       WHERE td.id = $1 FOR UPDATE OF td`,
+      [domainId]
+    );
+    const domain = rows[0];
+    if (!domain) { const error = new Error("Domain tenant tidak ditemukan"); error.status = 404; throw error; }
+    validateTenantHostname(domain.hostname);
+    const result = await operation(client, domain);
+    await client.query("COMMIT");
+    committed = true;
+    return result;
+  } catch (error) {
+    if (!committed) {
+      try { await client.query("ROLLBACK"); } catch { /* rollback best effort */ }
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function setDnsState(client, domainId, state, actorUserId, metadata = {}) {
+  const { rows } = await client.query(
+    `UPDATE tenant_domains
+     SET dns_status = $1,
+         overall_status = CASE WHEN overall_status = 'disabled' THEN 'disabled' ELSE $2 END,
+         last_error = $3,
+         metadata = COALESCE(metadata, '{}'::jsonb) || $4::jsonb,
+         updated_by = $5,
+         updated_at = NOW()
+     WHERE id = $6 RETURNING *`,
+    [state.dnsStatus, state.overallStatus, state.lastError || null, JSON.stringify(metadata), actorUserId || null, domainId]
+  );
+  return rows[0];
+}
+
+async function provisionDnsForTenantDomain(domainId, actorUserId, options = {}) {
+  const db = options.db || pool;
+  const dns = options.dnsService || cloudflareDnsService;
+  const outcome = await withLockedDomain(domainId, db, async (client, domain) => {
+    if (domain.overall_status === "disabled") {
+      const error = new Error("Domain disabled tidak dapat diprovision"); error.status = 409; throw error;
+    }
+    if (domain.dns_status === "creating") {
+      const error = new Error("Provisioning DNS sedang berjalan"); error.status = 409; throw error;
+    }
+    await setDnsState(client, domain.id, { dnsStatus: "creating", overallStatus: "provisioning" }, actorUserId);
+    await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_provision_started", "started");
+    try {
+      const record = await dns.createTenantCname(domain.hostname);
+      if (record.dryRun) {
+        const updated = await setDnsState(client, domain.id, { dnsStatus: "pending", overallStatus: "draft" }, actorUserId, {
+          cloudflare: { dry_run: true, target: dns.config.target, checked_at: new Date().toISOString() },
+        });
+        await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_provision_success", "dry_run");
+        return { data: updated };
+      }
+      const updated = await setDnsState(client, domain.id, { dnsStatus: "active", overallStatus: domain.overall_status === "active" ? "active" : "provisioning" }, actorUserId, {
+        cloudflare: { record_id: record.id, target: dns.config.target, dry_run: false, reconciled_at: new Date().toISOString() },
+      });
+      await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_provision_success", record.reused ? "reused" : "created");
+      return { data: updated };
+    } catch (error) {
+      const safeError = dns.normalizeCloudflareError(error);
+      const updated = await setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: safeError }, actorUserId);
+      await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_provision_failed", "failed", { error: safeError });
+      return { data: updated, error: safeError, status: error.status || 502 };
+    }
+  });
+  if (outcome.error) { const error = new Error(outcome.error); error.status = outcome.status; error.domain = outcome.data; throw error; }
+  return outcome.data;
+}
+
+async function retryDnsProvisioning(domainId, actorUserId, options = {}) {
+  return provisionDnsForTenantDomain(domainId, actorUserId, options);
+}
+
+async function rollbackDnsProvisioning(domainId, actorUserId, options = {}) {
+  const db = options.db || pool;
+  const dns = options.dnsService || cloudflareDnsService;
+  const outcome = await withLockedDomain(domainId, db, async (client, domain) => {
+    try {
+      const result = await dns.deleteTenantDnsRecord(domain.hostname);
+      const updated = await setDnsState(client, domain.id, { dnsStatus: "pending", overallStatus: "draft" }, actorUserId, {
+        cloudflare: { dry_run: Boolean(result.dryRun), target: dns.config.target, record_id: null, rolled_back_at: new Date().toISOString() },
+      });
+      await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_rollback_success", result.dryRun ? "dry_run" : result.missing ? "already_missing" : "deleted");
+      return { data: updated };
+    } catch (error) {
+      const safeError = dns.normalizeCloudflareError(error);
+      const updated = await setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: safeError }, actorUserId);
+      await writeDnsAudit(client, domain, actorUserId, "platform.tenant_domain.dns_rollback_failed", "failed", { error: safeError });
+      return { data: updated, error: safeError, status: error.status || 502 };
+    }
+  });
+  if (outcome.error) { const error = new Error(outcome.error); error.status = outcome.status; error.domain = outcome.data; throw error; }
+  return outcome.data;
+}
+
+async function reconcileDnsStatus(domainId, actorUserId, options = {}) {
+  const db = options.db || pool;
+  const dns = options.dnsService || cloudflareDnsService;
+  return withLockedDomain(domainId, db, async (client, domain) => {
+    try {
+      const verification = await dns.verifyTenantDnsRecord(domain.hostname);
+      if (verification.dryRun) {
+        return setDnsState(client, domain.id, { dnsStatus: "pending", overallStatus: "draft" }, actorUserId, {
+          cloudflare: { dry_run: true, target: dns.config.target, checked_at: new Date().toISOString() },
+        });
+      }
+      if (!verification.exists) {
+        return setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: "Record DNS tenant tidak ditemukan" }, actorUserId);
+      }
+      if (!verification.matches) {
+        return setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: "Record DNS sudah ada dengan target berbeda" }, actorUserId);
+      }
+      return setDnsState(client, domain.id, { dnsStatus: "active", overallStatus: domain.overall_status === "active" ? "active" : "provisioning" }, actorUserId, {
+        cloudflare: { record_id: verification.record.id, target: dns.config.target, dry_run: false, reconciled_at: new Date().toISOString() },
+      });
+    } catch (error) {
+      const safeError = dns.normalizeCloudflareError(error);
+      return setDnsState(client, domain.id, { dnsStatus: "failed", overallStatus: "failed", lastError: safeError }, actorUserId);
+    }
+  });
+}
+
 module.exports = {
   RESERVED_SLUGS, buildTenantHostname, validateTenantHostname, ensureReservedSlug,
   createDraftDomainForTenant, getTenantDomainByTenantId, listTenantDomains,
   updateDomainStatuses, regenerateDraftDomain, checkHostnameAvailability,
+  provisionDnsForTenantDomain, retryDnsProvisioning, rollbackDnsProvisioning,
+  reconcileDnsStatus,
 };
-

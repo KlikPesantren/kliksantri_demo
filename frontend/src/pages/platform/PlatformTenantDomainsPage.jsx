@@ -4,6 +4,8 @@ import platformApi from "../../services/platformApi";
 import Badge from "../../components/ui/Badge";
 import Card from "../../components/ui/Card";
 import PlatformButton from "../../components/platform/PlatformButton";
+import Modal from "../../components/Modal";
+import { RESERVED_SUBDOMAINS, ROOT_DOMAIN } from "../../utils/hostnameRouting";
 
 const STATUS_OPTIONS = {
   dns_status: ["pending", "creating", "active", "failed"],
@@ -19,11 +21,20 @@ function statusVariant(status) {
   return "neutral";
 }
 
+function isProvisionableHostname(hostname) {
+  const normalized = String(hostname || "").toLowerCase();
+  const suffix = `.${ROOT_DOMAIN}`;
+  if (!normalized.endsWith(suffix)) return false;
+  const slug = normalized.slice(0, -suffix.length);
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && !RESERVED_SUBDOMAINS.has(slug);
+}
+
 export default function PlatformTenantDomainsPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyTenant, setBusyTenant] = useState(null);
+  const [confirmation, setConfirmation] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -48,11 +59,22 @@ export default function PlatformTenantDomainsPage() {
     platformApi.patch(`/platform/tenants/${row.tenant_id}/domain/status`, { [field]: value })
   );
 
+  const runDnsAction = (row, action) => run(row.tenant_id, () =>
+    platformApi.post(`/platform/tenant-domains/${row.id}/${action}-dns`)
+  );
+
+  const confirmDnsAction = async () => {
+    if (!confirmation) return;
+    const { row, action } = confirmation;
+    setConfirmation(null);
+    await runDnsAction(row, action);
+  };
+
   return (
     <div>
       <div style={styles.header}>
         <div><p style={styles.eyebrow}>Platform Console</p><h1 style={styles.title}>Tenant Domains</h1>
-          <p style={styles.subtitle}>Draft dan status domain tenant. Sprint ini tidak melakukan provisioning DNS atau Vercel.</p></div>
+          <p style={styles.subtitle}>Provisioning DNS Cloudflare per tenant. Integrasi Vercel belum diaktifkan.</p></div>
         <PlatformButton variant="secondary" onClick={load}>Refresh</PlatformButton>
       </div>
       {error && <div style={styles.error}>{error}</div>}
@@ -77,6 +99,18 @@ export default function PlatformTenantDomainsPage() {
                     {!row.id ? <button style={styles.action} disabled={busyTenant === row.tenant_id} onClick={() => run(row.tenant_id, () => platformApi.post(`/platform/tenants/${row.tenant_id}/domain/draft`))}>Generate draft</button>
                       : <button style={styles.action} disabled={busyTenant === row.tenant_id} onClick={() => run(row.tenant_id, () => platformApi.post(`/platform/tenants/${row.tenant_id}/domain/regenerate`))}>Regenerate</button>}
                     {row.hostname && <button style={styles.action} onClick={() => navigator.clipboard.writeText(row.hostname)}>Copy</button>}
+                    {row.id && row.overall_status !== "disabled" && row.dns_status !== "creating" && row.dns_status !== "active" && row.dns_status !== "failed" && isProvisionableHostname(row.hostname) && (
+                      <button style={styles.primaryAction} onClick={() => setConfirmation({ row, action: "provision" })}>Provision DNS</button>
+                    )}
+                    {row.id && row.dns_status === "failed" && row.overall_status !== "disabled" && isProvisionableHostname(row.hostname) && (
+                      <button style={styles.primaryAction} onClick={() => runDnsAction(row, "retry")}>Retry DNS</button>
+                    )}
+                    {row.id && row.dns_status !== "creating" && isProvisionableHostname(row.hostname) && (
+                      <button style={styles.action} onClick={() => runDnsAction(row, "reconcile")}>Reconcile</button>
+                    )}
+                    {row.id && row.dns_status === "active" && isProvisionableHostname(row.hostname) && (
+                      <button style={styles.dangerAction} onClick={() => setConfirmation({ row, action: "rollback" })}>Rollback DNS</button>
+                    )}
                     {row.hostname && row.overall_status === "active" && <a style={styles.link} href={`https://${row.hostname}`} target="_blank" rel="noreferrer">Buka</a>}
                   </div></td>
                 </tr>
@@ -86,6 +120,24 @@ export default function PlatformTenantDomainsPage() {
           </table>
         </div>
       </Card>
+      <Modal
+        open={Boolean(confirmation)}
+        title={confirmation?.action === "rollback" ? "Konfirmasi Rollback DNS" : "Konfirmasi Provision DNS"}
+        onClose={() => setConfirmation(null)}
+      >
+        <p style={styles.modalText}>
+          {confirmation?.action === "rollback"
+            ? "Record CNAME tenant akan dihapus dari Cloudflare. Portal tenant dapat berhenti dapat diakses."
+            : "Record CNAME tenant akan dibuat di Cloudflare menggunakan target backend yang telah dikonfigurasi."}
+        </p>
+        <code style={styles.modalHostname}>{confirmation?.row?.hostname}</code>
+        <div style={styles.modalActions}>
+          <PlatformButton variant="secondary" onClick={() => setConfirmation(null)}>Batal</PlatformButton>
+          <PlatformButton variant={confirmation?.action === "rollback" ? "danger" : "primary"} onClick={confirmDnsAction}>
+            {confirmation?.action === "rollback" ? "Rollback DNS" : "Provision DNS"}
+          </PlatformButton>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -100,6 +152,9 @@ const styles = {
   td: { padding: 14, verticalAlign: "top", color: "var(--text-primary)", borderBottom: "1px solid var(--border)" },
   slug: { marginTop: 4, color: "var(--text-muted)", fontSize: 12 }, select: { maxWidth: 110, padding: 6, border: "1px solid var(--border)", borderRadius: 7, background: "var(--surface)" },
   actions: { display: "flex", gap: 8, flexWrap: "wrap" }, action: { border: "1px solid var(--border)", borderRadius: 7, padding: "6px 9px", background: "var(--surface)", cursor: "pointer", color: "var(--text-primary)" },
+  primaryAction: { border: 0, borderRadius: 7, padding: "7px 10px", background: "#166534", cursor: "pointer", color: "#fff", fontWeight: 700 },
+  dangerAction: { border: 0, borderRadius: 7, padding: "7px 10px", background: "#dc2626", cursor: "pointer", color: "#fff", fontWeight: 700 },
+  modalText: { color: "var(--text-secondary)", lineHeight: 1.6 }, modalHostname: { display: "block", padding: 12, borderRadius: 8, background: "var(--surface-muted)" },
+  modalActions: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, flexWrap: "wrap" },
   link: { color: "var(--primary)", fontWeight: 700, textDecoration: "none", padding: "6px 0" }, empty: { padding: 40, textAlign: "center", color: "var(--text-secondary)" },
 };
-

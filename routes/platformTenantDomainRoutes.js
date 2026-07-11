@@ -3,6 +3,8 @@ const platformAuthMiddleware = require("../middleware/platformAuthMiddleware");
 const {
   createDraftDomainForTenant, getTenantDomainByTenantId, listTenantDomains,
   updateDomainStatuses, regenerateDraftDomain,
+  provisionDnsForTenantDomain, retryDnsProvisioning, rollbackDnsProvisioning,
+  reconcileDnsStatus,
 } = require("../services/tenantDomainService");
 
 const router = express.Router();
@@ -19,6 +21,22 @@ const handle = (handler) => async (req, res) => {
   catch (error) { res.status(error.status || (error.code === "23505" ? 409 : 500)).json({ success: false, error: error.message }); }
 };
 
+const dnsRateBuckets = new Map();
+function dnsProvisionRateLimit(req, res, next) {
+  const key = String(req.platformUser.id);
+  const now = Date.now();
+  const current = dnsRateBuckets.get(key);
+  const bucket = !current || now - current.startedAt >= 60_000
+    ? { startedAt: now, count: 0 }
+    : current;
+  bucket.count += 1;
+  dnsRateBuckets.set(key, bucket);
+  if (bucket.count > 10) {
+    return res.status(429).json({ success: false, error: "Terlalu banyak operasi DNS. Coba lagi sebentar." });
+  }
+  next();
+}
+
 router.get("/tenant-domains", handle(async (_req, res) => {
   res.json({ success: true, data: await listTenantDomains() });
 }));
@@ -34,6 +52,19 @@ router.patch("/tenants/:tenantId/domain/status", handle(async (req, res) => {
 }));
 router.post("/tenants/:tenantId/domain/regenerate", handle(async (req, res) => {
   res.json({ success: true, data: await regenerateDraftDomain(req.params.tenantId, req.platformUser) });
+}));
+
+router.post("/tenant-domains/:domainId/provision-dns", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await provisionDnsForTenantDomain(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/retry-dns", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await retryDnsProvisioning(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/rollback-dns", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await rollbackDnsProvisioning(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/reconcile-dns", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await reconcileDnsStatus(req.params.domainId, req.platformUser.id) });
 }));
 
 module.exports = router;
