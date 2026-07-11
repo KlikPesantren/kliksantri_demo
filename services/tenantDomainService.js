@@ -247,15 +247,17 @@ function calculateOverallStatus(domain) {
   return "provisioning";
 }
 
+const SET_DOMAIN_LIFECYCLE_SQL = `UPDATE tenant_domains SET dns_status = $1, vercel_status = $2, ssl_status = $3,
+   overall_status = $4::varchar(30), last_error = $5,
+   metadata = COALESCE(metadata, '{}'::jsonb) || $6::jsonb,
+   activated_at = CASE WHEN $4::varchar(30) = 'active' THEN COALESCE(activated_at, NOW()) ELSE activated_at END,
+   updated_by = $7, updated_at = NOW() WHERE id = $8 RETURNING *`;
+
 async function setDomainLifecycle(client, domain, patch, actorUserId, metadata = {}) {
   const next = { ...domain, ...patch };
   next.overall_status = calculateOverallStatus(next);
   const { rows } = await client.query(
-    `UPDATE tenant_domains SET dns_status = $1, vercel_status = $2, ssl_status = $3,
-       overall_status = $4, last_error = $5,
-       metadata = COALESCE(metadata, '{}'::jsonb) || $6::jsonb,
-       activated_at = CASE WHEN $4 = 'active' THEN COALESCE(activated_at, NOW()) ELSE activated_at END,
-       updated_by = $7, updated_at = NOW() WHERE id = $8 RETURNING *`,
+    SET_DOMAIN_LIFECYCLE_SQL,
     [next.dns_status, next.vercel_status, next.ssl_status, next.overall_status, patch.last_error ?? null, JSON.stringify(metadata), actorUserId || null, domain.id]
   );
   const updated = { ...rows[0], tenant_status: domain.tenant_status };
@@ -485,4 +487,5 @@ module.exports = {
   calculateOverallStatus, provisionVercelForTenantDomain, retryVercelProvisioning,
   reconcileVercelStatus, rollbackVercelProvisioning, reconcileSslStatus,
   provisionFullTenantDomain, syncTenantDomainDisabledStatus,
+  SET_DOMAIN_LIFECYCLE_SQL,
 };

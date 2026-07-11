@@ -1,12 +1,22 @@
 const assert = require("assert");
 const { createVercelDomainService, getVercelStartupValidation } = require("../services/vercelDomainService");
-const { calculateOverallStatus, provisionFullTenantDomain, retryVercelProvisioning, validateTenantHostname } = require("../services/tenantDomainService");
+const {
+  calculateOverallStatus,
+  provisionFullTenantDomain,
+  retryVercelProvisioning,
+  validateTenantHostname,
+  SET_DOMAIN_LIFECYCLE_SQL,
+} = require("../services/tenantDomainService");
 
 const env = { VERCEL_API_TOKEN: "test-secret", VERCEL_PROJECT_ID: "project-test", VERCEL_TEAM_ID: "team-test", VERCEL_DOMAIN_DRY_RUN: "false" };
 const hostname = "anwarulhuda.klikpesantren.com";
 const response = (status, body) => ({ ok: status >= 200 && status < 300, status, async json() { return body; } });
 
 (async () => {
+  const overallStatusPlaceholders = SET_DOMAIN_LIFECYCLE_SQL.match(/\$4(?:::varchar\(30\))?/g) || [];
+  assert.deepStrictEqual(overallStatusPlaceholders, ["$4::varchar(30)", "$4::varchar(30)"]);
+  assert.strictEqual(SET_DOMAIN_LIFECYCLE_SQL.includes("overall_status = $4::varchar(30)"), true);
+  assert.strictEqual(SET_DOMAIN_LIFECYCLE_SQL.includes("CASE WHEN $4::varchar(30) = 'active'"), true);
   assert.deepStrictEqual(getVercelStartupValidation(env), {
     tokenConfigured: true, projectIdConfigured: true, teamIdConfigured: true,
     dryRunEnabled: false, dryRunValueValid: true, fetchAvailable: true, ready: true,
