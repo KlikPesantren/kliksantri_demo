@@ -72,6 +72,9 @@ function PlatformTenantDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [tenant, setTenant] = useState(null);
+  const [tenantDomain, setTenantDomain] = useState(null);
+  const [domainLoading, setDomainLoading] = useState(false);
+  const [domainError, setDomainError] = useState("");
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -136,6 +139,35 @@ function PlatformTenantDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const loadTenantDomain = useCallback(async () => {
+    setDomainLoading(true);
+    setDomainError("");
+    try {
+      const response = await platformApi.get(`/platform/tenants/${id}/domain`);
+      setTenantDomain(response.data?.data || null);
+    } catch (err) {
+      if (err.response?.status === 404) setTenantDomain(null);
+      else setDomainError(err.response?.data?.error || "Gagal memuat domain tenant");
+    } finally {
+      setDomainLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { loadTenantDomain(); }, [loadTenantDomain]);
+
+  const generateTenantDomain = async () => {
+    setDomainLoading(true);
+    setDomainError("");
+    try {
+      const response = await platformApi.post(`/platform/tenants/${id}/domain/draft`);
+      setTenantDomain(response.data?.data || null);
+    } catch (err) {
+      setDomainError(err.response?.data?.error || "Gagal membuat draft domain");
+    } finally {
+      setDomainLoading(false);
+    }
+  };
 
   const loadFeatures = useCallback(async () => {
     setFeaturesLoading(true);
@@ -597,6 +629,34 @@ function PlatformTenantDetailPage() {
             Alasan suspend: {tenant.suspended_reason}
           </p>
         )}
+        </Card>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <Card padding="md" shadow="card" radius="xl">
+          <div style={sectionHeaderRowStyle}>
+            <SectionHeading spacing="first" variant="divider">Domain Tenant</SectionHeading>
+            {!tenantDomain && !domainLoading && (
+              <PlatformButton variant="secondary" size="sm" onClick={generateTenantDomain}>Generate Draft</PlatformButton>
+            )}
+          </div>
+          {domainError && <div style={errorBoxStyle}>{domainError}</div>}
+          {domainLoading ? <p style={featureHintStyle}>Memuat domain tenant...</p> : tenantDomain ? (
+            <div style={infoGridStyle}>
+              <InfoItem label="Hostname" value={tenantDomain.hostname} />
+              <InfoItem label="DNS" value={tenantDomain.dns_status} />
+              <InfoItem label="Vercel" value={tenantDomain.vercel_status} />
+              <InfoItem label="SSL" value={tenantDomain.ssl_status} />
+              <InfoItem label="Overall" value={tenantDomain.overall_status} />
+              <div>
+                <div style={infoLabelStyle}>Action</div>
+                <PlatformButton variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(tenantDomain.hostname)}>Copy Hostname</PlatformButton>
+              </div>
+            </div>
+          ) : <p style={featureHintStyle}>Draft domain belum dibuat.</p>}
+          {tenantDomain?.overall_status !== "active" && (
+            <p style={domainWarningStyle}>DNS dan domain Vercel belum diprovision. Status di halaman ini masih fondasi administratif Sprint 1.</p>
+          )}
         </Card>
       </div>
 
@@ -1299,6 +1359,16 @@ const errorBoxStyle = {
   borderRadius: "var(--radius-sm)",
   background: "var(--danger-subtle)",
   color: "var(--danger)",
+  fontWeight: 600,
+};
+
+const domainWarningStyle = {
+  margin: "16px 0 0",
+  padding: "10px 12px",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--warning-subtle)",
+  color: "#92400e",
+  fontSize: "13px",
   fontWeight: 600,
 };
 

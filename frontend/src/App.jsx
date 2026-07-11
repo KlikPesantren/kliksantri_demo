@@ -49,6 +49,7 @@ import PlatformLoginPage from "./pages/platform/PlatformLoginPage";
 import PlatformProtectedRoute from "./components/platform/PlatformProtectedRoute";
 import PlatformLayout from "./components/platform/PlatformLayout";
 import PlatformTenantsPage from "./pages/platform/PlatformTenantsPage";
+import PlatformTenantDomainsPage from "./pages/platform/PlatformTenantDomainsPage";
 import PlatformTenantDetailPage from "./pages/platform/PlatformTenantDetailPage";
 import PlatformDashboardPage from "./pages/platform/PlatformDashboardPage";
 import PlatformConsolePlaceholderPage from "./pages/platform/PlatformConsolePlaceholderPage";
@@ -180,6 +181,7 @@ function App() {
           <Route index element={<PlatformDashboardPage />} />
           <Route path="dashboard" element={<PlatformDashboardPage />} />
           <Route path="tenants" element={<PlatformTenantsPage />} />
+          <Route path="tenant-domains" element={<PlatformTenantDomainsPage />} />
           <Route path="tenants/new" element={<PlatformTenantsPage initialCreate />} />
           <Route
             path="tenants/health"

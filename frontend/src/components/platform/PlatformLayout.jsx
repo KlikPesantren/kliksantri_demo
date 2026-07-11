@@ -474,6 +474,7 @@ function PlatformLayout() {
               items={[
                 { to: "/platform/tenants", label: "Semua Tenant", end: true },
                 { to: "/platform/tenants/health", label: "Tenant Health" },
+                { to: "/platform/tenant-domains", label: "Tenant Domains" },
               ]}
               onNavigate={() => setSidebarOpen(false)}
             />

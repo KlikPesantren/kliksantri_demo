@@ -44,6 +44,9 @@ const platformAuthRoutes =
 const platformTenantRoutes =
   require("./routes/platformTenantRoutes");
 
+const platformTenantDomainRoutes =
+  require("./routes/platformTenantDomainRoutes");
+
 const platformStatsRoutes =
   require("./routes/platformStatsRoutes");
 
@@ -301,6 +304,11 @@ app.use(
 app.use(
   "/platform/tenants",
   platformTenantRoutes
+);
+
+app.use(
+  "/platform",
+  platformTenantDomainRoutes
 );
 
 app.use(
