@@ -7,7 +7,9 @@ const {
   reconcileDnsStatus,
   provisionVercelForTenantDomain, retryVercelProvisioning, rollbackVercelProvisioning,
   reconcileVercelStatus, reconcileSslStatus, provisionFullTenantDomain,
+  getTenantDomainById, reconcileCustomDomain,
 } = require("../services/tenantDomainService");
+const { createCustomTenantDomain } = require("../services/customTenantDomainService");
 
 const router = express.Router();
 router.use(platformAuthMiddleware);
@@ -41,6 +43,14 @@ function dnsProvisionRateLimit(req, res, next) {
 
 router.get("/tenant-domains", handle(async (_req, res) => {
   res.json({ success: true, data: await listTenantDomains() });
+}));
+router.post("/tenant-domains/custom", dnsProvisionRateLimit, handle(async (req, res) => {
+  const created = await createCustomTenantDomain(req.body || {}, req.platformUser.id);
+  let data = created;
+  let provisioningError = null;
+  try { data = await provisionVercelForTenantDomain(created.id, req.platformUser.id); }
+  catch (error) { provisioningError = error.message; data = await getTenantDomainById(created.id) || created; }
+  res.status(201).json({ success: true, data, idempotent: Boolean(created.idempotent), provisioning_error: provisioningError });
 }));
 router.get("/tenants/:tenantId/domain", handle(async (req, res) => {
   const data = await getTenantDomainByTenantId(req.params.tenantId);
@@ -85,6 +95,9 @@ router.post("/tenant-domains/:domainId/reconcile-ssl", dnsProvisionRateLimit, ha
 }));
 router.post("/tenant-domains/:domainId/provision-all", dnsProvisionRateLimit, handle(async (req, res) => {
   res.json({ success: true, data: await provisionFullTenantDomain(req.params.domainId, req.platformUser.id) });
+}));
+router.post("/tenant-domains/:domainId/reconcile", dnsProvisionRateLimit, handle(async (req, res) => {
+  res.json({ success: true, data: await reconcileCustomDomain(req.params.domainId, req.platformUser.id) });
 }));
 
 module.exports = router;

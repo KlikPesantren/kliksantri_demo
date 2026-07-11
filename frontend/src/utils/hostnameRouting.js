@@ -15,11 +15,13 @@ export const RESERVED_SUBDOMAINS = new Set([
 
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 const TENANT_SLUG_PATTERN = /^[a-z0-9-]+$/;
+const EXTERNAL_HOSTNAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 function normalizeHostname(hostname) {
   return String(hostname || "")
     .trim()
     .toLowerCase()
+    .replace(/:\d+$/, "")
     .replace(/^\[|\]$/g, "")
     .replace(/\.$/, "");
 }
@@ -54,7 +56,10 @@ export function resolveHostname(hostname) {
   }
 
   const domainSuffix = `.${ROOT_DOMAIN}`;
-  if (!normalized.endsWith(domainSuffix)) return result;
+  if (!normalized.endsWith(domainSuffix)) {
+    if (EXTERNAL_HOSTNAME_PATTERN.test(normalized)) return { ...result, type: "custom-domain" };
+    return result;
+  }
 
   const subdomain = normalized.slice(0, -domainSuffix.length);
   if (!subdomain || subdomain.indexOf(".") !== -1) return result;

@@ -3,10 +3,14 @@ import { RESERVED_SUBDOMAINS, ROOT_DOMAIN } from "./hostnameRouting.js";
 export function normalizeTenantDomainHostname(hostname) {
   const normalized = String(hostname || "").trim().toLowerCase();
   if (!normalized || /\s/.test(normalized) || normalized.includes("://")) return null;
+  if (/[/?#@:]/.test(normalized) || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) return null;
+  const labels = normalized.split(".");
+  if (labels.length < 2 || labels.some((label) => !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))) return null;
   const suffix = `.${ROOT_DOMAIN}`;
-  if (!normalized.endsWith(suffix)) return null;
-  const slug = normalized.slice(0, -suffix.length);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || RESERVED_SUBDOMAINS.has(slug)) return null;
+  if (normalized.endsWith(suffix)) {
+    const slug = normalized.slice(0, -suffix.length);
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || RESERVED_SUBDOMAINS.has(slug)) return null;
+  }
   return normalized;
 }
 

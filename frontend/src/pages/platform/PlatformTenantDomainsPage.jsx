@@ -37,6 +37,8 @@ export default function PlatformTenantDomainsPage() {
   const [busyTenant, setBusyTenant] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customForm, setCustomForm] = useState({ tenantId: "", hostname: "" });
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -94,13 +96,26 @@ export default function PlatformTenantDomainsPage() {
     }
     window.setTimeout(() => setCopyFeedback(""), 2200);
   };
+  const copyText = async (value) => {
+    try { await navigator.clipboard.writeText(value); setCopyFeedback("Nilai berhasil disalin"); }
+    catch { setCopyFeedback("Nilai tidak dapat disalin"); }
+    window.setTimeout(() => setCopyFeedback(""), 2200);
+  };
+  const submitCustomDomain = async (event) => {
+    event.preventDefault(); setError("");
+    try {
+      await platformApi.post("/platform/tenant-domains/custom", { tenantId: Number(customForm.tenantId), hostname: customForm.hostname });
+      setCustomOpen(false); setCustomForm({ tenantId: "", hostname: "" }); await load();
+    } catch (err) { setError(err.response?.data?.error || "Gagal menambahkan custom domain"); }
+  };
+  const tenantOptions = [...new Map(rows.filter((row) => row.tenant_id).map((row) => [row.tenant_id, row.tenant_nama])).entries()];
 
   return (
     <div>
       <div style={styles.header}>
         <div><p style={styles.eyebrow}>Platform Console</p><h1 style={styles.title}>Tenant Domains</h1>
           <p style={styles.subtitle}>Kelola provisioning DNS Cloudflare, domain Vercel, dan SSL tenant.</p></div>
-        <PlatformButton variant="secondary" onClick={load}>Refresh</PlatformButton>
+        <div style={styles.actions}><PlatformButton onClick={() => setCustomOpen(true)}>Tambah Custom Domain</PlatformButton><PlatformButton variant="secondary" onClick={load}>Refresh</PlatformButton></div>
       </div>
       {error && <div style={styles.error}>{error}</div>}
       {copyFeedback && <div role="status" style={styles.success}>{copyFeedback}</div>}
@@ -111,10 +126,20 @@ export default function PlatformTenantDomainsPage() {
             <tbody>
               {loading ? <tr><td colSpan="8" style={styles.empty}>Memuat domain tenant...</td></tr> : rows.map((row) => {
                 const activeUrl = getActiveTenantUrl(row);
+                const isCustom = row.domain_type === "custom_domain" || row.domain_type === "custom";
+                const instructions = row.metadata?.dns_instructions?.records || [];
                 return (
-                <tr key={row.tenant_id}>
+                <tr key={row.id ? `domain-${row.id}` : `tenant-${row.tenant_id}`}>
                   <td style={styles.td}><strong>{row.tenant_nama}</strong><div style={styles.slug}>{row.slug}</div></td>
-                  <td style={styles.td}><code>{row.hostname || "Belum ada draft"}</code></td>
+                  <td style={styles.td}><code>{row.hostname || "Belum ada draft"}</code><div style={{ marginTop: 6 }}><Badge variant={isCustom ? "info" : "neutral"}>{isCustom ? "Custom Domain" : "Platform Subdomain"}</Badge></div>
+                    {isCustom && instructions.length > 0 && <div style={styles.instructions}><strong>DNS Configuration Required</strong><span>Tambahkan record berikut di pengelola DNS domain Anda.</span>{instructions.map((item, index) => <div key={`${item.type}-${index}`} style={styles.instructionRow}>
+                      <span>Type: <code>{item.type}</code></span><button style={styles.action} onClick={() => copyText(item.type)}>Copy Type</button>
+                      <span>Name: <code>{item.name}</code></span><button style={styles.action} onClick={() => copyText(item.name)}>Copy Name</button>
+                      <span>Target: <code>{item.value}</code></span><button style={styles.action} onClick={() => copyText(item.value)}>Copy Target</button>
+                      <span>Proxy: <strong>{item.proxy || "DNS only"}</strong></span>
+                    </div>)}</div>}
+                    {isCustom && row.dns_status !== "active" && instructions.length === 0 && <div style={styles.waiting}>Menunggu konfigurasi DNS customer.</div>}
+                  </td>
                   {["dns_status", "vercel_status", "ssl_status", "overall_status"].map((field) => <td key={field} style={styles.td}>
                     {row.id ? <select aria-label={field} value={row[field]} disabled={busyTenant === row.tenant_id} onChange={(e) => updateStatus(row, field, e.target.value)} style={styles.select}>
                       {STATUS_OPTIONS[field].map((status) => <option key={status}>{status}</option>)}
@@ -128,19 +153,19 @@ export default function PlatformTenantDomainsPage() {
                     {activeUrl && <button style={styles.action} onClick={() => handleCopyUrl(row)}>Copy URL</button>}
                     {!row.id ? <button style={styles.action} disabled={busyTenant === row.tenant_id} onClick={() => run(row.tenant_id, () => platformApi.post(`/platform/tenants/${row.tenant_id}/domain/draft`))}>Generate draft</button>
                       : row.overall_status !== "active" && <button style={styles.action} disabled={busyTenant === row.tenant_id} onClick={() => run(row.tenant_id, () => platformApi.post(`/platform/tenants/${row.tenant_id}/domain/regenerate`))}>Regenerate</button>}
-                    {row.id && row.overall_status !== "disabled" && row.dns_status !== "creating" && row.dns_status !== "active" && row.dns_status !== "failed" && isProvisionableHostname(row.hostname) && (
+                    {!isCustom && row.id && row.overall_status !== "disabled" && row.dns_status !== "creating" && row.dns_status !== "active" && row.dns_status !== "failed" && isProvisionableHostname(row.hostname) && (
                       <button style={styles.primaryAction} onClick={() => setConfirmation({ row, action: "provision" })}>Provision DNS</button>
                     )}
-                    {row.id && row.dns_status === "failed" && row.overall_status !== "disabled" && isProvisionableHostname(row.hostname) && (
+                    {!isCustom && row.id && row.dns_status === "failed" && row.overall_status !== "disabled" && isProvisionableHostname(row.hostname) && (
                       <button style={styles.primaryAction} onClick={() => runDnsAction(row, "retry")}>Retry DNS</button>
                     )}
-                    {row.id && row.dns_status !== "creating" && isProvisionableHostname(row.hostname) && (
+                    {!isCustom && row.id && row.dns_status !== "creating" && isProvisionableHostname(row.hostname) && (
                       <button style={styles.action} onClick={() => runDnsAction(row, "reconcile")}>Reconcile</button>
                     )}
-                    {row.id && row.dns_status === "active" && isProvisionableHostname(row.hostname) && (
+                    {!isCustom && row.id && row.dns_status === "active" && isProvisionableHostname(row.hostname) && (
                       <button style={styles.dangerAction} onClick={() => setConfirmation({ row, action: "rollback" })}>Rollback DNS</button>
                     )}
-                    {row.id && row.dns_status === "active" && row.vercel_status === "pending" && row.overall_status !== "disabled" && (
+                    {row.id && (isCustom || row.dns_status === "active") && row.vercel_status === "pending" && row.overall_status !== "disabled" && (
                       <button style={styles.primaryAction} onClick={() => runDomainAction(row, "provision-vercel")}>Provision Vercel</button>
                     )}
                     {row.id && row.vercel_status === "failed" && row.overall_status !== "disabled" && (
@@ -155,6 +180,7 @@ export default function PlatformTenantDomainsPage() {
                     {row.id && ["adding", "verified"].includes(row.vercel_status) && (
                       <button style={styles.dangerAction} onClick={() => runDomainAction(row, "rollback-vercel")}>Rollback Vercel</button>
                     )}
+                    {isCustom && row.id && <button style={styles.action} onClick={() => runDomainAction(row, "reconcile")}>Check DNS</button>}
                   </div></td>
                 </tr>
                 );
@@ -182,6 +208,14 @@ export default function PlatformTenantDomainsPage() {
           </PlatformButton>
         </div>
       </Modal>
+      <Modal open={customOpen} title="Tambah Custom Domain" onClose={() => setCustomOpen(false)}>
+        <form onSubmit={submitCustomDomain} style={styles.customForm}>
+          <p style={styles.modalText}>Gunakan subdomain seperti app.domaincustomer.com agar website dan email utama customer tidak terganggu.</p>
+          <label>Tenant<select required value={customForm.tenantId} onChange={(e) => setCustomForm((form) => ({ ...form, tenantId: e.target.value }))} style={styles.formInput}><option value="">Pilih tenant</option>{tenantOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+          <label>Hostname<input required placeholder="app.domaincustomer.com" value={customForm.hostname} onChange={(e) => setCustomForm((form) => ({ ...form, hostname: e.target.value }))} style={styles.formInput} /></label>
+          <div style={styles.modalActions}><PlatformButton variant="secondary" type="button" onClick={() => setCustomOpen(false)}>Batal</PlatformButton><PlatformButton type="submit">Tambah Domain</PlatformButton></div>
+        </form>
+      </Modal>
     </div>
   );
 }
@@ -201,5 +235,7 @@ const styles = {
   dangerAction: { border: 0, borderRadius: 7, padding: "7px 10px", background: "#dc2626", cursor: "pointer", color: "#fff", fontWeight: 700 },
   modalText: { color: "var(--text-secondary)", lineHeight: 1.6 }, modalHostname: { display: "block", padding: 12, borderRadius: 8, background: "var(--surface-muted)" },
   modalActions: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, flexWrap: "wrap" },
+  instructions: { display: "grid", gap: 6, marginTop: 10, padding: 10, borderRadius: 8, background: "var(--surface-muted)", fontSize: 11 }, instructionRow: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }, waiting: { marginTop: 8, color: "var(--warning)", fontSize: 12, fontWeight: 700 },
+  customForm: { display: "grid", gap: 14 }, formInput: { display: "block", width: "100%", marginTop: 6, padding: 10, boxSizing: "border-box", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", color: "var(--text-primary)" },
   link: { color: "var(--primary)", fontWeight: 700, textDecoration: "none", padding: "6px 0" }, empty: { padding: 40, textAlign: "center", color: "var(--text-secondary)" },
 };

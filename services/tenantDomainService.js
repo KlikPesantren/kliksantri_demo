@@ -1,6 +1,7 @@
 const pool = require("../db");
 const cloudflareDnsService = require("./cloudflareDnsService");
 const vercelDomainService = require("./vercelDomainService");
+const { validateCustomDomainHostname } = require("./domainHostnameService");
 
 const ROOT_DOMAIN = "klikpesantren.com";
 const RESERVED_SLUGS = new Set([
@@ -94,12 +95,16 @@ async function getTenantDomainByTenantId(tenantId, db = pool) {
   );
   return rows[0] || null;
 }
+async function getTenantDomainById(domainId, db = pool) {
+  const { rows } = await db.query("SELECT * FROM tenant_domains WHERE id = $1", [domainId]);
+  return rows[0] || null;
+}
 
 async function listTenantDomains(db = pool) {
   const { rows } = await db.query(
     `SELECT td.*, t.slug, t.nama AS tenant_nama, t.status AS tenant_status
-     FROM tenants t LEFT JOIN tenant_domains td ON td.tenant_id = t.id AND td.is_primary = TRUE
-     ORDER BY t.nama ASC`
+     FROM tenants t LEFT JOIN tenant_domains td ON td.tenant_id = t.id
+     ORDER BY t.nama ASC, td.is_primary DESC, td.id ASC`
   );
   return rows;
 }
@@ -208,7 +213,11 @@ async function withLockedDomain(domainId, db, operation) {
     const domain = rows[0];
     domainContext = domain || null;
     if (!domain) { const error = new Error("Domain tenant tidak ditemukan"); error.status = 404; throw error; }
-    validateTenantHostname(domain.hostname);
+    if (["custom", "custom_domain"].includes(domain.domain_type)) {
+      validateCustomDomainHostname(domain.hostname);
+    } else {
+      validateTenantHostname(domain.hostname);
+    }
     const result = await operation(client, domain);
     await client.query("COMMIT");
     committed = true;
@@ -294,7 +303,8 @@ async function provisionVercelForTenantDomain(domainId, actorUserId, options = {
   let outcome;
   try {
     outcome = await withLockedDomain(domainId, db, async (client, domain) => {
-    if (domain.dns_status !== "active") { const error = new Error("DNS tenant harus aktif sebelum provisioning Vercel"); error.status = 409; throw error; }
+    const isCustomDomain = domain.domain_type === "custom_domain" || domain.domain_type === "custom";
+    if (!isCustomDomain && domain.dns_status !== "active") { const error = new Error("DNS tenant harus aktif sebelum provisioning Vercel"); error.status = 409; throw error; }
     if (domain.overall_status === "disabled") { const error = new Error("Domain disabled tidak dapat diprovision"); error.status = 409; throw error; }
     domain = await setDomainLifecycle(client, domain, { vercel_status: "adding", ssl_status: "pending" }, actorUserId);
     await writeDnsAudit(client, domain, actorUserId, "tenant.domain.vercel.started", "started");
@@ -303,7 +313,14 @@ async function provisionVercelForTenantDomain(domainId, actorUserId, options = {
       if (added.dryRun) return { data: await setDomainLifecycle(client, domain, { vercel_status: "pending", ssl_status: "pending" }, actorUserId, { vercel: { dry_run: true } }) };
       const verified = added.verified === true ? added : await vercel.verifyDomain(domain.hostname);
       const status = verified?.verified === true ? "verified" : "adding";
-      const updated = await setDomainLifecycle(client, domain, { vercel_status: status, ssl_status: "pending" }, actorUserId, { vercel: { dry_run: false, project_domain: true, verified: status === "verified" } });
+      const instructions = isCustomDomain && vercel.getDnsInstructions
+        ? await vercel.getDnsInstructions(domain.hostname)
+        : null;
+      const updated = await setDomainLifecycle(client, domain, {
+        dns_status: instructions?.status === "active" ? "active" : domain.dns_status,
+        vercel_status: status,
+        ssl_status: "pending",
+      }, actorUserId, { vercel: { dry_run: false, project_domain: true, verified: status === "verified" }, dns_instructions: instructions });
       await writeDnsAudit(client, domain, actorUserId, "tenant.domain.vercel.success", status);
       return { data: updated };
     } catch (error) {
@@ -364,6 +381,31 @@ async function reconcileSslStatus(domainId, actorUserId, options = {}) {
   });
 }
 
+async function reconcileCustomDomain(domainId, actorUserId, options = {}) {
+  const db = options.db || pool; const vercel = options.vercelService || vercelDomainService;
+  return withLockedDomain(domainId, db, async (client, domain) => {
+    if (!['custom_domain', 'custom'].includes(domain.domain_type)) { const error = new Error("Domain bukan custom domain"); error.status = 400; throw error; }
+    try {
+      const existing = await vercel.getDomain(domain.hostname);
+      if (vercel.config.dryRun) return setDomainLifecycle(client, domain, { dns_status: "pending", vercel_status: "pending", ssl_status: "pending" }, actorUserId, { dns_instructions: { dryRun: true, records: [] } });
+      if (!existing) return setDomainLifecycle(client, domain, { dns_status: "pending", vercel_status: "failed", ssl_status: "pending", last_error: "Domain Vercel tidak ditemukan" }, actorUserId);
+      const verified = existing.verified ? existing : await vercel.verifyDomain(domain.hostname);
+      const instructions = await vercel.getDnsInstructions(domain.hostname);
+      const dnsStatus = instructions.status === "active" ? "active" : "pending";
+      const vercelStatus = verified?.verified ? "verified" : "adding";
+      let sslStatus = "pending";
+      if (dnsStatus === "active" && vercelStatus === "verified") {
+        const ssl = await vercel.checkSsl(domain.hostname);
+        sslStatus = ssl.ready ? "active" : "issuing";
+      }
+      return setDomainLifecycle(client, domain, { dns_status: dnsStatus, vercel_status: vercelStatus, ssl_status: sslStatus, last_error: null }, actorUserId, { dns_instructions: instructions });
+    } catch (error) {
+      logVercelError("custom.reconcile", domain, error);
+      return setDomainLifecycle(client, domain, { vercel_status: "failed", last_error: vercel.normalizeVercelError(error) }, actorUserId);
+    }
+  });
+}
+
 async function provisionFullTenantDomain(domainId, actorUserId, options = {}) {
   let domain = await provisionDnsForTenantDomain(domainId, actorUserId, options);
   if (domain.dns_status !== "active") return domain;
@@ -389,6 +431,7 @@ async function provisionDnsForTenantDomain(domainId, actorUserId, options = {}) 
   const db = options.db || pool;
   const dns = options.dnsService || cloudflareDnsService;
   const outcome = await withLockedDomain(domainId, db, async (client, domain) => {
+    if (domain.dns_managed === false) { const error = new Error("DNS custom domain dikelola customer"); error.status = 409; throw error; }
     if (domain.overall_status === "disabled") {
       const error = new Error("Domain disabled tidak dapat diprovision"); error.status = 409; throw error;
     }
@@ -431,6 +474,7 @@ async function rollbackDnsProvisioning(domainId, actorUserId, options = {}) {
   const db = options.db || pool;
   const dns = options.dnsService || cloudflareDnsService;
   const outcome = await withLockedDomain(domainId, db, async (client, domain) => {
+    if (domain.dns_managed === false) { const error = new Error("DNS custom domain dikelola customer"); error.status = 409; throw error; }
     try {
       const result = await dns.deleteTenantDnsRecord(domain.hostname);
       const updated = await setDnsState(client, domain.id, { dnsStatus: "pending", overallStatus: "draft" }, actorUserId, {
@@ -454,6 +498,7 @@ async function reconcileDnsStatus(domainId, actorUserId, options = {}) {
   const db = options.db || pool;
   const dns = options.dnsService || cloudflareDnsService;
   return withLockedDomain(domainId, db, async (client, domain) => {
+    if (domain.dns_managed === false) { const error = new Error("DNS custom domain dikelola customer"); error.status = 409; throw error; }
     try {
       const verification = await dns.verifyTenantDnsRecord(domain.hostname);
       if (verification.dryRun) {
@@ -480,12 +525,13 @@ async function reconcileDnsStatus(domainId, actorUserId, options = {}) {
 
 module.exports = {
   RESERVED_SLUGS, buildTenantHostname, validateTenantHostname, ensureReservedSlug,
-  createDraftDomainForTenant, getTenantDomainByTenantId, listTenantDomains,
+  createDraftDomainForTenant, getTenantDomainByTenantId, getTenantDomainById, listTenantDomains,
   updateDomainStatuses, regenerateDraftDomain, checkHostnameAvailability,
   provisionDnsForTenantDomain, retryDnsProvisioning, rollbackDnsProvisioning,
   reconcileDnsStatus,
   calculateOverallStatus, provisionVercelForTenantDomain, retryVercelProvisioning,
   reconcileVercelStatus, rollbackVercelProvisioning, reconcileSslStatus,
   provisionFullTenantDomain, syncTenantDomainDisabledStatus,
+  reconcileCustomDomain,
   SET_DOMAIN_LIFECYCLE_SQL,
 };

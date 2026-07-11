@@ -30,8 +30,8 @@ function ProtectedRoute({ children }) {
   const hostnameRoute = getCurrentHostnameRoute();
   const tenantHostnameMismatch = Boolean(
     token &&
-      hostnameRoute.type === "tenant" &&
-      user?.tenant_slug !== hostnameRoute.tenantSlug
+      ((hostnameRoute.type === "tenant" && user?.tenant_slug !== hostnameRoute.tenantSlug) ||
+        (hostnameRoute.type === "custom-domain" && user?.tenant_slug !== localStorage.getItem("resolved_custom_tenant_slug")))
   );
 
   const [hydrating, setHydrating] = useState(Boolean(token));

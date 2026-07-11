@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { TenantProfileProvider } from "./context/TenantProfileContext";
@@ -6,6 +6,8 @@ import { TenantProfileProvider } from "./context/TenantProfileContext";
 import LoginPage from "./pages/LoginPage";
 import TenantPortalErrorPage from "./pages/TenantPortalErrorPage";
 import { getCurrentHostnameRoute } from "./utils/hostnameRouting";
+import axios from "axios";
+import { API_BASE_URL } from "./services/api";
 
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const PembayaranPage = lazy(() => import("./pages/PembayaranPage"));
@@ -116,6 +118,25 @@ function LazyPage({ children }) {
   return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
 }
 
+function CustomDomainRoot({ hostname }) {
+  const [state, setState] = useState({ loading: true, slug: null });
+  useEffect(() => {
+    let active = true;
+    axios.get(`${API_BASE_URL}/public/tenants/resolve-domain/by-hostname`, { params: { hostname } })
+      .then((response) => {
+        if (!active) return;
+        const slug = response.data?.data?.tenant_slug || null;
+        if (slug) localStorage.setItem("resolved_custom_tenant_slug", slug);
+        setState({ loading: false, slug });
+      })
+      .catch(() => active && setState({ loading: false, slug: null }));
+    return () => { active = false; };
+  }, [hostname]);
+  if (state.loading) return null;
+  if (!state.slug) return <TenantPortalErrorPage type="not_found" />;
+  return <LoginPage tenantSubdomain hostnameTenantSlug={state.slug} />;
+}
+
 function RootRoute() {
   const hostnameRoute = getCurrentHostnameRoute();
 
@@ -138,6 +159,10 @@ function RootRoute() {
         hostnameTenantSlug={hostnameRoute.tenantSlug}
       />
     );
+  }
+
+  if (hostnameRoute.type === "custom-domain") {
+    return <CustomDomainRoot hostname={hostnameRoute.hostname} />;
   }
 
   if (hostnameRoute.type === "local" || hostnameRoute.type === "preview") {

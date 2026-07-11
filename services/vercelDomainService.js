@@ -1,10 +1,9 @@
 const API_BASE = "https://api.vercel.com";
-const RESERVED = new Set(["www", "app", "platform", "api", "docs", "status", "admin", "default", "root", "system"]);
+const { normalizeDnsHostname } = require("./domainHostnameService");
 
 function validateHostname(hostname) {
-  const normalized = String(hostname || "").trim().toLowerCase().replace(/\.$/, "");
-  const match = normalized.match(/^([a-z0-9]+(?:-[a-z0-9]+)*)\.klikpesantren\.com$/);
-  if (!match || RESERVED.has(match[1])) { const error = new Error("Hostname tenant tidak valid"); error.status = 400; throw error; }
+  const normalized = normalizeDnsHostname(hostname);
+  if (!normalized) { const error = new Error("Hostname tenant tidak valid"); error.status = 400; throw error; }
   return normalized;
 }
 
@@ -140,6 +139,21 @@ function createVercelDomainService({ fetchImpl = global.fetch, env = process.env
     if (config.dryRun) return { misconfigured: true, dryRun: true };
     return request(`/v6/domains/${encodeURIComponent(hostname)}/config${teamQuery()}`);
   }
+  function firstRequirement(value) {
+    const item = Array.isArray(value) ? value[0] : value;
+    return typeof item === "string" ? item : item?.value || item?.content || null;
+  }
+  async function getDnsInstructions(hostname) {
+    hostname = validateHostname(hostname);
+    const domainConfig = await getDomainConfig(hostname);
+    if (domainConfig?.dryRun) return { status: "pending", records: [], dryRun: true };
+    const cname = firstRequirement(domainConfig?.recommendedCNAME);
+    const ipv4 = firstRequirement(domainConfig?.recommendedIPv4);
+    const records = [];
+    if (cname) records.push({ type: "CNAME", name: hostname, value: cname, proxy: "DNS only" });
+    else if (ipv4) records.push({ type: "A", name: hostname, value: ipv4, proxy: "DNS only" });
+    return { status: domainConfig?.misconfigured === false ? "active" : "pending", records, dryRun: false };
+  }
   async function checkSsl(hostname) {
     const domain = await getDomain(hostname);
     if (config.dryRun) return { status: "issuing", ready: false, dryRun: true };
@@ -148,7 +162,7 @@ function createVercelDomainService({ fetchImpl = global.fetch, env = process.env
     return { status: domainConfig?.misconfigured === false ? "active" : "issuing", ready: domainConfig?.misconfigured === false, domain, domainConfig };
   }
 
-  return { addDomain, verifyDomain, getDomain, removeDomain, getDomainConfig, checkSsl, normalizeVercelError, config: { dryRun: config.dryRun } };
+  return { addDomain, verifyDomain, getDomain, removeDomain, getDomainConfig, getDnsInstructions, checkSsl, normalizeVercelError, config: { dryRun: config.dryRun } };
 }
 
 module.exports = {
