@@ -16,6 +16,7 @@ function trxTypeLabel(trxType) {
   if (trxType === "topup") return "TOPUP";
   if (trxType === "payment") return "PEMBAYARAN";
   if (trxType === "refund") return "REFUND";
+  if (trxType === "withdrawal") return "PENARIKAN";
   return String(trxType || "").toUpperCase();
 }
 
@@ -90,16 +91,16 @@ function RFIDMutasiPage() {
     const worksheet = XLSX.utils.json_to_sheet(mutasi);
     const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Mutasi RFID");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Mutasi Dompet");
 
     XLSX.writeFile(workbook, "mutasi-rfid.xlsx");
   };
 
   return (
     <AppShell
-      title="Mutasi RFID"
-      description="Riwayat saldo RFID santri"
-      breadcrumb="Keamanan / RFID Mutasi"
+      title="Mutasi Dompet"
+      description="Riwayat perubahan saldo Dompet Santri"
+      breadcrumb="Keuangan / Dompet Santri / Mutasi"
     >
       <Card padding="sm" shadow="card" border={false} radius="xl">
         <FilterBar label="Filter" className="rfid-filter-compact">
@@ -122,7 +123,7 @@ function RFIDMutasiPage() {
 
       <div style={{ marginTop: "var(--space-6)" }}>
         <DataTableCard
-          title="Rekening Koran RFID"
+          title="Mutasi Saldo"
           subtitle={
             infoSantri
               ? `${infoSantri.nama} · UID ${infoSantri.uid_rfid} · Saldo Rp ${Number(infoSantri.saldo).toLocaleString()}`
@@ -153,7 +154,7 @@ function RFIDMutasiPage() {
           {!selectedSantri ? (
             <EmptyState
               title="Pilih santri terlebih dahulu"
-              description="Gunakan dropdown di atas untuk menampilkan rekening koran RFID."
+              description="Pilih santri untuk menampilkan riwayat perubahan saldo dompet."
             />
           ) : filteredMutasi.length === 0 ? (
             <EmptyState

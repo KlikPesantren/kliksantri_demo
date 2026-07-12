@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import api from "../services/api";
 import { ROUTE_PERMISSIONS, ROUTE_FEATURES } from "../constants/permissions";
-import { hasPermission } from "../utils/hasPermission";
+import { hasAnyPermission } from "../utils/hasPermission";
 import { hasFeature } from "../utils/hasFeature";
 import { clearSession, getUser, setUser } from "../utils/storage";
 import { getCurrentHostnameRoute } from "../utils/hostnameRouting";
@@ -85,7 +85,7 @@ function ProtectedRoute({ children }) {
 
   const required = ROUTE_PERMISSIONS[location.pathname];
   const isDashboardRoute = location.pathname === "/dashboard";
-  const allowed = isDashboardRoute || !required || hasPermission(required);
+  const allowed = isDashboardRoute || !required || hasAnyPermission(required);
 
   if (!allowed) {
     const message =
@@ -111,7 +111,7 @@ function ProtectedRoute({ children }) {
           {message}
         </div>
         <p style={{ margin: 0, color: "var(--text-secondary)", maxWidth: 460, lineHeight: 1.5 }}>
-          Minta admin memberi permission <strong>{required}</strong> pada matrix role ini.
+          Minta admin memberi permission <strong>{Array.isArray(required) ? required.join(" atau ") : required}</strong> pada matrix role ini.
         </p>
       </div>
     );

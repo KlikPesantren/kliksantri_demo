@@ -14,3 +14,8 @@ export function hasPermission(key) {
   if (!key) return true;
   return getPermissions().includes(key);
 }
+
+export function hasAnyPermission(keys) {
+  if (!Array.isArray(keys)) return hasPermission(keys);
+  return keys.some((key) => hasPermission(key));
+}

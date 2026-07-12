@@ -13,7 +13,7 @@ import {
   FaHeartbeat,
 } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
-import { hasPermission } from "../utils/hasPermission";
+import { hasAnyPermission } from "../utils/hasPermission";
 import { hasFeature } from "../utils/hasFeature";
 import { PERMISSIONS_UPDATED_EVENT } from "../utils/storage";
 import TenantBrand from "./TenantBrand";
@@ -54,13 +54,15 @@ const MENU = [
   { name: "Konsolidasi Yayasan", path: "/kas-instansi/konsolidasi", perm: "kas_instansi.konsolidasi", feature: "kas_instansi", icon: <FaMoneyBill /> },
   { name: "Sahriyah", path: "/sahriyah", perm: "sahriyah.view", feature: "sahriyah", icon: <FaMoneyBill /> },
   { name: "Setting Sahriyah", path: "/sahriyah-setting", perm: "sahriyah.manage", feature: "sahriyah", icon: <FaMoneyBill /> },
-  { name: "RFID Dashboard", path: "/rfid-dashboard", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
-  { name: "RFID Monitor", path: "/rfid-monitor", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
-  { name: "Transaksi RFID", path: "/rfid-transactions", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
-  { name: "Isi Ulang RFID", path: "/rfid-topup", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
-  { name: "Pengembalian RFID", path: "/rfid-refund", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
-  { name: "Mutasi RFID", path: "/rfid-mutasi", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
-  { name: "Pedagang RFID", path: "/rfid-merchant", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "Dashboard Dompet", path: "/rfid-dashboard", perm: ["wallet.view", "rfid.view"], feature: null, icon: <FaMoneyBill /> },
+  { name: "Topup", path: "/rfid-topup", perm: ["wallet.view", "rfid.view"], feature: null, icon: <FaMoneyBill /> },
+  { name: "Penarikan", path: "/wallet-withdrawal", perm: ["wallet.manage", "rfid.manage"], feature: null, icon: <FaMoneyBill /> },
+  { name: "Mutasi", path: "/rfid-mutasi", perm: ["wallet.view", "rfid.view"], feature: null, icon: <FaMoneyBill /> },
+  { name: "Transaksi", path: "/rfid-transactions", perm: ["wallet.view", "rfid.view"], feature: null, icon: <FaMoneyBill /> },
+  { name: "RFID Monitoring", path: "/rfid-monitor", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "Device", path: "/rfid-devices", perm: "rfid.view", feature: "rfid", icon: <FaMicrochip /> },
+  { name: "Merchant", path: "/rfid-merchant", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
+  { name: "Refund", path: "/rfid-refund", perm: "rfid.view", feature: "rfid", icon: <FaWifi /> },
   { name: "Perizinan", path: "/perizinan", perm: "perizinan.view", feature: "perizinan", icon: <FaClipboardList /> },
   { name: "Kesehatan Santri", path: "/kesehatan", perm: "kesehatan.view", feature: "keamanan", icon: <FaHeartbeat /> },
   { name: "Pelanggaran", path: "/pelanggaran", perm: "pelanggaran.view", feature: "pelanggaran", icon: <FaClipboardList /> },
@@ -102,13 +104,15 @@ const MENU_GROUPS = [
       "Konsolidasi Yayasan",
       "Sahriyah",
       "Setting Sahriyah",
-      "RFID Dashboard",
-      "RFID Monitor",
-      "Transaksi RFID",
-      "Isi Ulang RFID",
-      "Pengembalian RFID",
-      "Mutasi RFID",
-      "Pedagang RFID",
+      "Dashboard Dompet",
+      "Topup",
+      "Penarikan",
+      "Mutasi",
+      "Transaksi",
+      "RFID Monitoring",
+      "Device",
+      "Merchant",
+      "Refund",
     ],
   },
   {
@@ -130,6 +134,7 @@ const RFID_PATHS = new Set([
   "/rfid-monitor",
   "/rfid-transactions",
   "/rfid-topup",
+  "/wallet-withdrawal",
   "/rfid-refund",
   "/rfid-mutasi",
   "/rfid-merchant",
@@ -285,7 +290,7 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
   }, []);
 
   const menus = useMemo(
-    () => MENU.filter((m) => hasPermission(m.perm) && hasFeature(m.feature)),
+    () => MENU.filter((m) => hasAnyPermission(m.perm) && hasFeature(m.feature)),
     [permissionsVersion],
   );
 
@@ -462,11 +467,16 @@ function Sidebar({ drawerOpen = false, onDrawerClose }) {
 
         {open && (
           <div style={sectionMenuStyle}>
-            {groupMenus.map((menu, index) =>
-              renderMenuLink(menu, {
-                nested: group.id === "keuangan" && rfidStartIndex >= 0 && index >= rfidStartIndex,
-              }),
-            )}
+            {groupMenus.map((menu, index) => (
+              <div key={menu.path}>
+                {group.id === "keuangan" && index === rfidStartIndex ? (
+                  <div style={{ ...sectionTitleStyle, marginTop: "var(--space-3)" }}>Dompet Santri</div>
+                ) : null}
+                {renderMenuLink(menu, {
+                  nested: group.id === "keuangan" && rfidStartIndex >= 0 && index >= rfidStartIndex,
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>

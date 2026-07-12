@@ -1,9 +1,10 @@
-const CORE_FEATURES = ["dashboard", "profil", "sistem"];
+const CORE_FEATURES = ["dashboard", "profil", "sistem", "wallet"];
 
 const PACKAGE_BASIC = [
   "dashboard",
   "profil",
   "sistem",
+  "wallet",
   "santri",
   "guru",
   "kelas",

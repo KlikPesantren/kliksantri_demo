@@ -15,17 +15,20 @@ import {
 } from "../components/ui/table";
 import { FilterBar, FormField, Input, Select } from "../components/ui/form";
 import { DEFAULT_PAGE_SIZE } from "../hooks/useClientPagination";
+import { inferTransactionMethod, transactionMethodLabel } from "../constants/wallet";
 
 function trxTypeLabel(trxType) {
   if (trxType === "payment") return "PEMBAYARAN";
   if (trxType === "topup") return "TOPUP";
   if (trxType === "refund") return "REFUND";
+  if (trxType === "withdrawal") return "PENARIKAN";
   return String(trxType || "").toUpperCase();
 }
 
 function trxTypeBadgeVariant(trxType) {
   if (trxType === "refund") return "warning";
   if (trxType === "topup") return "success";
+  if (trxType === "withdrawal") return "warning";
   return "danger";
 }
 
@@ -87,7 +90,7 @@ function RFIDTransactionPage() {
         setPage(pageNum);
       } catch (err) {
         console.error(err);
-        alert(getApiError(err, "Gagal memuat transaksi RFID"));
+        alert(getApiError(err, "Gagal memuat riwayat transaksi"));
       } finally {
         setIsLoading(false);
       }
@@ -127,13 +130,13 @@ function RFIDTransactionPage() {
 
   return (
     <AppShell
-      title="RFID Transactions"
-      description="Riwayat transaksi RFID pesantren"
-      breadcrumb="Keamanan / RFID Transactions"
+      title="Riwayat Transaksi"
+      description="Riwayat transaksi Dompet Santri dari semua metode"
+      breadcrumb="Keuangan / Dompet Santri / Transaksi"
     >
       <DataTableCard
         title="Laporan Transaksi"
-        subtitle="Riwayat pembayaran, topup, dan refund RFID"
+        subtitle="Riwayat pembayaran, topup, dan pengembalian saldo"
         actions={
           <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
             {pagination.total || 0} transaksi
@@ -162,6 +165,7 @@ function RFIDTransactionPage() {
             <option value="payment">Pembayaran</option>
             <option value="topup">Topup</option>
             <option value="refund">Refund</option>
+            <option value="withdrawal">Penarikan</option>
           </Select>
         </FilterBar>
 
@@ -201,6 +205,7 @@ function RFIDTransactionPage() {
                     <th>Waktu</th>
                     <th>Santri</th>
                     <th>Tipe</th>
+                    <th>Metode</th>
                     <th>Merchant</th>
                     <th>Device</th>
                     <th>Nominal</th>
@@ -221,6 +226,7 @@ function RFIDTransactionPage() {
                           {trxTypeLabel(trx.trx_type)}
                         </Badge>
                       </td>
+                      <td>{transactionMethodLabel(inferTransactionMethod(trx))}</td>
                       <td>{trx.nama_merchant || "—"}</td>
                       <td>{trx.device_id || "—"}</td>
                       <td className="table-v3__cell--strong">

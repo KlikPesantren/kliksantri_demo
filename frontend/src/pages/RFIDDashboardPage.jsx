@@ -55,15 +55,15 @@ function RFIDDashboardPage() {
 
   return (
     <AppShell
-      title="RFID Dashboard"
-      description="Pusat monitoring transaksi RFID pesantren"
-      breadcrumb="Keuangan / RFID Dashboard"
+      title="Dashboard Dompet"
+      description="Ringkasan saldo dan aktivitas Dompet Santri"
+      breadcrumb="Keuangan / Dompet Santri / Dashboard"
     >
       <DashboardResponsiveStyles />
       <div className="dashboard-role-v3">
         <KpiGrid>
           <KpiCard
-            label="Total Saldo RFID"
+            label="Total Saldo Dompet"
             value={formatCurrency(dashboard.total_saldo || 0)}
             accent="primary"
           />
@@ -98,7 +98,7 @@ function RFIDDashboardPage() {
           </Card>
 
           <Card {...DASHBOARD_PANEL}>
-            <ExecSectionTitle title="Transaksi Hari Ini" subtitle="Volume belanja RFID hari ini" />
+            <ExecSectionTitle title="Transaksi Hari Ini" subtitle="Volume transaksi dompet hari ini" />
             <div className="dashboard-monitor-stat">
               <span className="dashboard-monitor-stat__value">
                 {formatNumber(summary.transaksi_hari_ini || 0)}
@@ -111,7 +111,7 @@ function RFIDDashboardPage() {
           </Card>
 
           <Card {...DASHBOARD_PANEL}>
-            <ExecSectionTitle title="Refund Hari Ini" subtitle="Pengembalian saldo RFID" />
+            <ExecSectionTitle title="Refund Hari Ini" subtitle="Pengembalian saldo transaksi RFID" />
             <div className="dashboard-monitor-stat">
               <span className="dashboard-monitor-stat__value">
                 {formatNumber(summary.refund_hari_ini || 0)}
@@ -142,12 +142,12 @@ function RFIDDashboardPage() {
         <div className="dashboard-panel">
           <Card {...DASHBOARD_PANEL}>
             <ExecSectionTitle
-              title="Aktivitas RFID Terbaru"
-              subtitle="5 transaksi RFID terakhir"
+              title="Aktivitas Dompet Terbaru"
+              subtitle="5 transaksi dompet terakhir"
             />
             <DashboardCompactList
               items={recentActivity}
-              emptyNote="Belum ada aktivitas RFID tercatat."
+              emptyNote="Belum ada aktivitas dompet tercatat."
             />
           </Card>
         </div>

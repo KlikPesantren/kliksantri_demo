@@ -75,7 +75,7 @@ function RFIDTopupPage() {
     }
 
     if (selectedSantri && isSantriNonAktif(selectedSantri.status)) {
-      alert("Santri nonaktif tidak dapat melakukan topup RFID");
+      alert("Santri nonaktif tidak dapat melakukan topup saldo");
       return;
     }
 
@@ -113,9 +113,9 @@ function RFIDTopupPage() {
 
   return (
     <AppShell
-      title="RFID Topup"
-      description="Isi saldo RFID santri"
-      breadcrumb="Keamanan / RFID Topup"
+      title="Topup Saldo"
+      description="Tambah saldo Dompet Santri tanpa memerlukan kartu"
+      breadcrumb="Keuangan / Dompet Santri / Topup"
     >
       <Card padding="md" shadow="card" border={false} radius="xl">
         <FormGrid>
@@ -148,12 +148,12 @@ function RFIDTopupPage() {
             <p><strong>Saldo Saat Ini:</strong> {formatCurrency(saldoTampil)}</p>
             {isNonAktif && saldoTampil > 0 ? (
               <p style={{ color: "var(--warning, #b45309)", fontWeight: 600 }}>
-                Santri nonaktif masih memiliki saldo RFID {formatCurrency(saldoTampil)}.
+                Santri nonaktif masih memiliki saldo dompet {formatCurrency(saldoTampil)}.
               </p>
             ) : null}
             {isNonAktif ? (
               <p style={{ color: "var(--danger, #dc2626)", fontWeight: 600 }}>
-                Topup RFID tidak tersedia untuk santri nonaktif.
+                Topup saldo tidak tersedia untuk santri nonaktif.
               </p>
             ) : null}
           </div>
@@ -173,8 +173,8 @@ function RFIDTopupPage() {
 
       <div style={{ marginTop: "var(--space-6)" }}>
         <DataTableCard
-          title="Cari Santri RFID"
-          subtitle="Ketik nama, NIS, atau UID untuk melihat saldo"
+          title="Saldo Santri"
+          subtitle="Cari dengan nama atau NIS; kartu RFID bersifat opsional"
           actions={
             <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
               {tableResults.length} hasil

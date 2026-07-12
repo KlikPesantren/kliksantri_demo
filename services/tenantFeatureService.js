@@ -4,8 +4,9 @@ const {
   normalizePackage,
   resolveEnabledFeatures,
 } = require("../config/tenantPackageConfig");
+const { addVirtualWalletFeature } = require("../config/walletAccessConfig");
 
-const CORE_FEATURES = new Set(["dashboard", "profil", "sistem"]);
+const CORE_FEATURES = new Set(["dashboard", "profil", "sistem", "wallet"]);
 
 let cache = new Map();
 let cacheAt = 0;
@@ -43,14 +44,14 @@ async function loadTenantFeatureState(tenantId) {
     [tid]
   );
 
-  const features = rows.map((row) => ({
+  const features = addVirtualWalletFeature(rows.map((row) => ({
     key: row.key,
     label: row.label,
     description: row.description,
     is_core: row.is_core === true,
     sort_order: row.sort_order,
     enabled: row.is_core ? true : row.enabled === true,
-  }));
+  })));
 
   const enabledKeys = new Set(
     features.filter((f) => f.enabled).map((f) => f.key)

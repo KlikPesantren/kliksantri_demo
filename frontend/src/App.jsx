@@ -18,6 +18,7 @@ const RFIDMonitorPage = lazy(() => import("./pages/RFIDMonitorPage"));
 const RFIDDashboardPage = lazy(() => import("./pages/RFIDDashboardPage"));
 const RFIDTransactionPage = lazy(() => import("./pages/RFIDTransactionPage"));
 const RFIDTopupPage = lazy(() => import("./pages/RFIDTopupPage"));
+const WalletWithdrawalPage = lazy(() => import("./pages/WalletWithdrawalPage"));
 const RFIDMerchantPage = lazy(() => import("./pages/RFIDMerchantPage"));
 const RFIDDevicePage = lazy(() => import("./pages/RFIDDevicePage"));
 const RFIDMutasiPage = lazy(() => import("./pages/RFIDMutasiPage"));
@@ -400,6 +401,17 @@ function App() {
             <ProtectedRoute>
               <LazyPage>
                 <RFIDTopupPage />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/wallet-withdrawal"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <WalletWithdrawalPage />
               </LazyPage>
             </ProtectedRoute>
           }

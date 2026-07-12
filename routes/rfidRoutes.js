@@ -6,12 +6,21 @@ const requirePermission = require("../middleware/requirePermission");
 const requireTenantFeature = require("../middleware/requireTenantFeature");
 const deviceAuthMiddleware = require("../middleware/deviceAuthMiddleware");
 const rfidController = require("../controllers/rfidController");
+const walletController = require("../controllers/walletController");
+const requireWalletFeature = requireTenantFeature.requireAnyTenantFeature(["wallet", "rfid"]);
 
-const adminRfidView = [
+const adminWalletView = [
   authMiddleware,
   tenantMiddleware,
-  requireTenantFeature("rfid"),
-  requirePermission("rfid.view"),
+  requireWalletFeature,
+  requirePermission.requireAnyPermission(["wallet.view", "rfid.view"]),
+];
+
+const adminWalletManage = [
+  authMiddleware,
+  tenantMiddleware,
+  requireWalletFeature,
+  requirePermission.requireAnyPermission(["wallet.manage", "rfid.manage"]),
 ];
 
 const adminRfidManage = [
@@ -21,19 +30,20 @@ const adminRfidManage = [
   requirePermission("rfid.manage"),
 ];
 
-router.get("/dashboard", ...adminRfidView, rfidController.getDashboard);
-router.get("/dashboard-summary", ...adminRfidView, rfidController.getDashboardSummary);
+router.get("/dashboard", ...adminWalletView, rfidController.getDashboard);
+router.get("/dashboard-summary", ...adminWalletView, rfidController.getDashboardSummary);
 
 router.post("/card/lookup", deviceAuthMiddleware, requireTenantFeature("rfid"), rfidController.lookupCard);
 router.post("/payment", deviceAuthMiddleware, requireTenantFeature("rfid"), rfidController.rfidPayment);
 
-router.get("/transactions", ...adminRfidView, rfidController.getTransactions);
-router.get("/transactions/export", ...adminRfidView, rfidController.exportTransactions);
-router.get("/santri/search", ...adminRfidView, rfidController.searchSantri);
+router.get("/transactions", ...adminWalletView, rfidController.getTransactions);
+router.get("/transactions/export", ...adminWalletView, rfidController.exportTransactions);
+router.get("/santri/search", ...adminWalletView, rfidController.searchSantri);
 
-router.post("/topup", ...adminRfidManage, rfidController.topupSaldo);
-router.get("/topup/export", ...adminRfidView, rfidController.exportTopup);
+router.post("/topup", ...adminWalletManage, rfidController.topupSaldo);
+router.post("/withdrawal", ...adminWalletManage, walletController.withdrawSaldo);
+router.get("/topup/export", ...adminWalletView, rfidController.exportTopup);
 router.post("/refund", ...adminRfidManage, rfidController.refundTransaction);
-router.get("/mutasi", ...adminRfidView, rfidController.getMutasi);
+router.get("/mutasi", ...adminWalletView, rfidController.getMutasi);
 
 module.exports = router;

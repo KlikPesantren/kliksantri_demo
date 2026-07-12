@@ -4,6 +4,7 @@ const {
   isPlatformRole,
   filterTenantPermissionKeys,
 } = require("../utils/platformRbac");
+const { expandWalletPermissions } = require("../config/walletAccessConfig");
 
 // Cache in-memory: { roleName: Set(permKey) }
 let cache = null;
@@ -32,7 +33,7 @@ async function getPermissions(role) {
   if (!cache || Date.now() - cacheAt > TTL) {
     await loadMatrix();
   }
-  return cache[role] || new Set();
+  return expandWalletPermissions(cache[role] || new Set());
 }
 
 function denyPlatformPermissionForTenant(req, res, permKey) {
