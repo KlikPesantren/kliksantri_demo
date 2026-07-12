@@ -206,6 +206,7 @@ function RFIDTransactionPage() {
                     <th>Santri</th>
                     <th>Tipe</th>
                     <th>Metode</th>
+                    <th>Petugas</th>
                     <th>Merchant</th>
                     <th>Device</th>
                     <th>Nominal</th>
@@ -227,6 +228,7 @@ function RFIDTransactionPage() {
                         </Badge>
                       </td>
                       <td>{transactionMethodLabel(inferTransactionMethod(trx))}</td>
+                      <td>{trx.nama_petugas || "—"}</td>
                       <td>{trx.nama_merchant || "—"}</td>
                       <td>{trx.device_id || "—"}</td>
                       <td className="table-v3__cell--strong">

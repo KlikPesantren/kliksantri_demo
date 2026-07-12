@@ -675,6 +675,10 @@ function buildTransactionFilters(tenantId, query, { applyDefaultDateRange = fals
         ON m.id = tr.merchant_id AND m.tenant_id = tr.tenant_id
       LEFT JOIN devices d
         ON d.id = tr.device_id AND d.tenant_id = tr.tenant_id
+      LEFT JOIN transaksi tx
+        ON tx.trx_id = tr.trx_id AND tx.tenant_id = tr.tenant_id
+      LEFT JOIN users u
+        ON u.id = tx.created_by AND u.tenant_id = tr.tenant_id
     `,
   };
 }
@@ -704,7 +708,8 @@ async(req,res)=>{
         s.nama AS nama_santri,
         s.nis,
         m.nama_merchant,
-        d.device_id
+        d.device_id,
+        u.nama AS nama_petugas
       ${joinSql}
       WHERE ${whereSql}
       ORDER BY tr.created_at DESC

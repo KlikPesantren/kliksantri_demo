@@ -107,6 +107,7 @@ exports.withdrawSaldo = async (req, res) => {
         saldo_awal: saldoAwal,
         saldo_akhir: saldoAkhir,
         transaction_method: "manual",
+        nama_petugas: req.user.nama || req.user.username || "Petugas",
       },
     });
   } catch (err) {

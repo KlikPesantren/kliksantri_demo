@@ -6,8 +6,10 @@ import Button from "../components/ui/Button";
 import { FormActionBar, FormField, FormGrid, Input } from "../components/ui/form";
 import SantriSearchPicker from "../components/rfid/SantriSearchPicker";
 import { formatCurrency } from "../utils/formatCurrency";
+import { getUser } from "../utils/storage";
 
 function WalletWithdrawalPage() {
+  const petugas = getUser()?.nama || getUser()?.username || "Petugas";
   const [santriId, setSantriId] = useState("");
   const [selectedSantri, setSelectedSantri] = useState(null);
   const [nominal, setNominal] = useState("");
@@ -79,11 +81,15 @@ function WalletWithdrawalPage() {
               disabled={loading}
             />
           </FormField>
+          <FormField label="Nama Petugas" htmlFor="withdrawal-officer">
+            <Input id="withdrawal-officer" value={petugas} disabled readOnly />
+          </FormField>
         </FormGrid>
 
         {selectedSantri ? (
           <div className="form-modal-summary-v3" style={{ marginTop: "var(--space-4)" }}>
             <p><strong>Santri:</strong> {selectedSantri.nama}</p>
+            <p><strong>Petugas:</strong> {petugas}</p>
             <p><strong>Saldo Saat Ini:</strong> {formatCurrency(Number(selectedSantri.saldo || 0))}</p>
             <p><strong>Saldo Setelah Penarikan:</strong> {formatCurrency(Math.max(Number(selectedSantri.saldo || 0) - Number(nominal || 0), 0))}</p>
           </div>
