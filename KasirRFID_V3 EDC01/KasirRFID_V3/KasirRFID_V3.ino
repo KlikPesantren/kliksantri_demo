@@ -17,6 +17,8 @@
 Preferences prefs;
 
 bool syncInProgress = false;
+bool backendOffline = false;
+bool lastApiTransportError = false;
 
 const bool DEBUG = true;
 const unsigned long HEARTBEAT_INTERVAL_MS = 30000;
@@ -382,14 +384,19 @@ void showIdle() {
     dots += ".";
   }
 
+  if (syncInProgress) {
+    showScreen("SYNCING", "Menyinkronkan transaksi...");
+    return;
+  }
+
   // =====================
   // OFFLINE
   // =====================
 
   if (
 
-    WiFi.status()
-    != WL_CONNECTED
+    WiFi.status() != WL_CONNECTED
+    || backendOffline
 
   ) {
 
@@ -397,7 +404,7 @@ void showIdle() {
 
       "MODE OFFLINE",
 
-      "Reconnect" + dots
+      "Limit tidak aktif"
 
     );
 
@@ -410,9 +417,9 @@ void showIdle() {
 
   showScreen(
 
-    "Tempel Kartu",
+    "MODE ONLINE",
 
-    dots
+    "Limit aktif" + dots
 
   );
 }
@@ -711,6 +718,8 @@ bool apiPost(
   int httpCode =
     http.POST(body);
 
+  lastApiTransportError = httpCode < 0;
+
   response =
     http.getString();
 
@@ -726,13 +735,7 @@ bool apiPost(
     Serial.println("======================");
   }
 
-  if (
-
-    httpCode == 200
-    ||
-    httpCode == 201
-
-  ) {
+  if (httpCode >= 200 && httpCode < 300) {
 
     http.end();
 
@@ -848,35 +851,8 @@ bool loadSantriCache(
   currentPemakaianHariIni = 0;
   currentSisaLimitHariIni = -1;
 
-  if (
-
-    file.available()
-
-  ) {
-
-    currentLimitHarian =
-      file.readStringUntil('\n').toInt();
-  }
-
-  if (
-
-    file.available()
-
-  ) {
-
-    currentPemakaianHariIni =
-      file.readStringUntil('\n').toInt();
-  }
-
-  if (
-
-    file.available()
-
-  ) {
-
-    currentSisaLimitHariIni =
-      file.readStringUntil('\n').toInt();
-  }
+  // OFFLINE: limit nonaktif sesuai keputusan produk.
+  // Snapshot limit lama tidak dibaca dan tidak dipakai.
 
   file.close();
 
@@ -953,6 +929,8 @@ bool fetchSantriData(
 
   ) {
 
+    backendOffline = false;
+
     DynamicJsonDocument
       doc(1024);
 
@@ -979,7 +957,8 @@ bool fetchSantriData(
       Serial.println(
         doc["error"].as<String>());
 
-      return loadSantriCache(uid);
+      // Server terjangkau dan menolak kartu: jangan gunakan cache lama.
+      return false;
     }
 
     JsonObject data =
@@ -1046,6 +1025,12 @@ bool fetchSantriData(
       response);
   }
 
+  if (!lastApiTransportError) {
+    // Server terjangkau tetapi menolak lookup: jangan memakai cache lama.
+    return false;
+  }
+
+  backendOffline = true;
   return loadSantriCache(uid);
 }
 void resetState();
@@ -1661,116 +1646,6 @@ String offlineDayKey() {
   );
 }
 
-int getOfflinePaymentUsageToday(
-  String uid
-) {
-
-  File file =
-
-    LittleFS.open(
-
-      "/queue.txt",
-
-      FILE_READ
-
-    );
-
-  if (!file) return 0;
-
-  int total = 0;
-  String today =
-    offlineDayKey();
-
-  while (
-
-    file.available()
-
-  ) {
-
-    String line =
-      file.readStringUntil('\n');
-
-    line.trim();
-
-    if (line == "") continue;
-
-    int p1 =
-      line.indexOf('|');
-
-    int p2 =
-      line.indexOf('|', p1 + 1);
-
-    int p3 =
-      line.indexOf('|', p2 + 1);
-
-    int p4 =
-      line.indexOf('|', p3 + 1);
-
-    int p5 =
-      p4 == -1
-        ? -1
-        : line.indexOf('|', p4 + 1);
-
-    if (
-
-      p1 == -1
-
-      ||
-
-      p2 == -1
-
-      ||
-
-      p3 == -1
-
-      ||
-
-      p4 == -1
-
-    ) continue;
-
-    String queuedUid =
-      line.substring(p1 + 1, p2);
-
-    String nominal =
-      line.substring(p2 + 1, p3);
-
-    String topup =
-      line.substring(p3 + 1, p4);
-
-    String day =
-      p5 == -1
-        ? line.substring(p4 + 1)
-        : line.substring(p4 + 1, p5);
-
-    queuedUid.trim();
-    topup.trim();
-    day.trim();
-
-    if (
-
-      queuedUid == uid
-
-      &&
-
-      topup == "0"
-
-      &&
-
-      day == today
-
-    ) {
-
-      total +=
-        nominal.toInt();
-    }
-  }
-
-  file.close();
-
-  return total;
-}
-
 bool validateOfflinePayment(
   int nominal
 ) {
@@ -1823,72 +1698,8 @@ bool validateOfflinePayment(
     return false;
   }
 
-  if (
-
-    !overrideLimit
-
-    &&
-
-    currentLimitHarian >= 0
-
-  ) {
-
-    int onlineUsed =
-      currentPemakaianHariIni;
-
-    int offlineUsed =
-      getOfflinePaymentUsageToday(currentUID);
-
-    int willTotal =
-      onlineUsed
-      + offlineUsed
-      + nominal;
-
-    if (DEBUG) {
-      Serial.println("OFFLINE LIMIT CHECK");
-      Serial.print("limit: ");
-      Serial.println(currentLimitHarian);
-      Serial.print("online_used: ");
-      Serial.println(onlineUsed);
-      Serial.print("offline_used: ");
-      Serial.println(offlineUsed);
-      Serial.print("nominal: ");
-      Serial.println(nominal);
-      Serial.print("will_total: ");
-      Serial.println(willTotal);
-      Serial.print("allowed: ");
-      Serial.println(willTotal <= currentLimitHarian);
-    }
-
-    if (
-
-      willTotal
-      > currentLimitHarian
-
-    ) {
-
-      int sisa =
-        currentLimitHarian
-        - onlineUsed
-        - offlineUsed;
-
-      if (sisa < 0) sisa = 0;
-
-      showResult(
-
-        "LIMIT HABIS",
-
-        "Sisa:" + rupiah(sisa),
-
-        2200
-
-      );
-
-      beep(300);
-
-      return false;
-    }
-  }
+  // OFFLINE: jangan cek, hitung, atau kurangi limit.
+  // Hanya validitas kartu pada cache dan saldo lokal yang diperiksa.
 
   return true;
 }
@@ -1985,8 +1796,8 @@ bool sendTransaction() {
 
   if (
 
-    WiFi.status()
-    != WL_CONNECTED
+    WiFi.status() != WL_CONNECTED
+    || backendOffline
 
   ) {
 
@@ -2081,26 +1892,21 @@ bool sendTransaction() {
       body,
       response);
 
-  if (
-
-    !successHttp
-
-  ) {
-
-    showResult(
-
-      "Server",
-
-      "Offline",
-
-      2200
-
-    );
-
-    beep(300);
-
+  if (!successHttp && lastApiTransportError) {
+    backendOffline = true;
+    int nominal = nominalInput.toInt();
+    if (!validateOfflinePayment(nominal)) return false;
+    if (!isTopup) {
+      currentSaldo -= nominal;
+      saveSantriCache(currentUID, currentName, currentSaldo, -1, 0, -1);
+    }
+    saveOfflineTransaction();
+    showResult("MODE OFFLINE", "Limit tidak aktif", 1800);
+    beep(100);
     return false;
   }
+
+  backendOffline = false;
 
   DynamicJsonDocument
     res(512);
@@ -2505,6 +2311,8 @@ void syncOfflineQueue() {
   syncInProgress =
     true;
 
+  showScreen("SYNCING", "Menyinkronkan transaksi...");
+
   Serial.println(
 
     "SYNC START"
@@ -2627,8 +2435,9 @@ void syncOfflineQueue() {
       trxId;
 
     doc["override_limit"] =
-      queuedOverride == "1"
-      || queuedOverride == "true";
+      false;
+
+    doc["offline_sync"] = true;
 
     String body;
 
@@ -2649,17 +2458,17 @@ void syncOfflineQueue() {
     // GAGAL
     // =====================
 
-    if (
+    if (!successHttp && lastApiTransportError) {
 
-      !successHttp
-
-    ) {
+      backendOffline = true;
 
       remaining +=
         line + "\n";
 
       continue;
     }
+
+    backendOffline = false;
 
     DynamicJsonDocument
       res(256);
@@ -2674,6 +2483,12 @@ void syncOfflineQueue() {
     bool success =
 
       res["success"];
+
+    if (success && !res["saldo_sekarang"].isNull()) {
+      loadSantriCache(uid);
+      currentSaldo = res["saldo_sekarang"].as<int>();
+      saveSantriCache(uid, currentName, currentSaldo, -1, 0, -1);
+    }
 
     String message =
 
@@ -2775,6 +2590,12 @@ void syncOfflineQueue() {
     "SYNC DONE"
 
   );
+
+  if (remaining == "") {
+    showResult("SYNC SUCCESS", "Sinkron selesai", 1800);
+  } else {
+    showResult("SYNC FAILED", "Akan dicoba lagi", 1800);
+  }
 }
 
 // SETUP ===============

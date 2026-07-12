@@ -99,8 +99,14 @@ exports.rfidPayment = async (req, res) => {
       nominal,
       device_id,
       trx_id,
-      override_limit = false
+      override_limit = false,
+      offline_sync = false
     } = req.body;
+    const isOfflineSync = offline_sync === true;
+
+    if (!trx_id || !Number.isSafeInteger(Number(nominal)) || Number(nominal) <= 0) {
+      return res.status(400).json({ success: false, error: "Data transaksi tidak valid" });
+    }
 
     const santriResult = await pool.query(
       `
@@ -142,7 +148,9 @@ exports.rfidPayment = async (req, res) => {
       return res.json({
         success: true,
         message: "Duplicate ignored",
-        saldo_sekarang: santri.saldo
+        saldo_sekarang: Number(santri.saldo),
+        sync_status: "duplicate",
+        snapshot: { uid_rfid: santri.uid_rfid, saldo: Number(santri.saldo) }
       });
     }
 
@@ -157,57 +165,15 @@ exports.rfidPayment = async (req, res) => {
     // SALDO
     // ==========================
 
-    if (
-      Number(santri.saldo) <
-      Number(nominal)
-    ) {
-      return res.json({
-        success: false,
-        error: "Saldo tidak cukup"
-      });
-    }
-
-    const saldoAwal =
-      Number(santri.saldo);
-
-    const saldoAkhir =
-      saldoAwal - Number(nominal);
-
     // ==========================
-    // LIMIT HARIAN
+    // ONLINE: limit aktif dan diperiksa ulang setelah row lock.
+    // OFFLINE sync: limit nonaktif sesuai keputusan produk.
     // ==========================
-
-    const todayUsage = await pool.query(
-      `
-      SELECT
-      COALESCE(SUM(nominal),0) total
-      FROM transaksi_rfid
-      WHERE santri_id = $1
-      AND tenant_id = $2
-      AND DATE(created_at)=CURRENT_DATE
-      AND LOWER(TRIM(COALESCE(trx_type, 'payment'))) = 'payment'
-      `,
-      [santri.id, tenantId]
-    );
-
-    const totalHariIni =
-      Number(todayUsage.rows[0].total);
 
     const limit =
       santri.limit_harian === null
         ? null
         : Number(santri.limit_harian || 0);
-
-    if (
-      limit !== null &&
-      !override_limit &&
-      totalHariIni + Number(nominal) > limit
-    ) {
-      return res.json({
-        success: false,
-        error: "Limit harian habis"
-      });
-    }
 
  
     // ==========================
@@ -221,6 +187,62 @@ exports.rfidPayment = async (req, res) => {
 
       await client.query("BEGIN");
 
+      // Satu transaction_id hanya boleh diproses satu kali, termasuk retry paralel.
+      await client.query(
+        `SELECT pg_advisory_xact_lock(hashtext($1))`,
+        [`${tenantId}:${trx_id}`]
+      );
+
+      const duplicateLocked = await client.query(
+        `SELECT id FROM transaksi_rfid WHERE trx_id = $1 AND tenant_id = $2`,
+        [trx_id, tenantId]
+      );
+
+      if (duplicateLocked.rows.length > 0) {
+        const current = await client.query(
+          `SELECT saldo FROM santri WHERE id = $1 AND tenant_id = $2`,
+          [santri.id, tenantId]
+        );
+        const currentSaldo = Number(current.rows[0]?.saldo || 0);
+        await client.query("COMMIT");
+        return res.json({
+          success: true,
+          message: "Duplicate ignored",
+          saldo_sekarang: currentSaldo,
+          sync_status: "duplicate",
+          snapshot: { uid_rfid, saldo: currentSaldo },
+        });
+      }
+
+      const lockedSantriResult = await client.query(
+        `SELECT saldo FROM santri WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
+        [santri.id, tenantId]
+      );
+      const lockedSaldoAwal = Number(lockedSantriResult.rows[0].saldo);
+
+      // ONLINE: saldo dan limit wajib aktif. OFFLINE sync: limit sengaja nonaktif.
+      if (!isOfflineSync && lockedSaldoAwal < Number(nominal)) {
+        await client.query("ROLLBACK");
+        return res.json({ success: false, error: "Saldo tidak cukup" });
+      }
+
+      if (!isOfflineSync && limit !== null) {
+        const lockedUsage = await client.query(
+          `SELECT COALESCE(SUM(nominal), 0) total
+           FROM transaksi_rfid
+           WHERE santri_id = $1 AND tenant_id = $2
+             AND DATE(created_at) = CURRENT_DATE
+             AND LOWER(TRIM(COALESCE(trx_type, 'payment'))) = 'payment'`,
+          [santri.id, tenantId]
+        );
+        if (Number(lockedUsage.rows[0].total) + Number(nominal) > limit) {
+          await client.query("ROLLBACK");
+          return res.json({ success: false, error: "Limit harian habis" });
+        }
+      }
+
+      const lockedSaldoAkhir = lockedSaldoAwal - Number(nominal);
+
       await client.query(
         `
         UPDATE santri
@@ -229,7 +251,7 @@ exports.rfidPayment = async (req, res) => {
           AND tenant_id = $3
         `,
         [
-          saldoAkhir,
+          lockedSaldoAkhir,
           santri.id,
           tenantId
         ]
@@ -274,8 +296,8 @@ console.log({
           device.merchant_id,
           device.id,
           nominal,
-          saldoAwal,
-          saldoAkhir,
+          lockedSaldoAwal,
+          lockedSaldoAkhir,
           override_limit,
           tenantId
         ]
@@ -324,7 +346,9 @@ console.log({
 
       return res.json({
         success: true,
-        saldo_sekarang: saldoAkhir
+        saldo_sekarang: lockedSaldoAkhir,
+        sync_status: isOfflineSync ? "synced" : "online",
+        snapshot: { uid_rfid, saldo: lockedSaldoAkhir }
       });
 
     } catch (err) {
