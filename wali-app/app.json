@@ -46,7 +46,8 @@
       ]
     ],
     "updates": {
-      "enabled": false
+      "enabled": false,
+      "url": "https://u.expo.dev/3ee670bd-7850-40eb-9799-1609db9a3341"
     },
     "ios": {
       "supportsTablet": false,
@@ -60,9 +61,15 @@
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.POST_NOTIFICATIONS"
       ],
       "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
@@ -86,6 +93,9 @@
       "eas": {
         "projectId": "3ee670bd-7850-40eb-9799-1609db9a3341"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
