@@ -65,6 +65,26 @@ const waliAppAuthMiddleware = async (req, res, next) => {
       return res.status(403).json(buildInactiveTenantPayload());
     }
 
+    const isPinChangeRequest = req.method === "PUT" && req.path === "/pin";
+    const isSessionProfileRequest = req.method === "GET" && req.path === "/me";
+    if (akun.must_change_pin === true && !isPinChangeRequest && !isSessionProfileRequest) {
+      return res.status(403).json({
+        success: false,
+        code: "PIN_CHANGE_REQUIRED",
+        error: "PIN awal harus diubah sebelum melanjutkan",
+      });
+    }
+
+    if (
+      waliAppService.isTokenVersionEnabled() &&
+      Number(decoded.token_version ?? 0) !== Number(akun.token_version)
+    ) {
+      return res.status(401).json({
+        success: false,
+        error: "Sesi sudah tidak berlaku. Silakan login ulang.",
+      });
+    }
+
     const tenantId = Number(decoded.tenant_id);
     const santriIds = await waliAppService.getSantriIdsForPhone(
       akun.nomor_hp,
@@ -72,7 +92,7 @@ const waliAppAuthMiddleware = async (req, res, next) => {
     );
 
     req.tenantId = tenantId;
-    req.tenantSlug = decoded.tenant_slug || null;
+    req.tenantSlug = tenant.slug || null;
 
     req.wali = {
       wali_akun_id: akun.id,
@@ -80,14 +100,13 @@ const waliAppAuthMiddleware = async (req, res, next) => {
       nama: akun.nama,
       must_change_pin: akun.must_change_pin,
       tenant_id: tenantId,
-      tenant_slug: decoded.tenant_slug || null,
+      tenant_slug: tenant.slug || null,
       santri_ids: santriIds,
       token_payload: decoded,
     };
 
     next();
   } catch (err) {
-    console.log(err);
     return res.status(401).json({
       success: false,
       error: "Token tidak valid",

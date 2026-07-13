@@ -20,8 +20,10 @@ Dokumen referensi variabel lingkungan untuk **API Express** (`server.js`).
 
 | Variable | Deskripsi | Default jika kosong | Rekomendasi production |
 |----------|-----------|---------------------|--------------------------|
-| `WALI_JWT_SECRET` | Secret JWT wali | `WALI_DEV_SECRET_CHANGE_IN_PRODUCTION` ⚠️ | **Wajib set** — jangan pakai default |
+| `WALI_JWT_SECRET` | Secret JWT wali | Tidak ada; server gagal start | **Wajib set** — secret kuat dan unik |
 | `WALI_JWT_EXPIRES` | Expiry token wali | `30d` | `30d` atau sesuai kebijakan |
+| `WALI_JWT_ALLOW_LEGACY_NO_AUD` | Kompatibilitas token lama tanpa audience | `true` | Set `false` setelah seluruh token lama melewati masa berlaku maksimum |
+| `WALI_TOKEN_VERSION_ENABLED` | Revocation JWT melalui `wali_akun.token_version` | `false` | Set `true` hanya setelah migration 056 diterapkan dan diverifikasi |
 
 ## Server & networking
 
@@ -75,7 +77,7 @@ Dokumen referensi variabel lingkungan untuk **API Express** (`server.js`).
 | `server.js` | Load `dotenv`, `PORT`, Socket.io CORS |
 | `middleware/authMiddleware.js` | `JWT_SECRET` |
 | `routes/authRoutes.js` | `JWT_SECRET` |
-| `services/waliAppService.js` | `WALI_JWT_SECRET`, `WALI_JWT_EXPIRES` |
+| `services/waliAppService.js` | `WALI_JWT_SECRET`, `WALI_JWT_EXPIRES`, `WALI_JWT_ALLOW_LEGACY_NO_AUD` |
 
 ---
 
@@ -84,5 +86,6 @@ Dokumen referensi variabel lingkungan untuk **API Express** (`server.js`).
 - [ ] Semua `DB_*` terisi dari PostgreSQL production
 - [ ] `JWT_SECRET` unik & panjang
 - [ ] `WALI_JWT_SECRET` unik (bukan default dev)
+- [ ] Setelah masa transisi token lama selesai, `WALI_JWT_ALLOW_LEGACY_NO_AUD=false`
 - [ ] `CORS_ORIGIN` / `FRONTEND_URL` = URL admin production
 - [ ] `.env` tidak ter-commit (`.gitignore` sudah mencakup)

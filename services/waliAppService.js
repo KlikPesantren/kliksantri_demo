@@ -6,6 +6,13 @@ const pool = require("../db");
 const { WALI_JWT_SECRET } = require("../config/authSecrets");
 
 const WALI_JWT_EXPIRES = process.env.WALI_JWT_EXPIRES || "30d";
+const WALI_JWT_ISSUER = "kliksantri-wali";
+const WALI_JWT_AUDIENCE = "klikpesantren-wali-app";
+const WALI_JWT_ALGORITHM = "HS256";
+const ALLOW_LEGACY_WALI_TOKEN_WITHOUT_AUDIENCE =
+  process.env.WALI_JWT_ALLOW_LEGACY_NO_AUD !== "false";
+const WALI_TOKEN_VERSION_ENABLED =
+  process.env.WALI_TOKEN_VERSION_ENABLED === "true";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -118,6 +125,9 @@ const registerSuccessfulLogin = async (akunId) => {
 };
 
 const getAkunStatus = async (waliAkunId) => {
+  const tokenVersionField = WALI_TOKEN_VERSION_ENABLED
+    ? ", token_version"
+    : "";
   const result = await pool.query(
     `
     SELECT
@@ -127,6 +137,7 @@ const getAkunStatus = async (waliAkunId) => {
       status,
       must_change_pin,
       tenant_id
+      ${tokenVersionField}
     FROM wali_akun
     WHERE id = $1
     LIMIT 1
@@ -199,7 +210,6 @@ const ownsSantri = async (nomorHp, santriId, tenantId) => {
 const signWaliToken = (akun, santriIds, tenant) => {
   const payload = {
     typ: "wali",
-    iss: "kliksantri-wali",
     sub: akun.nomor_hp,
     wali_akun_id: akun.id,
     nomor_hp: akun.nomor_hp,
@@ -208,18 +218,49 @@ const signWaliToken = (akun, santriIds, tenant) => {
     santri_ids: santriIds,
   };
 
+  if (WALI_TOKEN_VERSION_ENABLED) {
+    payload.token_version = Number(akun.token_version) || 0;
+  }
+
   return jwt.sign(payload, WALI_JWT_SECRET, {
+    algorithm: WALI_JWT_ALGORITHM,
+    issuer: WALI_JWT_ISSUER,
+    audience: WALI_JWT_AUDIENCE,
     expiresIn: WALI_JWT_EXPIRES,
   });
 };
 
 const verifyWaliToken = (token) => {
-  const decoded = jwt.verify(token, WALI_JWT_SECRET);
+  const baseOptions = {
+    algorithms: [WALI_JWT_ALGORITHM],
+    issuer: WALI_JWT_ISSUER,
+  };
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, WALI_JWT_SECRET, {
+      ...baseOptions,
+      audience: WALI_JWT_AUDIENCE,
+    });
+  } catch (strictError) {
+    if (!ALLOW_LEGACY_WALI_TOKEN_WITHOUT_AUDIENCE) {
+      throw strictError;
+    }
+
+    const legacyDecoded = jwt.verify(token, WALI_JWT_SECRET, baseOptions);
+    if (legacyDecoded.aud !== undefined) {
+      throw strictError;
+    }
+    decoded = legacyDecoded;
+  }
+
   if (decoded.typ !== "wali") {
     throw new Error("Invalid token type");
   }
   return decoded;
 };
+
+const isTokenVersionEnabled = () => WALI_TOKEN_VERSION_ENABLED;
 
 const writeAudit = async ({ nomorHp, event, ipAddress, userAgent }) => {
   try {
@@ -315,4 +356,8 @@ module.exports = {
   buildLoginResponse,
   getStatistikPesantren,
   WALI_JWT_SECRET,
+  isTokenVersionEnabled,
+  WALI_JWT_ISSUER,
+  WALI_JWT_AUDIENCE,
+  WALI_JWT_ALGORITHM,
 };

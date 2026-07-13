@@ -2307,9 +2307,22 @@ router.put(
 
       // ── Simpan ──
 
-      await pool.query(
+      const tokenVersionEnabled =
+        waliAppService.isTokenVersionEnabled();
 
-        `
+      const updateResult = await pool.query(
+
+        tokenVersionEnabled ? `
+        UPDATE wali_akun
+        SET
+          pin_hash        = $1,
+          must_change_pin = false,
+          token_version   = token_version + 1,
+          updated_at      = NOW()
+        WHERE id = $2
+          AND tenant_id = $3
+        RETURNING token_version
+        ` : `
         UPDATE wali_akun
         SET
           pin_hash        = $1,
@@ -2322,6 +2335,18 @@ router.put(
         [newHash, akunId, req.tenantId]
 
       );
+
+      const replacementToken = tokenVersionEnabled
+        ? waliAppService.signWaliToken(
+            {
+              id: akunId,
+              nomor_hp: akun.nomor_hp,
+              token_version: updateResult.rows[0]?.token_version,
+            },
+            req.wali.santri_ids,
+            { id: req.tenantId, slug: req.tenantSlug }
+          )
+        : null;
 
       // ── Audit ──
 
@@ -2345,6 +2370,8 @@ router.put(
 
         success: true,
 
+        ...(replacementToken ? { token: replacementToken } : {}),
+
         message:
           "PIN berhasil diubah. Gunakan PIN baru untuk login berikutnya."
 
@@ -2354,13 +2381,11 @@ router.put(
 
     catch (err) {
 
-      console.log(err);
-
       res.status(500).json({
 
         success: false,
 
-        error: err.message
+        error: "Gagal mengubah PIN. Silakan coba lagi."
 
       });
 
