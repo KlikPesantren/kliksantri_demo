@@ -13,9 +13,7 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDateShort } from "../../utils/formatDate";
 import { openTenantAdminPortal } from "../../utils/tenantPortal";
 
-const APPLY_PACKAGE_OPTIONS = TENANT_PACKAGES.filter((pkg) =>
-  ["basic", "standard", "premium"].includes(pkg.id)
-);
+const APPLY_PACKAGE_OPTIONS = TENANT_PACKAGES;
 
 const BILLING_STATUS_OPTIONS = [
   "trial",
@@ -188,7 +186,11 @@ function PlatformTenantDetailPage() {
       const res = await platformApi.get(`/platform/tenants/${id}/features`);
       setFeatures(res.data?.features || []);
       setCurrentPackage(res.data?.current_package || { id: "custom", label: "Custom" });
-      if (["basic", "standard", "premium"].includes(res.data?.current_package?.id)) {
+      if (
+        APPLY_PACKAGE_OPTIONS.some(
+          (pkg) => pkg.id === res.data?.current_package?.id
+        )
+      ) {
         setSelectedPackage(res.data.current_package.id);
       }
     } catch (err) {
@@ -260,19 +262,31 @@ function PlatformTenantDetailPage() {
     const pkg = APPLY_PACKAGE_OPTIONS.find((item) => item.id === selectedPackage);
     if (!pkg) return;
 
+    const isCustom = pkg.id === "custom";
     const confirmed = window.confirm(
-      `Apply package ${pkg.label} untuk "${tenantDisplayName(tenant)}"?\n\nFitur tenant akan mengikuti paket ini. Nama tenant, status, user, dan data santri tidak berubah.`
+      isCustom
+        ? `Terapkan konfigurasi Custom untuk "${tenantDisplayName(tenant)}"?\n\nFitur aktif akan mengikuti checklist saat ini. Fitur core tetap aktif dan data tenant tidak berubah.`
+        : `Apply package ${pkg.label} untuk "${tenantDisplayName(tenant)}"?\n\nFitur tenant akan mengikuti paket ini. Nama tenant, status, user, dan data santri tidak berubah.`
     );
     if (!confirmed) return;
 
     setPackageSaving(true);
     setFeaturesError("");
     try {
-      const res = await platformApi.patch(`/platform/tenants/${id}/package`, {
-        package: pkg.id,
-      });
+      const payload = { package: pkg.id };
+      if (isCustom) {
+        payload.custom_features = features
+          .filter((feature) => feature.enabled)
+          .map((feature) => feature.key);
+      }
+
+      const res = await platformApi.patch(
+        `/platform/tenants/${id}/package`,
+        payload
+      );
       setFeatures(res.data?.features || []);
       setCurrentPackage(res.data?.current_package || { id: pkg.id, label: pkg.label });
+      setSelectedPackage(res.data?.current_package?.id || pkg.id);
     } catch (err) {
       setFeaturesError(err.response?.data?.error || "Gagal apply package");
     } finally {
@@ -943,12 +957,14 @@ function PlatformTenantDetailPage() {
                 loading={packageSaving}
                 disabled={featuresLoading || features.length === 0}
               >
-                Apply Package
+                {selectedPackage === "custom" ? "Terapkan Custom" : "Apply Package"}
               </PlatformButton>
             </div>
           </div>
           <p style={featureHintStyle}>
-            Aktifkan atau nonaktifkan modul untuk tenant ini. Fitur core tidak bisa dimatikan.
+            {selectedPackage === "custom"
+              ? "Mode Custom memakai checklist fitur di bawah. Atur modul yang dibutuhkan; fitur core tetap aktif."
+              : "Aktifkan atau nonaktifkan modul untuk tenant ini. Fitur core tidak bisa dimatikan."}
           </p>
 
           {featuresError && <div style={errorBoxStyle}>{featuresError}</div>}

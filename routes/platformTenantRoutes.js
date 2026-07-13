@@ -351,7 +351,8 @@ router.patch(
 
       const featureState = await applyTenantPackage(
         tenant.id,
-        req.body?.package
+        req.body?.package,
+        req.body?.custom_features
       );
 
       res.json({

@@ -183,15 +183,17 @@ async function seedTenantFeaturesFromPackage(
   return [...enabledSet].sort();
 }
 
-async function applyTenantPackage(tenantId, packageName) {
+async function applyTenantPackage(tenantId, packageName, customFeatures = []) {
   const pkg = normalizePackage(packageName);
-  if (!["basic", "standard", "premium"].includes(pkg)) {
-    const err = new Error("Package harus basic, standard, atau premium");
+  if (!["basic", "standard", "premium", "custom"].includes(pkg)) {
+    const err = new Error(
+      "Package harus basic, standard, premium, atau custom"
+    );
     err.status = 400;
     throw err;
   }
 
-  await seedTenantFeaturesFromPackage(tenantId, pkg);
+  await seedTenantFeaturesFromPackage(tenantId, pkg, customFeatures);
   return getTenantFeatureManagementState(tenantId);
 }
 

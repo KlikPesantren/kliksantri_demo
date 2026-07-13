@@ -38,7 +38,15 @@ const response = (status, body) => ({ ok: status >= 200 && status < 300, status,
   let dryRunFetchCalled = false;
   const dryRunService = createVercelDomainService({ env: { VERCEL_DOMAIN_DRY_RUN: "true" }, fetchImpl: async () => { dryRunFetchCalled = true; } });
   assert.strictEqual((await dryRunService.addDomain(hostname)).dryRun, true);
+  assert.strictEqual((await dryRunService.addDomain("app.pesantrenalfalah.com")).dryRun, true);
   assert.strictEqual(dryRunFetchCalled, false);
+
+  const cnameInstructionService = createVercelDomainService({ env, fetchImpl: async () => response(200, { misconfigured: true, recommendedCNAME: [{ value: "target.vercel-dns.com" }] }) });
+  const cnameInstructions = await cnameInstructionService.getDnsInstructions("app.pesantrenalfalah.com");
+  assert.deepStrictEqual(cnameInstructions.records[0], { type: "CNAME", name: "app.pesantrenalfalah.com", value: "target.vercel-dns.com", proxy: "DNS only" });
+  const apexInstructionService = createVercelDomainService({ env, fetchImpl: async () => response(200, { misconfigured: true, recommendedIPv4: [{ value: "76.76.21.21" }] }) });
+  const apexInstructions = await apexInstructionService.getDnsInstructions("pesantrenalfalah.com");
+  assert.strictEqual(apexInstructions.records[0].type, "A");
 
   const calls = [];
   const service = createVercelDomainService({ env, fetchImpl: async (url, options = {}) => {
@@ -93,7 +101,7 @@ const response = (status, body) => ({ ok: status >= 200 && status < 300, status,
   const missingService = createVercelDomainService({ env, fetchImpl: async () => response(404, { error: { code: "not_found" } }) });
   assert.strictEqual(await missingService.getDomain(hostname), null);
   assert.throws(() => validateTenantHostname("app.klikpesantren.com"));
-  assert.throws(() => validateTenantHostname("tenant.example.com"));
+  assert.throws(() => validateTenantHostname("https://tenant.example.com"));
 
   assert.strictEqual(calculateOverallStatus({ tenant_status: "active", dns_status: "active", vercel_status: "verified", ssl_status: "active" }), "active");
   assert.strictEqual(calculateOverallStatus({ tenant_status: "active", dns_status: "active", vercel_status: "verified", ssl_status: "issuing" }), "provisioning");

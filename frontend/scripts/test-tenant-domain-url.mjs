@@ -3,8 +3,9 @@ import { copyActiveTenantUrl, getActiveTenantUrl, normalizeTenantDomainHostname 
 
 const active = { hostname: " AlHikmah01.KlikPesantren.com ", overall_status: "active" };
 assert.equal(getActiveTenantUrl(active), "https://alhikmah01.klikpesantren.com");
+assert.equal(getActiveTenantUrl({ hostname: "App.PesantrenAlfalah.com", overall_status: "active" }), "https://app.pesantrenalfalah.com");
 assert.equal(getActiveTenantUrl({ ...active, overall_status: "provisioning" }), null);
-for (const hostname of ["", "https://tenant.klikpesantren.com", "tenant\n.klikpesantren.com", "app.klikpesantren.com", "tenant.example.com"]) {
+for (const hostname of ["", "https://tenant.klikpesantren.com", "tenant\n.klikpesantren.com", "app.klikpesantren.com", "127.0.0.1"]) {
   assert.equal(normalizeTenantDomainHostname(hostname), null);
 }
 
