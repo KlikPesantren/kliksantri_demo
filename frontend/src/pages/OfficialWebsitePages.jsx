@@ -28,6 +28,18 @@ const defaultContact = {
   email: "hello@klikpesantren.com",
   instagram: "https://instagram.com/klikpesantren",
 };
+const privacyContact = {
+  controller:
+    import.meta.env.VITE_PRIVACY_CONTROLLER_NAME || "Pengelola KlikPesantren",
+  address:
+    import.meta.env.VITE_PRIVACY_ADDRESS || "Alamat pengelola akan dicantumkan sebelum publikasi final.",
+  email:
+    import.meta.env.VITE_PRIVACY_EMAIL || defaultContact.email,
+};
+const configuredDeletionUrl = import.meta.env.VITE_ACCOUNT_DELETION_URL || "";
+const accountDeletionUrl = configuredDeletionUrl.startsWith("https://")
+  ? configuredDeletionUrl
+  : null;
 
 const features = [
   {
@@ -1256,26 +1268,94 @@ export function PrivacyPolicyPage() {
       <PageHero
         eyebrow="Legal"
         icon={<FaShieldAlt />}
-        title="Privacy Policy"
-        text="Halaman kebijakan privasi awal untuk kebutuhan pendaftaran search console dan kanal analytics."
+        title="Kebijakan Privasi KlikPesantren"
+        text="Penjelasan pemrosesan data pada platform KlikPesantren dan aplikasi Wali Santri."
       />
       <section className="kp-page-section">
         <div className="kp-shell kp-legal-content">
-          <h2>Informasi yang dikumpulkan</h2>
+          <p><strong>Tanggal berlaku:</strong> 13 Juli 2026</p>
+
+          <h2>1. Pengelola dan ruang lingkup</h2>
           <p>
-            KlikPesantren dapat menerima informasi kontak, nama pesantren,
-            jabatan, nomor WhatsApp, dan kebutuhan implementasi ketika pengguna
-            menghubungi tim atau meminta demo.
+            Kebijakan ini berlaku untuk layanan KlikPesantren, termasuk aplikasi
+            Wali Santri. {privacyContact.controller} menyediakan teknologi,
+            sedangkan pesantren mengelola akun wali dan sebagian besar catatan
+            administrasi santri sesuai perjanjian serta kewenangannya.
           </p>
-          <h2>Penggunaan informasi</h2>
+
+          <h2>2. Data yang diproses</h2>
           <p>
-            Informasi digunakan untuk menindaklanjuti demo, komunikasi produk,
-            dukungan layanan, dan peningkatan pengalaman pengguna.
+            Data dapat mencakup nama dan nomor HP wali; identitas, profil, kelas,
+            absensi, nilai, hafalan, perizinan, pelanggaran, dan catatan kesehatan
+            santri; tagihan, sahriyah, pembayaran, saldo, serta riwayat transaksi;
+            pengumuman; token notifikasi; alamat IP; user-agent; dan data teknis
+            yang diperlukan untuk keamanan serta dukungan layanan.
           </p>
-          <h2>Kontak</h2>
+
+          <h2>3. Tujuan pemrosesan</h2>
           <p>
-            Pertanyaan terkait privasi dapat dikirim ke
-            hello@klikpesantren.com.
+            Data digunakan untuk autentikasi, menampilkan layanan pesantren kepada
+            wali, mengelola administrasi santri, menyampaikan pengumuman dan
+            notifikasi, menjaga keamanan akun, mencegah penyalahgunaan, menangani
+            dukungan, serta memenuhi kebutuhan operasional dan hukum yang berlaku.
+          </p>
+
+          <h2>4. Notifikasi, Firebase, dan penyedia layanan</h2>
+          <p>
+            Jika pengguna memberi izin, aplikasi memproses token perangkat untuk
+            mengirim notifikasi melalui Expo dan Firebase Cloud Messaging.
+            Penyedia hosting, penyimpanan, dan layanan teknis lain dapat memproses
+            data terbatas untuk menjalankan layanan. Daftar serta perjanjian vendor
+            wajib diverifikasi pengelola sebelum publikasi final.
+          </p>
+
+          <h2>5. Penyimpanan, keamanan, dan retensi</h2>
+          <p>
+            Komunikasi aplikasi production menggunakan HTTPS dan token sesi pada
+            perangkat disimpan menggunakan penyimpanan aman. Kebijakan ini tidak
+            mengklaim seluruh data server terenkripsi saat disimpan sebelum bukti
+            infrastrukturnya diverifikasi. Masa retensi mengikuti kebutuhan
+            administrasi pesantren, perjanjian layanan, keamanan, kewajiban hukum,
+            dan penyelesaian sengketa. Data tidak dijanjikan langsung terhapus
+            ketika akses wali dihentikan.
+          </p>
+
+          <h2>6. Koreksi dan penghapusan akun/data</h2>
+          <p>
+            Aplikasi Wali Santri tidak menyediakan pendaftaran akun mandiri.
+            Wali dapat meminta koreksi data kontak, penonaktifan atau penghapusan
+            akun login, dan penghapusan token notifikasi melalui admin pesantren
+            atau kanal resmi pengelola. Penghapusan akun wali tidak otomatis
+            menghapus data akademik, kesehatan, pelanggaran, perizinan, keuangan,
+            atau arsip administrasi santri yang dikelola pesantren.
+          </p>
+          <p>
+            {accountDeletionUrl ? (
+              <a href={accountDeletionUrl}>Ajukan permintaan penghapusan akun</a>
+            ) : (
+              <>Kanal online sedang disiapkan. Hubungi admin pesantren atau email privasi di bawah.</>
+            )}
+          </p>
+
+          <h2>7. Hak pengguna dan data santri</h2>
+          <p>
+            Pengguna dapat meminta akses, koreksi, pembatasan, atau penghapusan
+            sesuai ketentuan yang berlaku. Permintaan perlu diverifikasi dan dapat
+            melibatkan pesantren. Data santri diperlakukan sebagai data yang perlu
+            perlindungan khusus dan hanya ditampilkan kepada akun yang terhubung.
+          </p>
+
+          <h2>8. Kontak</h2>
+          <p>
+            Pengelola: {privacyContact.controller}<br />
+            Alamat: {privacyContact.address}<br />
+            Email: <a href={`mailto:${privacyContact.email}`}>{privacyContact.email}</a>
+          </p>
+
+          <h2>9. Perubahan kebijakan</h2>
+          <p>
+            Kebijakan dapat diperbarui mengikuti perubahan layanan atau ketentuan.
+            Tanggal berlaku pada halaman ini akan diperbarui ketika revisi efektif.
           </p>
         </div>
       </section>

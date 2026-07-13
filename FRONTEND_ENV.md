@@ -11,6 +11,10 @@ Dokumen variabel lingkungan untuk **Admin Panel** (`frontend/`, Vite + React).
 | Variable | Wajib production | Dipakai di | Deskripsi |
 |----------|------------------|------------|-----------|
 | `VITE_API_BASE_URL` | **Ya** | `frontend/src/services/api.js` | Base URL API backend (HTTPS) |
+| `VITE_PRIVACY_CONTROLLER_NAME` | Sebelum publikasi | `OfficialWebsitePages.jsx` | Nama badan hukum/pengelola pada privacy policy |
+| `VITE_PRIVACY_ADDRESS` | Sebelum publikasi | `OfficialWebsitePages.jsx` | Alamat pengelola; fallback aman ditampilkan bila kosong |
+| `VITE_PRIVACY_EMAIL` | Sebelum publikasi | `OfficialWebsitePages.jsx` | Email privasi/support |
+| `VITE_ACCOUNT_DELETION_URL` | Sebelum publikasi | `OfficialWebsitePages.jsx` | URL HTTPS permintaan penghapusan akun |
 
 ### Efek downstream
 
@@ -72,9 +76,9 @@ VITE_API_BASE_URL=https://<railway-api-domain>
 
 ---
 
-## Variabel VITE_* lain
+## Variabel privacy website
 
-Saat audit (2025): **tidak ada** variabel `VITE_*` lain yang dipakai runtime admin.
+Variabel privacy di-inject saat build. Halaman tetap dapat dirender bila kosong, tetapi status Play Store tetap blocked sampai identitas, alamat, email, dan deletion URL production diisi serta diverifikasi.
 
 ---
 
