@@ -7,7 +7,6 @@ import { AppText } from '../../components/ui/AppText';
 import { storage } from '../../utils/storage';
 import {
   resolveBrandingName,
-  resolveBrandingTagline,
   resolveSplashLogoUrl,
 } from '../../utils/branding';
 

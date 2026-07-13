@@ -1,20 +1,35 @@
 import React, { useEffect, useRef } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { useActiveChild } from '../context/ActiveChildContext';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
 import { SplashScreen } from '../screens/auth/SplashScreen';
 import { setupNotificationNavigation } from '../services/notificationNavigationService';
-import { registerPushTokenBackground } from '../services/pushNotificationService';
+import { ErrorView } from '../components/common/ErrorView';
+import { GantiPinScreen } from '../screens/profil/GantiPinScreen';
+
+const RequiredPinStack = createNativeStackNavigator();
+
+function RequiredPinChange() {
+  return (
+    <RequiredPinStack.Navigator screenOptions={{ gestureEnabled: false }}>
+      <RequiredPinStack.Screen
+        name="RequiredPinChange"
+        component={GantiPinScreen}
+        options={{ title: 'Ganti PIN Wajib', headerBackVisible: false }}
+      />
+    </RequiredPinStack.Navigator>
+  );
+}
 
 export const navigationRef = createNavigationContainerRef();
 
 export function AppNavigator() {
-  const { isLoading, isAuthenticated, anak, restoreSession } = useAuth();
-  const { restoreActiveChild, setActiveSantri } = useActiveChild();
+  const { isLoading, isAuthenticated, mustChangePin, anak, restoreError, restoreSession } = useAuth();
+  const { restoreActiveChild, setActiveSantri, clearActiveSantri } = useActiveChild();
   const anakRef = useRef(anak);
-  const pushRegisterOnReadyRef = useRef(false);
 
   useEffect(() => {
     restoreSession();
@@ -27,24 +42,13 @@ export function AppNavigator() {
   useEffect(() => {
     if (isAuthenticated && anak.length > 0) {
       restoreActiveChild(anak);
+    } else if (!isAuthenticated) {
+      clearActiveSantri();
     }
-  }, [isAuthenticated, anak, restoreActiveChild]);
+  }, [isAuthenticated, anak, restoreActiveChild, clearActiveSantri]);
 
   useEffect(() => {
-    if (!isAuthenticated || isLoading || pushRegisterOnReadyRef.current) {
-      return undefined;
-    }
-
-    pushRegisterOnReadyRef.current = true;
-    const timer = setTimeout(() => {
-      registerPushTokenBackground({ source: 'appNavigatorAuthenticated' });
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [isAuthenticated, isLoading]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return undefined;
+    if (!isAuthenticated || mustChangePin) return undefined;
 
     let cleanup = () => {};
     let isMounted = true;
@@ -63,15 +67,19 @@ export function AppNavigator() {
       isMounted = false;
       cleanup();
     };
-  }, [isAuthenticated, setActiveSantri]);
+  }, [isAuthenticated, mustChangePin, setActiveSantri]);
 
   if (isLoading) {
     return <SplashScreen />;
   }
 
+  if (restoreError) {
+    return <ErrorView message={restoreError} onRetry={restoreSession} />;
+  }
+
   return (
     <NavigationContainer ref={navigationRef}>
-      {isAuthenticated ? <MainTabs /> : <AuthStack />}
+      {isAuthenticated ? (mustChangePin ? <RequiredPinChange /> : <MainTabs />) : <AuthStack />}
     </NavigationContainer>
   );
 }

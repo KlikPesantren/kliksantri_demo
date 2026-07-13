@@ -1,7 +1,10 @@
 import { useState, useCallback } from 'react';
 import { pinApi } from '../api/pin.api';
+import { getApiErrorMessage } from '../utils/apiError';
+import { useAuth } from '../context/AuthContext';
 
 export function useChangePin() {
+  const { replaceToken } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -13,20 +16,21 @@ export function useChangePin() {
       setIsSuccess(false);
 
       try {
-        await pinApi.changePin({ pin_lama, pin_baru, konfirmasi_pin });
+        const result = await pinApi.changePin({ pin_lama, pin_baru, konfirmasi_pin });
+        if (result?.token) {
+          await replaceToken(result.token);
+        }
         setIsSuccess(true);
         return { success: true };
       } catch (err) {
-        const msg =
-          err.response?.data?.error ??
-          'Gagal mengubah PIN. Periksa koneksi Anda.';
+        const msg = getApiErrorMessage(err, 'Gagal mengubah PIN. Silakan coba lagi.');
         setError(msg);
         return { success: false, error: msg };
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [replaceToken]
   );
 
   const reset = useCallback(() => {

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   ScrollView,
   RefreshControl,
@@ -62,14 +62,6 @@ export function DashboardScreen({ navigation: tabNavigation }) {
   };
 
   const statistikPesantren = data?.statistik_pesantren;
-
-  useEffect(() => {
-    console.log('[DashboardScreen] dashboard loaded:', Boolean(data));
-    console.log('[DashboardScreen] statistik_pesantren prop:', JSON.stringify(statistikPesantren));
-    if (data && statistikPesantren == null) {
-      console.log('[DashboardScreen] dashboard keys:', Object.keys(data));
-    }
-  }, [data, statistikPesantren]);
 
   useFocusEffect(
     React.useCallback(() => {

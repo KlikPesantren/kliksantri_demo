@@ -1,26 +1,21 @@
-import axios from 'axios';
+import { create } from 'axios';
 import { storage } from '../utils/storage';
-import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 import {
   isTenantSuspendedResponse,
 } from '../constants/tenant';
 
 const DEV_API_FALLBACK = 'http://10.10.2.140:3000';
 
-const API_BASE_URL = (ENV_API_BASE_URL || (__DEV__ ? DEV_API_FALLBACK : '')).replace(
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEV_API_FALLBACK : '')).replace(
   /\/$/,
   '',
 );
 
-if (!API_BASE_URL && !__DEV__) {
-  console.error('API_BASE_URL is required. Set it in wali-app/.env before building APK.');
+if (!__DEV__ && !API_BASE_URL.startsWith('https://')) {
+  throw new Error('Konfigurasi layanan production tidak valid.');
 }
 
-console.log('ENV URL =', ENV_API_BASE_URL);
-console.log('API_BASE_URL =', API_BASE_URL);
-console.log('LOGIN URL =', `${API_BASE_URL}/wali-app/login`);
-
-const api = axios.create({
+const api = create({
   baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
@@ -30,8 +25,6 @@ const api = axios.create({
 
 api.interceptors.request.use(
   async (config) => {
-    console.log('REQUEST', config.method?.toUpperCase(), API_BASE_URL + config.url);
-
     const token = await storage.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -48,32 +41,36 @@ api.interceptors.request.use(
 );
 
 let _logoutCallback = null;
+let _sessionInvalidationInFlight = false;
 
 export function setLogoutCallback(fn) {
   _logoutCallback = fn;
 }
 
-function logAxiosError(error, context = 'response') {
-  console.log('AXIOS ERROR', error);
-  console.log('MESSAGE', error?.message);
-  console.log('CODE', error?.code);
-  console.log('STATUS', error?.response?.status);
-  console.log('DATA', error?.response?.data);
-  if (context) {
-    console.log('AXIOS CONTEXT', context);
-  }
+function logAxiosError(error) {
+  if (!__DEV__) return;
+  console.warn('[api]', {
+    code: error?.code || null,
+    status: error?.response?.status || null,
+  });
 }
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    logAxiosError(error, error.config?.url);
+    logAxiosError(error);
     const status = error.response?.status;
 
-    if (status === 401 || isTenantSuspendedResponse(status, error.response?.data)) {
-      await storage.clearSession();
-      if (_logoutCallback) {
-        _logoutCallback();
+    if (
+      !_sessionInvalidationInFlight &&
+      (status === 401 || isTenantSuspendedResponse(status, error.response?.data))
+    ) {
+      _sessionInvalidationInFlight = true;
+      try {
+        await storage.clearSession();
+        _logoutCallback?.();
+      } finally {
+        _sessionInvalidationInFlight = false;
       }
     }
 

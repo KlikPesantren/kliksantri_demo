@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { kesehatanApi } from '../api/kesehatan.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useKesehatan(activeSantriId) {
   const [current, setCurrent] = useState(null);
@@ -22,10 +23,7 @@ export function useKesehatan(activeSantriId) {
       setTimeline(res.timeline ?? []);
     } catch (err) {
       if (reqId !== reqRef.current) return;
-      setError(
-        err.response?.data?.error ??
-          'Gagal memuat data kesehatan. Periksa koneksi Anda.'
-      );
+      setError(getApiErrorMessage(err, 'Gagal memuat data kesehatan. Silakan coba lagi.'));
     } finally {
       if (reqId === reqRef.current) {
         setIsLoading(false);

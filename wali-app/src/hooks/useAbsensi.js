@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { absensiApi } from '../api/absensi.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useAbsensi(activeSantriId, bulan, tahun) {
   const [ringkasan, setRingkasan] = useState(null);
@@ -30,10 +31,7 @@ export function useAbsensi(activeSantriId, bulan, tahun) {
         setRiwayat(res.riwayat ?? []);
       } catch (err) {
         if (reqId !== reqRef.current) return;
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat data absensi. Periksa koneksi Anda.'
-        );
+        setError(getApiErrorMessage(err, 'Gagal memuat data absensi. Silakan coba lagi.'));
       } finally {
         if (reqId === reqRef.current) {
           setIsLoading(false);

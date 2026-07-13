@@ -10,6 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useAuth } from '../../context/AuthContext';
 import { useActiveChild } from '../../context/ActiveChildContext';
 import { BrandLogo } from '../../components/branding/BrandLogo';
@@ -22,7 +24,6 @@ import {
 import { colors } from '../../constants/colors';
 import { interaction, radius, spacing } from '../../constants/theme';
 import { storage } from '../../utils/storage';
-import { API_BASE_URL } from '../../api/client';
 import { TENANT_INACTIVE_MESSAGE } from '../../constants/tenant';
 import {
   resolveBrandingName,
@@ -30,7 +31,7 @@ import {
   resolveLoginLogoUrl,
 } from '../../utils/branding';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 const DEFAULT_TAGLINE = 'Portal Wali Santri';
 
 function LoginField({ label, children, error }) {
@@ -50,6 +51,7 @@ function LoginField({ label, children, error }) {
 }
 
 export function LoginScreen() {
+  usePreventScreenCapture('wali-login');
   const { login } = useAuth();
   const { setActiveSantri } = useActiveChild();
 
@@ -62,6 +64,7 @@ export function LoginScreen() {
   const [branding, setBranding] = useState(null);
 
   const pinRef = useRef(null);
+  const loginInFlightRef = useRef(false);
 
   useEffect(() => {
     storage.getPesantrenBranding().then(setBranding).catch(() => {});
@@ -85,6 +88,7 @@ export function LoginScreen() {
   }
 
   async function handleLogin() {
+    if (loginInFlightRef.current) return;
     setError('');
 
     if (!nomorHp || nomorHp.length < 9) {
@@ -101,54 +105,42 @@ export function LoginScreen() {
       return;
     }
 
+    loginInFlightRef.current = true;
     setIsLoading(true);
     try {
       const slug = tenantSlug.trim().toLowerCase();
       await storage.setTenantSlug(slug);
       const { anak } = await login(nomorHp, pin, slug);
 
-      if (anak.length === 0) {
-        setError('Tidak ada santri yang terdaftar untuk akun ini.');
-        return;
-      }
-
       await setActiveSantri(anak[0]);
     } catch (err) {
-      console.log('AXIOS ERROR', err);
-      console.log('MESSAGE', err.message);
-      console.log('CODE', err.code);
-      console.log('STATUS', err.response?.status);
-      console.log('DATA', err.response?.data);
-
       const status = err.response?.status;
-      const msg = err.response?.data?.error;
+      setPin('');
 
-      if (status === 423) {
+      if (err.code === 'NO_CHILDREN') {
+        setError('Akun ini belum memiliki santri aktif. Hubungi admin pesantren.');
+      } else if (status === 423) {
         setError('Akun terkunci sementara. Hubungi admin pesantren.');
       } else if (status === 403) {
-        const suspendMsg = msg ?? TENANT_INACTIVE_MESSAGE;
-        if (suspendMsg === TENANT_INACTIVE_MESSAGE) {
-          setError(suspendMsg);
-        } else {
-          setError('Akun Anda ditangguhkan. Hubungi admin pesantren.');
-        }
+        const isTenantInactive = err.response?.data?.error === TENANT_INACTIVE_MESSAGE;
+        setError(isTenantInactive ? TENANT_INACTIVE_MESSAGE : 'Akun atau layanan sedang tidak aktif. Hubungi admin pesantren.');
       } else if (status === 404) {
-        setError(msg ?? 'Kode pesantren tidak ditemukan.');
+        setError('Kode pesantren tidak ditemukan.');
       } else if (status === 401 || status === 400) {
-        setError(msg ?? 'Nomor HP atau PIN salah.');
+        setError('Nomor HP atau PIN salah.');
+      } else if (status === 429) {
+        setError('Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.');
       } else if (status >= 500) {
-        setError(msg ?? `Error server (${status}).`);
+        setError('Layanan sedang mengalami gangguan. Silakan coba lagi nanti.');
       } else if (err.code === 'ECONNABORTED') {
-        setError(`Timeout — server tidak merespons dalam 10 detik (${API_BASE_URL}).`);
+        setError('Koneksi terlalu lama. Silakan coba lagi.');
       } else if (err.code === 'ERR_NETWORK' || !err.response) {
-        setError(
-          `Tidak dapat terhubung ke ${API_BASE_URL}. ` +
-            `Cek WiFi HP, IP server (ipconfig), dan firewall port 3000.`
-        );
+        setError('Tidak dapat terhubung. Periksa koneksi internet Anda lalu coba lagi.');
       } else {
-        setError(msg ?? `Gagal terhubung (${err.message}).`);
+        setError('Tidak dapat masuk saat ini. Silakan coba lagi.');
       }
     } finally {
+      loginInFlightRef.current = false;
       setIsLoading(false);
     }
   }
@@ -200,6 +192,7 @@ export function LoginScreen() {
                 }}
                 autoCapitalize="none"
                 autoCorrect={false}
+                accessibilityLabel="Kode pesantren"
               />
             </LoginField>
 
@@ -215,6 +208,8 @@ export function LoginScreen() {
                 onSubmitEditing={() => pinRef.current?.focus()}
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="tel"
+                accessibilityLabel="Nomor HP wali"
               />
             </LoginField>
 
@@ -232,12 +227,17 @@ export function LoginScreen() {
                   maxLength={6}
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
+                  autoComplete="off"
+                  importantForAutofill="no"
+                  accessibilityLabel="PIN enam digit"
                 />
                 <TouchableOpacity
                   style={styles.eyeBtn}
                   onPress={() => setShowPin((v) => !v)}
                   activeOpacity={interaction.activeOpacity}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPin ? 'Sembunyikan PIN' : 'Tampilkan PIN'}
                 >
                   <Ionicons
                     name={showPin ? 'eye-off-outline' : 'eye-outline'}
@@ -252,6 +252,7 @@ export function LoginScreen() {
               fullWidth
               size="lg"
               loading={isLoading}
+              disabled={isLoading}
               onPress={handleLogin}
               style={styles.loginBtn}
             >

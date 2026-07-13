@@ -6,6 +6,8 @@ import { ProfilSantriScreen } from '../screens/profil/ProfilSantriScreen';
 import { ProfilPesantrenScreen } from '../screens/profil/ProfilPesantrenScreen';
 import { GantiPinScreen } from '../screens/profil/GantiPinScreen';
 import { TentangAplikasiScreen } from '../screens/profil/TentangAplikasiScreen';
+import { KebijakanPrivasiScreen } from '../screens/profil/KebijakanPrivasiScreen';
+import { PermintaanPenghapusanAkunScreen } from '../screens/profil/PermintaanPenghapusanAkunScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,6 +23,8 @@ export function ProfilStack() {
       <Stack.Screen name="ProfilPesantren" component={ProfilPesantrenScreen} options={{ title: 'Tentang Pesantren' }} />
       <Stack.Screen name="GantiPin" component={GantiPinScreen} options={{ title: 'Ganti PIN' }} />
       <Stack.Screen name="TentangAplikasi" component={TentangAplikasiScreen} options={{ title: 'Tentang Aplikasi' }} />
+      <Stack.Screen name="KebijakanPrivasi" component={KebijakanPrivasiScreen} options={{ title: 'Kebijakan Privasi' }} />
+      <Stack.Screen name="PermintaanPenghapusanAkun" component={PermintaanPenghapusanAkunScreen} options={{ title: 'Penghapusan Akun' }} />
     </Stack.Navigator>
   );
 }

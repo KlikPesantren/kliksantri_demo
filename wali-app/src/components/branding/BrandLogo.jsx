@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui/AppText';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { colors } from '../../constants/colors';
-import { radius, spacing } from '../../constants/theme';
+import { radius } from '../../constants/theme';
 
 export function BrandLogo({ logoUrl, nama, size = 72 }) {
   const uri = resolveMediaUrl(logoUrl);

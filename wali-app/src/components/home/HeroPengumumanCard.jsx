@@ -16,10 +16,10 @@ function truncateText(text, max = 72) {
 }
 
 export function HeroPengumumanSlide({ item, onPress }) {
+  const [imageError, setImageError] = useState(false);
   if (!item) return null;
 
   const uri = resolveMediaUrl(item.cover_url);
-  const [imageError, setImageError] = useState(false);
   const showBadge = item.prioritas === 'urgent' || item.prioritas === 'penting';
   const ringkasan = truncateText(item.isi);
 

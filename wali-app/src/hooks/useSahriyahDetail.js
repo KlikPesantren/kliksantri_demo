@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { sahriyahApi } from '../api/sahriyah.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useSahriyahDetail(tagihanId) {
   const [data, setData] = useState([]);
@@ -20,10 +21,7 @@ export function useSahriyahDetail(tagihanId) {
         const res = await sahriyahApi.getRiwayat(tagihanId);
         setData(res.data ?? []);
       } catch (err) {
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat riwayat pembayaran.'
-        );
+        setError(getApiErrorMessage(err, 'Gagal memuat riwayat pembayaran. Silakan coba lagi.'));
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);

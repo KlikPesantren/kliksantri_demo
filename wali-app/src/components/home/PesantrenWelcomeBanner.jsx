@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui/AppText';
 import { colors } from '../../constants/colors';
 import { radius, shadows, spacing } from '../../constants/theme';

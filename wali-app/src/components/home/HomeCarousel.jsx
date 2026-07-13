@@ -176,12 +176,6 @@ export function HomeCarousel({ pesantren, pengumuman, onPengumumanPress }) {
     const currentLoopIndex = activeLoopIndexRef.current;
     const nextLoopIndex = currentLoopIndex + 1;
 
-    if (__DEV__) {
-      console.log('[CAROUSEL] timer tick');
-      console.log('[CAROUSEL] current index', currentLoopIndex);
-      console.log('[CAROUSEL] scroll to', nextLoopIndex);
-    }
-
     clearLoopJumpTimer();
 
     if (nextLoopIndex >= loop.length - 1) {

@@ -78,7 +78,7 @@ export function SantriHeroCard({
           disabled={!onGantiPress}
         >
           <AppText variant="caption" color="inverse" style={styles.salam}>
-            Assalamu'alaikum
+            Assalamu’alaikum
           </AppText>
           <AppText variant="bodyMedium" color="inverse" numberOfLines={1} style={styles.waliName}>
             Bapak/Ibu {waliName}

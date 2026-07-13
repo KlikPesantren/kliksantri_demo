@@ -13,10 +13,9 @@ export function useHomeLinks() {
     try {
       const res = await homeLinksApi.getHomeLinks();
       setData(res.data || []);
-    } catch (err) {
-      console.log('[HOME LINKS] load error', err?.response?.data || err?.message);
+    } catch {
       setData([]);
-      setError(err);
+      setError('Gagal memuat tautan pesantren.');
     } finally {
       setIsLoading(false);
     }

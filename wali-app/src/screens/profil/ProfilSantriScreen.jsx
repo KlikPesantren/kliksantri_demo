@@ -13,7 +13,7 @@ import {
   StatusBadge,
 } from '../../components/ui';
 import { colors } from '../../constants/colors';
-import { spacing, radius } from '../../constants/theme';
+import { spacing } from '../../constants/theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 function Avatar({ foto, nama }) {

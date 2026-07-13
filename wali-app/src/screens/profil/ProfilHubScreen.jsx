@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { ScrollView, View, Image, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -8,20 +8,12 @@ import {
   ScreenContainer,
   AppCard,
   AppText,
-  AppButton,
   MenuRow,
 } from '../../components/ui';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/theme';
-import { pushApi } from '../../api/push.api';
-import {
-  getPushDebugInfo,
-  registerPushTokenBackground,
-} from '../../services/pushNotificationService';
-
-const SHOW_PUSH_DEBUG = false;
 
 function PesantrenLogo({ logoUrl, nama }) {
   const uri = resolveMediaUrl(logoUrl);
@@ -51,67 +43,6 @@ export function ProfilHubScreen() {
   const navigation = useNavigation();
   const { wali, logout } = useAuth();
   const { data: pesantren, isLoading } = useProfilPesantren();
-  const [pushDebug, setPushDebug] = useState(null);
-  const [pushServerStatus, setPushServerStatus] = useState(null);
-  const [pushLoading, setPushLoading] = useState(false);
-  const [pushMessage, setPushMessage] = useState('');
-
-  const loadPushDebug = useCallback(async () => {
-    let message = '';
-
-    try {
-      const localInfo = await getPushDebugInfo();
-      setPushDebug(localInfo);
-    } catch (err) {
-      message = err?.message || 'Gagal memuat status lokal push';
-    }
-
-    try {
-      const serverStatus = await pushApi.getDeviceTokenStatus();
-      setPushServerStatus(serverStatus);
-    } catch (err) {
-      message = err?.response?.data?.error || err?.message || 'Gagal memuat status server push';
-    }
-
-    setPushMessage(message);
-  }, []);
-
-  useEffect(() => {
-    if (!SHOW_PUSH_DEBUG) return;
-    loadPushDebug();
-  }, [loadPushDebug]);
-
-  async function handleManualRegisterPush() {
-    setPushLoading(true);
-    setPushMessage('');
-    try {
-      const result = await registerPushTokenBackground({ source: 'profileDebugManual' });
-      await loadPushDebug();
-      setPushMessage(result?.ok ? 'Register push berhasil.' : `Register push belum berhasil: ${result?.reason || result?.error || 'unknown'}`);
-    } catch (err) {
-      setPushMessage(err?.message || 'Register push gagal');
-    } finally {
-      setPushLoading(false);
-    }
-  }
-
-  async function handleTestPush() {
-    setPushLoading(true);
-    setPushMessage('');
-    try {
-      const result = await pushApi.sendTestNotification({
-        title: 'Test KlikPesantren',
-        body: 'Push notification test dari aplikasi Wali.',
-      });
-      await loadPushDebug();
-      setPushMessage(result?.success ? 'Test push dikirim.' : result?.message || 'Test push belum berhasil.');
-    } catch (err) {
-      setPushMessage(err?.response?.data?.error || err?.message || 'Test push gagal');
-    } finally {
-      setPushLoading(false);
-    }
-  }
-
   function handleLogout() {
     Alert.alert(
       'Keluar Akun',
@@ -170,6 +101,18 @@ export function ProfilHubScreen() {
             onPress={() => navigation.navigate('TentangAplikasi')}
           />
           <MenuRow
+            icon="shield-checkmark-outline"
+            title="Kebijakan Privasi"
+            subtitle="Cara data wali dan santri diproses"
+            onPress={() => navigation.navigate('KebijakanPrivasi')}
+          />
+          <MenuRow
+            icon="person-remove-outline"
+            title="Permintaan Penghapusan Akun"
+            subtitle="Ajukan penonaktifan atau penghapusan akses"
+            onPress={() => navigation.navigate('PermintaanPenghapusanAkun')}
+          />
+          <MenuRow
             icon="log-out-outline"
             iconColor={colors.danger}
             title="Logout"
@@ -180,81 +123,8 @@ export function ProfilHubScreen() {
           />
         </AppCard>
 
-        {SHOW_PUSH_DEBUG ? (
-          <AppCard padding="lg" style={styles.debugCard}>
-            <AppText variant="h3">Debug Push Notification</AppText>
-            <View style={styles.debugRows}>
-              <DebugRow label="Permission" value={pushDebug?.permission_status || '-'} />
-              <DebugRow
-                label="Expo Token"
-                value={
-                  pushDebug?.registration_status?.expo_push_token
-                    ? `${String(pushDebug.registration_status.expo_push_token).slice(0, 20)}...`
-                    : '-'
-                }
-              />
-              <DebugRow
-                label="Register Lokal"
-                value={pushDebug?.registration_status?.ok ? 'OK' : pushDebug?.registration_status?.reason || pushDebug?.registration_status?.error || '-'}
-              />
-              <DebugRow
-                label="Token Server"
-                value={pushServerStatus?.has_active_token ? `Aktif (${pushServerStatus.active_token_count})` : 'Belum ada'}
-              />
-              <DebugRow label="Server Token" value={pushServerStatus?.latest_token_prefix || '-'} />
-              <DebugRow label="Platform" value={pushServerStatus?.latest_platform || '-'} />
-              <DebugRow label="Last Seen" value={pushServerStatus?.latest_last_seen || '-'} />
-            </View>
-            {pushMessage ? (
-              <AppText variant="caption" color="secondary">
-                {pushMessage}
-              </AppText>
-            ) : null}
-            <View style={styles.debugActions}>
-              <AppButton
-                size="sm"
-                onPress={handleManualRegisterPush}
-                loading={pushLoading}
-                fullWidth
-              >
-                Register Push Token
-              </AppButton>
-              <AppButton
-                size="sm"
-                variant="outline"
-                onPress={handleTestPush}
-                loading={pushLoading}
-                fullWidth
-              >
-                Test Push
-              </AppButton>
-              <AppButton
-                size="sm"
-                variant="ghost"
-                onPress={loadPushDebug}
-                disabled={pushLoading}
-                fullWidth
-              >
-                Refresh Status
-              </AppButton>
-            </View>
-          </AppCard>
-        ) : null}
       </ScrollView>
     </ScreenContainer>
-  );
-}
-
-function DebugRow({ label, value }) {
-  return (
-    <View style={styles.debugRow}>
-      <AppText variant="caption" color="secondary" style={styles.debugLabel}>
-        {label}
-      </AppText>
-      <AppText variant="caption" style={styles.debugValue}>
-        {String(value || '-')}
-      </AppText>
-    </View>
   );
 }
 

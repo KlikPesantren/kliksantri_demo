@@ -1,4 +1,5 @@
 import React from 'react';
+import Constants from 'expo-constants';
 import { ScrollView, View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useProfilPesantren } from '../../hooks/useProfilPesantren';
@@ -16,6 +17,7 @@ export function TentangAplikasiScreen() {
   const { data: pesantren } = useProfilPesantren();
 
   const namaPesantren = pesantren?.nama_pesantren ?? 'Pesantren';
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   return (
     <ScreenContainer>
@@ -23,7 +25,7 @@ export function TentangAplikasiScreen() {
         <AppCard padding="lg" style={styles.card}>
           <AppText variant="h2">{namaPesantren}</AppText>
           <AppText variant="caption" color="muted">
-            Portal Wali Santri · Versi 1.0.0
+            Portal Wali Santri · Versi {appVersion}
           </AppText>
           <View style={styles.divider} />
           <AppText variant="body" color="secondary">

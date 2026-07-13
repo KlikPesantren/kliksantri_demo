@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { pengumumanApi } from '../api/pengumuman.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function usePengumuman() {
   const [data, setData] = useState([]);
@@ -27,10 +28,7 @@ export function usePengumuman() {
       setTotal(res.total ?? 0);
     } catch (err) {
       if (reqId !== reqRef.current) return;
-      setError(
-        err.response?.data?.error ??
-          'Gagal memuat pengumuman. Periksa koneksi Anda.'
-      );
+      setError(getApiErrorMessage(err, 'Gagal memuat pengumuman. Silakan coba lagi.'));
     } finally {
       if (reqId === reqRef.current) {
         setIsLoading(false);

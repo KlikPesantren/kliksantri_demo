@@ -14,8 +14,7 @@ export function useNotifications({ limit = 30 } = {}) {
       const res = await notificationsApi.getNotifications({ limit, offset: 0 });
       setItems(res.data || []);
       setUnreadCount(Number(res.unread_count || 0));
-    } catch (err) {
-      console.warn('[notifications] gagal memuat:', err?.message || err);
+    } catch {
       setError('Gagal memuat notifikasi.');
     } finally {
       if (!silent) setIsLoading(false);
@@ -26,8 +25,7 @@ export function useNotifications({ limit = 30 } = {}) {
     try {
       const res = await notificationsApi.getUnreadCount();
       setUnreadCount(Number(res.unread_count || 0));
-    } catch (err) {
-      console.warn('[notifications] gagal memuat jumlah:', err?.message || err);
+    } catch {
     }
   }, []);
 

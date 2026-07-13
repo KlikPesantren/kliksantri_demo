@@ -21,6 +21,8 @@ const initialState = {
   wali: null,
   anak: [],
   santriIds: [],
+  mustChangePin: false,
+  restoreError: null,
 };
 
 function authReducer(state, action) {
@@ -34,6 +36,7 @@ function authReducer(state, action) {
         wali: action.wali,
         anak: action.anak,
         santriIds: action.santriIds,
+        mustChangePin: action.mustChangePin,
       };
     case 'LOGIN':
       return {
@@ -44,11 +47,22 @@ function authReducer(state, action) {
         wali: action.wali,
         anak: action.anak,
         santriIds: action.santriIds,
+        mustChangePin: action.mustChangePin,
       };
+    case 'PIN_CHANGED':
+      return {
+        ...state,
+        mustChangePin: false,
+        wali: state.wali ? { ...state.wali, must_change_pin: false } : null,
+      };
+    case 'TOKEN_REPLACED':
+      return { ...state, token: action.token };
     case 'LOGOUT':
       return { ...initialState, isLoading: false };
     case 'SET_LOADING':
-      return { ...state, isLoading: action.value };
+      return { ...state, isLoading: action.value, restoreError: null };
+    case 'RESTORE_ERROR':
+      return { ...state, isLoading: false, restoreError: action.message };
     default:
       return state;
   }
@@ -61,44 +75,49 @@ export function AuthProvider({ children }) {
 
   const registerPushAfterAuthReady = useCallback(async (source) => {
     if (pushRegisteredRef.current) {
-      console.log('[PUSH] register skip already success', { source });
       return;
     }
 
     if (pushRegisterInFlightRef.current) {
-      console.log('[PUSH] register skip in flight', { source });
       return;
     }
 
     pushRegisterInFlightRef.current = true;
-    console.log('[PUSH] register start', { source });
-
     const result = await registerPushTokenBackground({ source });
     pushRegisterInFlightRef.current = false;
 
     if (result?.ok) {
       pushRegisteredRef.current = true;
-      console.log('[PUSH] register done', { source });
     } else {
       pushRegisteredRef.current = false;
-      console.log('[PUSH] register not ok', { source, result });
     }
   }, []);
 
   const logout = useCallback(async () => {
     pushRegisterInFlightRef.current = false;
     pushRegisteredRef.current = false;
-    await unregisterPushToken();
-    await storage.clearSession();
+    try {
+      await unregisterPushToken();
+    } finally {
+      await storage.clearSession();
+      dispatch({ type: 'LOGOUT' });
+    }
+  }, []);
+
+  const handleInvalidSession = useCallback(() => {
+    pushRegisterInFlightRef.current = false;
+    pushRegisteredRef.current = false;
     dispatch({ type: 'LOGOUT' });
   }, []);
 
   // Daftarkan logout callback ke axios interceptor
   React.useEffect(() => {
-    setLogoutCallback(logout);
-  }, [logout]);
+    setLogoutCallback(handleInvalidSession);
+    return () => setLogoutCallback(null);
+  }, [handleInvalidSession]);
 
   const restoreSession = useCallback(async () => {
+    dispatch({ type: 'SET_LOADING', value: true });
     try {
       const token = await storage.getToken();
 
@@ -113,6 +132,12 @@ export function AuthProvider({ children }) {
       const anak = res.anak ?? [];
       const santriIds = res.santri_ids ?? [];
 
+      if (!wali || !Array.isArray(anak) || anak.length === 0) {
+        await storage.clearSession();
+        dispatch({ type: 'LOGOUT' });
+        return;
+      }
+
       await storage.saveSession(token, wali, anak, santriIds);
 
       dispatch({
@@ -121,12 +146,23 @@ export function AuthProvider({ children }) {
         wali,
         anak,
         santriIds,
+        mustChangePin: wali.must_change_pin === true,
       });
-      await registerPushAfterAuthReady('restoreSession');
+      if (wali.must_change_pin !== true) {
+        registerPushAfterAuthReady('restoreSession');
+      }
 
-    } catch {
-      await storage.clearSession();
-      dispatch({ type: 'SET_LOADING', value: false });
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        await storage.clearSession();
+        dispatch({ type: 'LOGOUT' });
+        return;
+      }
+      dispatch({
+        type: 'RESTORE_ERROR',
+        message: 'Sesi tersimpan belum dapat diperiksa. Periksa koneksi lalu coba lagi.',
+      });
     }
   }, [registerPushAfterAuthReady]);
 
@@ -139,24 +175,52 @@ export function AuthProvider({ children }) {
       anak = [],
       santri_ids: santriIds = [],
       tenant,
+      must_change_pin: responseMustChangePin,
     } = res;
+
+    const mustChangePin = responseMustChangePin === true || wali?.must_change_pin === true;
+
+    if (!token || !wali || !Array.isArray(anak) || anak.length === 0) {
+      const error = new Error('Akun belum memiliki santri aktif.');
+      error.code = 'NO_CHILDREN';
+      throw error;
+    }
 
     const slug = tenant?.slug || tenant_slug || 'default';
     await storage.saveSession(token, wali, anak, santriIds, slug);
 
-    dispatch({ type: 'LOGIN', token, wali, anak, santriIds });
-    await registerPushAfterAuthReady('login');
+    dispatch({ type: 'LOGIN', token, wali, anak, santriIds, mustChangePin });
+    if (!mustChangePin) {
+      registerPushAfterAuthReady('login');
+    }
 
     return { anak, santriIds, tenant };
   }, [registerPushAfterAuthReady]);
 
+  const markPinChanged = useCallback(() => {
+    dispatch({ type: 'PIN_CHANGED' });
+    registerPushAfterAuthReady('pinChanged');
+  }, [registerPushAfterAuthReady]);
+
+  const replaceToken = useCallback(async (token) => {
+    await storage.setToken(token);
+    dispatch({ type: 'TOKEN_REPLACED', token });
+  }, []);
+
   React.useEffect(() => {
-    if (!state.isAuthenticated || !state.token) return;
+    if (!state.isAuthenticated || !state.token || state.mustChangePin) return;
     registerPushAfterAuthReady('authStateEffect');
-  }, [state.isAuthenticated, state.token, registerPushAfterAuthReady]);
+  }, [state.isAuthenticated, state.token, state.mustChangePin, registerPushAfterAuthReady]);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, restoreSession }}>
+    <AuthContext.Provider value={{
+      ...state,
+      login,
+      logout,
+      restoreSession,
+      markPinChanged,
+      replaceToken,
+    }}>
       {children}
     </AuthContext.Provider>
   );

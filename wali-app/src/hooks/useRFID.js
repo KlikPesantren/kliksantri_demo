@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { rfidApi } from '../api/rfid.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const PAGE_LIMIT = 20;
 
@@ -14,10 +15,12 @@ export function useRFID(activeSantriId) {
 
   // Guard: jangan trigger loadMore saat sudah fetch
   const isFetchingMore = useRef(false);
+  const requestRef = useRef(0);
 
   const fetchAll = useCallback(
     async ({ silent = false } = {}) => {
       if (!activeSantriId) return;
+      const requestId = ++requestRef.current;
 
       if (!silent) setIsLoadingFirst(true);
       else setIsRefreshing(true);
@@ -29,18 +32,19 @@ export function useRFID(activeSantriId) {
           rfidApi.getSaldo(),
           rfidApi.getMutasi({ limit: PAGE_LIMIT, offset: 0 }),
         ]);
+        if (requestId !== requestRef.current) return;
 
         setSaldo(saldoRes.data ?? null);
         setMutasi(mutasiRes.data ?? []);
         setTotal(mutasiRes.pagination?.total ?? 0);
       } catch (err) {
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat data RFID. Periksa koneksi Anda.'
-        );
+        if (requestId !== requestRef.current) return;
+        setError(getApiErrorMessage(err, 'Gagal memuat data dompet. Silakan coba lagi.'));
       } finally {
-        setIsLoadingFirst(false);
-        setIsRefreshing(false);
+        if (requestId === requestRef.current) {
+          setIsLoadingFirst(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [activeSantriId]
@@ -52,6 +56,7 @@ export function useRFID(activeSantriId) {
     if (!activeSantriId) return;
 
     isFetchingMore.current = true;
+    const requestId = requestRef.current;
     setIsLoadingMore(true);
 
     try {
@@ -59,6 +64,7 @@ export function useRFID(activeSantriId) {
         limit: PAGE_LIMIT,
         offset: mutasi.length,
       });
+      if (requestId !== requestRef.current) return;
       const newItems = res.data ?? [];
       setMutasi((prev) => [...prev, ...newItems]);
       setTotal(res.pagination?.total ?? total);
@@ -74,6 +80,7 @@ export function useRFID(activeSantriId) {
 
   // Reset dan fetch ulang setiap kali santri aktif berganti
   useEffect(() => {
+    isFetchingMore.current = false;
     setSaldo(null);
     setMutasi([]);
     setTotal(0);

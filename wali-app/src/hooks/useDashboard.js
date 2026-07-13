@@ -1,27 +1,30 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { santriApi } from '../api/santri.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useDashboard(activeSantriId) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const requestRef = useRef(0);
 
   const fetchDashboard = useCallback(async () => {
     if (!activeSantriId) return;
+    const requestId = ++requestRef.current;
 
     setIsLoading(true);
     setError(null);
 
     try {
       const res = await santriApi.getDashboard();
+      if (requestId !== requestRef.current) return;
       setData(res.data);
     } catch (err) {
-      const msg =
-        err.response?.data?.error ??
-        'Gagal memuat data dashboard. Periksa koneksi Anda.';
+      if (requestId !== requestRef.current) return;
+      const msg = getApiErrorMessage(err, 'Gagal memuat data dashboard. Silakan coba lagi.');
       setError(msg);
     } finally {
-      setIsLoading(false);
+      if (requestId === requestRef.current) setIsLoading(false);
     }
   }, [activeSantriId]);
 

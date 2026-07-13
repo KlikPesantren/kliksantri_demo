@@ -1,8 +1,10 @@
 {
   "expo": {
-    "name": "KlikPesantren",
+    "name": "Wali Santri",
+    "owner": "kliksantridemo",
     "slug": "kliksantri-wali",
     "version": "1.0.0",
+    "scheme": "klikpesantren-wali",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,24 +21,51 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
-          "color": "#15803D"
+          "icon": "./assets/notification-icon.png",
+          "color": "#15803D",
+          "defaultChannel": "wali-santri"
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ],
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "usesCleartextTraffic": false,
+            "networkInspector": false
+          }
         }
       ]
     ],
+    "updates": {
+      "enabled": false
+    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.kliksantri.wali"
+      "bundleIdentifier": "com.klikpesantren.wali"
     },
     "android": {
-      "package": "com.kliksantri.wali",
+      "package": "com.klikpesantren.wali",
       "googleServicesFile": "./google-services.json",
       "versionCode": 3,
-      "usesCleartextTraffic": true,
+      "predictiveBackGestureEnabled": true,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",

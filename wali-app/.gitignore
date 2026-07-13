@@ -13,6 +13,7 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
@@ -29,6 +30,14 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# server/admin credentials must never be bundled with the mobile app
+*firebase-adminsdk*.json
+*firebase-admin*.json
+*service-account*.json
+*service_account*.json
+*serviceAccount*.json
+credentials*.json
 
 # local env files
 .env

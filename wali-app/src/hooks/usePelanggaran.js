@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { pelanggaranApi } from '../api/pelanggaran.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function usePelanggaran(activeSantriId) {
   const [data, setData] = useState([]);
@@ -32,10 +33,7 @@ export function usePelanggaran(activeSantriId) {
         setRingkasan(res.ringkasan ?? null);
       } catch (err) {
         if (reqId !== reqRef.current) return;
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat data pelanggaran. Periksa koneksi Anda.'
-        );
+        setError(getApiErrorMessage(err, 'Gagal memuat data pelanggaran. Silakan coba lagi.'));
       } finally {
         if (reqId === reqRef.current) {
           setIsLoading(false);

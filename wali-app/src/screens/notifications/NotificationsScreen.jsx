@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useActiveChild } from '../../context/ActiveChildContext';
 import { colors } from '../../constants/colors';
 import { interaction, radius, spacing } from '../../constants/theme';
+import { registerPushTokenBackground } from '../../services/pushNotificationService';
 
 const TYPE_META = {
   pelanggaran: {
@@ -46,7 +47,9 @@ const TYPE_META = {
 
 function formatDate(value) {
   if (!value) return '';
-  return new Date(value).toLocaleString('id-ID', {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('id-ID', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -103,6 +106,13 @@ export function NotificationsScreen({ navigation }) {
   } = useNotifications();
   const { anak } = useAuth();
   const { setActiveSantri } = useActiveChild();
+
+  useEffect(() => {
+    registerPushTokenBackground({
+      source: 'notificationsScreen',
+      requestPermission: true,
+    });
+  }, []);
 
   const navigateFromItem = useCallback(async (item) => {
     if (!item.read_at) {

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { perizinanApi } from '../api/perizinan.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function usePerizinan(activeSantriId) {
   const [data, setData] = useState([]);
@@ -7,10 +8,12 @@ export function usePerizinan(activeSantriId) {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const requestRef = useRef(0);
 
   const fetchPerizinan = useCallback(
     async ({ silent = false } = {}) => {
       if (!activeSantriId) return;
+      const requestId = ++requestRef.current;
 
       if (!silent) setIsLoading(true);
       else setIsRefreshing(true);
@@ -19,16 +22,17 @@ export function usePerizinan(activeSantriId) {
 
       try {
         const res = await perizinanApi.getPerizinan({ limit: 50 });
+        if (requestId !== requestRef.current) return;
         setData(res.data ?? []);
         setTotal(res.pagination?.total ?? 0);
       } catch (err) {
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat data perizinan. Periksa koneksi Anda.'
-        );
+        if (requestId !== requestRef.current) return;
+        setError(getApiErrorMessage(err, 'Gagal memuat data perizinan. Silakan coba lagi.'));
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        if (requestId === requestRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [activeSantriId]

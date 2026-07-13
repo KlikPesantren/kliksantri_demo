@@ -36,7 +36,7 @@ Konfigurasi: `app.json` → `plugins.expo-splash-screen`.
 
 `app.json` → `expo.name` — ubah ke nama pesantren saat publish (contoh: `"Wali Santri Al-Hikmah"`).
 
-Bundle ID (`com.kliksantri.wali`) tetap untuk pipeline build; ubah hanya jika diperlukan di Play Console terpisah.
+Bundle ID Android dan iOS final adalah `com.klikpesantren.wali`. Scheme deep link tetap `klikpesantren-wali`.
 
 ## Runtime branding (tanpa rebuild)
 

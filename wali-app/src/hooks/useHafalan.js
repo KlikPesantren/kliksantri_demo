@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { hafalanApi } from '../api/hafalan.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useHafalan(activeSantriId, bulan, tahun) {
   const [data, setData] = useState([]);
@@ -30,10 +31,7 @@ export function useHafalan(activeSantriId, bulan, tahun) {
         setRingkasan(res.ringkasan ?? null);
       } catch (err) {
         if (reqId !== reqRef.current) return;
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat data hafalan. Periksa koneksi Anda.'
-        );
+        setError(getApiErrorMessage(err, 'Gagal memuat data hafalan. Silakan coba lagi.'));
       } finally {
         if (reqId === reqRef.current) {
           setIsLoading(false);

@@ -28,10 +28,9 @@ export function useWaliFeatures() {
         ...WALI_FEATURE_FALLBACK,
         ...(res.data || {}),
       });
-    } catch (err) {
-      console.log('[WALI FEATURES] fallback used', err?.response?.data || err?.message);
+    } catch {
       setFeatures(WALI_FEATURE_FALLBACK);
-      setError(err);
+      setError('Konfigurasi fitur belum dapat dimuat.');
     } finally {
       setIsLoading(false);
     }

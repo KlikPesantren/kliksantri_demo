@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { nilaiApi } from '../api/nilai.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useNilai(activeSantriId, bulan, tahun) {
   const [data, setData] = useState([]);
@@ -31,10 +32,7 @@ export function useNilai(activeSantriId, bulan, tahun) {
         setRingkasan(res.ringkasan ?? null);
       } catch (err) {
         if (reqId !== reqRef.current) return;
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat data nilai. Periksa koneksi Anda.'
-        );
+        setError(getApiErrorMessage(err, 'Gagal memuat data nilai. Silakan coba lagi.'));
       } finally {
         if (reqId === reqRef.current) {
           setIsLoading(false);

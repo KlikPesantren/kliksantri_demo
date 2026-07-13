@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { profilPesantrenApi } from '../api/profilPesantren.api';
 import { normalizeBrandingCache } from '../utils/branding';
 import { storage } from '../utils/storage';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useProfilPesantren() {
   const [data, setData] = useState(null);
@@ -41,10 +42,7 @@ export function useProfilPesantren() {
       } catch {
         // ignore cache read errors
       }
-      setError(
-        err.response?.data?.error ??
-          'Gagal memuat profil pesantren. Periksa koneksi Anda.'
-      );
+      setError(getApiErrorMessage(err, 'Gagal memuat profil pesantren. Silakan coba lagi.'));
     } finally {
       if (reqId === reqRef.current) {
         setIsLoading(false);

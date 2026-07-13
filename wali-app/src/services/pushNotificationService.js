@@ -1,17 +1,20 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { pushApi } from '../api/push.api';
 
 const PUSH_STATUS_KEY = 'wali_push_registration_status';
+const PUSH_TOKEN_KEY = 'wali.expo_push_token';
+const SECURE_OPTIONS = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};
 
 let Notifications = null;
 let Device = null;
 let Constants = null;
 
 async function loadExpoModules() {
-  if (Notifications && Device && Constants) {
-    return { Notifications, Device, Constants };
-  }
+  if (Notifications && Device && Constants) return { Notifications, Device, Constants };
 
   try {
     Notifications = require('expo-notifications');
@@ -24,72 +27,42 @@ async function loadExpoModules() {
 }
 
 async function saveRegistrationStatus(status) {
-  await AsyncStorage.setItem(
-    PUSH_STATUS_KEY,
-    JSON.stringify({
-      ...status,
-      updated_at: new Date().toISOString(),
-    }),
-  );
+  const safeStatus = {
+    ok: status?.ok === true,
+    skipped: status?.skipped === true,
+    reason: status?.reason || null,
+    platform: status?.platform || Platform.OS,
+    updated_at: new Date().toISOString(),
+  };
+  await AsyncStorage.setItem(PUSH_STATUS_KEY, JSON.stringify(safeStatus));
 }
 
 export async function getPushRegistrationStatus() {
   const raw = await AsyncStorage.getItem(PUSH_STATUS_KEY);
-  return raw ? JSON.parse(raw) : null;
-}
-
-export async function getPushDebugInfo() {
-  const registrationStatus = await getPushRegistrationStatus();
-  const modules = await loadExpoModules();
-  let permissionStatus = null;
-
-  if (modules?.Notifications) {
-    try {
-      const permission = await modules.Notifications.getPermissionsAsync();
-      permissionStatus = permission?.status || null;
-    } catch (err) {
-      permissionStatus = `error: ${err?.message || 'permission_check_failed'}`;
-    }
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    await AsyncStorage.removeItem(PUSH_STATUS_KEY);
+    return null;
   }
-
-  return {
-    permission_status: permissionStatus,
-    registration_status: registrationStatus,
-  };
 }
 
 export async function registerPushToken(options = {}) {
-  const source = options?.source || 'unknown';
-  console.log('[PUSH] register start', { source });
-
   const modules = await loadExpoModules();
-  if (!modules) {
-    console.error('[PUSH] register error', {
-      source,
-      reason: 'expo-notifications module unavailable',
-    });
-    return { ok: false, skipped: true, reason: 'module_unavailable' };
-  }
+  if (!modules) return { ok: false, skipped: true, reason: 'module_unavailable' };
 
   const { Notifications: Notif, Device: Dev, Constants: Const } = modules;
-
   if (!Dev.isDevice) {
-    console.error('[PUSH] register error', {
-      source,
-      reason: 'physical device required',
-    });
     await saveRegistrationStatus({ ok: false, skipped: true, reason: 'simulator' });
     return { ok: false, skipped: true, reason: 'simulator' };
   }
 
   try {
     if (Platform.OS === 'android') {
-      console.log('[PUSH] create Android notification channel', {
-        channel_id: 'default',
-      });
-      await Notif.setNotificationChannelAsync('default', {
-        name: 'Default',
-        importance: Notif.AndroidImportance.MAX,
+      await Notif.setNotificationChannelAsync('wali-santri', {
+        name: 'Notifikasi Wali Santri',
+        importance: Notif.AndroidImportance.HIGH,
         sound: 'default',
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#15803D',
@@ -97,117 +70,64 @@ export async function registerPushToken(options = {}) {
     }
 
     const { status: existingStatus } = await Notif.getPermissionsAsync();
-    console.log('[PUSH] permission existing', { status: existingStatus });
     let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notif.requestPermissionsAsync();
-      finalStatus = status;
-      console.log('[PUSH] permission requested', { status });
+    if (existingStatus !== 'granted' && options.requestPermission === true) {
+      const permission = await Notif.requestPermissionsAsync();
+      finalStatus = permission.status;
     }
 
     if (finalStatus !== 'granted') {
-      console.warn('[PUSH] permission denied', { source, status: finalStatus });
-      await saveRegistrationStatus({ ok: false, skipped: true, reason: 'permission_denied' });
-      return { ok: false, skipped: true, reason: 'permission_denied' };
+      const reason = existingStatus === 'denied' ? 'permission_denied' : 'permission_required';
+      await saveRegistrationStatus({ ok: false, skipped: true, reason });
+      return { ok: false, skipped: true, reason };
     }
 
-    const projectId =
-      Const.expoConfig?.extra?.eas?.projectId ??
-      Const.easConfig?.projectId;
+    const projectId = Const.expoConfig?.extra?.eas?.projectId ?? Const.easConfig?.projectId;
+    if (!projectId) throw new Error('missing_project_id');
 
-    console.log('[PUSH] EAS projectId', { projectId: projectId || null });
-
-    const tokenResult = await Notif.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
-
+    const tokenResult = await Notif.getExpoPushTokenAsync({ projectId });
     const expoPushToken = tokenResult?.data;
-    if (!expoPushToken) {
-      throw new Error('Expo push token kosong');
-    }
-
-    console.log('[PUSH] expo token', {
-      token_prefix: `${String(expoPushToken).slice(0, 24)}...`,
-    });
+    if (!expoPushToken) throw new Error('missing_push_token');
 
     const platform = Platform.OS;
-    const deviceName =
-      Dev.deviceName ||
-      [Dev.manufacturer, Dev.modelName].filter(Boolean).join(' ') ||
-      platform;
+    const deviceName = Dev.deviceName || [Dev.manufacturer, Dev.modelName].filter(Boolean).join(' ') || platform;
 
-    console.log('[PUSH] register request', {
-      endpoint: '/wali-app/device-token',
-      token_prefix: `${String(expoPushToken).slice(0, 24)}...`,
-      platform,
-      device_name: deviceName,
-    });
-
-    const response = await pushApi.registerDeviceToken({
+    await pushApi.registerDeviceToken({
       expo_push_token: expoPushToken,
       platform,
       device_name: deviceName,
     });
-
-    console.log('[PUSH] register success', response);
-
-    const status = {
-      ok: true,
-      expo_push_token: expoPushToken,
-      platform,
-      device_name: deviceName,
-    };
-    await saveRegistrationStatus(status);
-    return status;
-  } catch (err) {
-    console.error('[PUSH] register error', {
-      source,
-      message: err?.message,
-      code: err?.code,
-      status: err?.response?.status,
-      data: err?.response?.data,
-      stack: err?.stack,
-    });
-    await saveRegistrationStatus({
-      ok: false,
-      error: err?.message || 'register_failed',
-    });
-    return { ok: false, error: err?.message || 'register_failed' };
+    await SecureStore.setItemAsync(PUSH_TOKEN_KEY, expoPushToken, SECURE_OPTIONS);
+    await saveRegistrationStatus({ ok: true, platform });
+    return { ok: true, platform };
+  } catch {
+    await saveRegistrationStatus({ ok: false, reason: 'register_failed' });
+    return { ok: false, reason: 'register_failed' };
   }
 }
 
 export async function registerPushTokenBackground(options = {}) {
   try {
     return await registerPushToken(options);
-  } catch (err) {
-    console.error('[PUSH] register error', {
-      source: options?.source || 'background',
-      message: err?.message || 'register_failed',
-    });
-    return { ok: false, error: err?.message || 'register_failed' };
+  } catch {
+    return { ok: false, reason: 'register_failed' };
   }
 }
 
 export async function unregisterPushToken() {
+  let expoPushToken = null;
   try {
-    const status = await getPushRegistrationStatus();
-    const expoPushToken = status?.expo_push_token;
-
-    if (!expoPushToken) {
-      return { ok: false, skipped: true, reason: 'no_token' };
-    }
-
+    expoPushToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY, SECURE_OPTIONS);
+    if (!expoPushToken) return { ok: false, skipped: true, reason: 'no_token' };
     await pushApi.unregisterDeviceToken({ expo_push_token: expoPushToken });
-    await saveRegistrationStatus({
-      ok: false,
-      unregistered: true,
-      expo_push_token: expoPushToken,
-    });
-
     return { ok: true };
-  } catch (err) {
-    console.warn('[push] Gagal unregister token:', err?.message || err);
-    return { ok: false, error: err?.message || 'unregister_failed' };
+  } catch {
+    return { ok: false, reason: 'unregister_failed' };
+  } finally {
+    await Promise.allSettled([
+      SecureStore.deleteItemAsync(PUSH_TOKEN_KEY, SECURE_OPTIONS),
+      AsyncStorage.removeItem(PUSH_STATUS_KEY),
+    ]);
   }
 }

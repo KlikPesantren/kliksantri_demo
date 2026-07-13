@@ -26,13 +26,15 @@ const TAB_ICONS = {
 
 function tabIcon(name) {
   const icons = TAB_ICONS[name];
-  return ({ color, focused, size }) => (
+  return function TabBarIcon({ color, focused, size }) {
+    return (
     <Ionicons
       name={focused ? icons.active : icons.inactive}
       size={size ?? 22}
       color={color}
     />
-  );
+    );
+  };
 }
 
 function MainStack() {

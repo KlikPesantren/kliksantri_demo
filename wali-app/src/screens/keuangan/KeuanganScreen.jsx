@@ -48,9 +48,7 @@ import { ErrorView } from '../../components/common/ErrorView';
 
 import { formatCurrency } from '../../utils/formatCurrency';
 
-import { formatDate } from '../../utils/formatDate';
-
-import { monthName } from '../../utils/formatDate';
+import { formatDate, monthName } from '../../utils/formatDate';
 
 import { colors } from '../../constants/colors';
 

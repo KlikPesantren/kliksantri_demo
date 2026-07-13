@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, ImageBackground, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { HeroBottomGradient } from './HeroBottomGradient';
@@ -6,12 +6,6 @@ import { colors } from '../../constants/colors';
 import { shadows } from '../../constants/theme';
 import { BANNER_HEIGHT, BANNER_RADIUS } from './carouselShared';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
-
-function logBannerDebug(rawImageUrl, resolvedUrl, imageError) {
-  console.log('RAW IMAGE URL', rawImageUrl);
-  console.log('RESOLVED URL', resolvedUrl);
-  console.log('IMAGE ERROR', imageError);
-}
 
 export function HeroImageFallback({ icon = 'school-outline', size = 40 }) {
   return (
@@ -37,18 +31,8 @@ export function HeroBannerFrame({
   const hasUri = Boolean(resolvedUrl);
   const showImage = hasUri && !imageError;
 
-  useEffect(() => {
-    logBannerDebug(rawImageUrl, resolvedUrl, imageError);
-    console.log('IMAGE URL', resolvedUrl);
-  }, [rawImageUrl, resolvedUrl, imageError]);
-
   function handleImageError(event) {
-    console.log('BANNER onError fired', resolvedUrl, event?.nativeEvent?.error);
     onImageError?.(event);
-  }
-
-  function handleImageLoad() {
-    console.log('BANNER onLoad OK', resolvedUrl);
   }
 
   return (
@@ -60,7 +44,6 @@ export function HeroBannerFrame({
           imageStyle={styles.imageClip}
           resizeMode="cover"
           onError={handleImageError}
-          onLoad={handleImageLoad}
         >
           <View style={styles.overlayHost} pointerEvents="box-none">
             <HeroBottomGradient />

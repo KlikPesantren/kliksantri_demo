@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 const KEYS = {
   TOKEN: 'wali_token',
@@ -8,44 +9,64 @@ const KEYS = {
   ACTIVE_SANTRI: 'active_santri_id',
   TENANT_SLUG: 'wali_tenant_slug',
   PESANTREN_BRANDING: 'pesantren_branding',
+  PUSH_STATUS: 'wali_push_registration_status',
 };
 
+const SECURE_TOKEN_KEY = 'wali.auth_token';
+const SECURE_OPTIONS = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};
+
+function safeJsonParse(raw, fallback) {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+async function requireSecureStore() {
+  if (!(await SecureStore.isAvailableAsync())) {
+    throw new Error('Penyimpanan aman tidak tersedia pada perangkat ini.');
+  }
+}
+
 export const storage = {
+  async setToken(token) {
+    await requireSecureStore();
+    await SecureStore.setItemAsync(SECURE_TOKEN_KEY, String(token), SECURE_OPTIONS);
+    await AsyncStorage.removeItem(KEYS.TOKEN);
+  },
+
   async saveSession(token, wali, anak, santriIds, tenantSlug) {
-    const pairs = [
-      [KEYS.TOKEN, token],
-      [KEYS.WALI, JSON.stringify(wali)],
-      [KEYS.ANAK, JSON.stringify(anak)],
-      [KEYS.SANTRI_IDS, JSON.stringify(santriIds)],
-    ];
-    if (tenantSlug) {
-      pairs.push([KEYS.TENANT_SLUG, tenantSlug]);
-    }
-    await AsyncStorage.multiSet(pairs);
+    await requireSecureStore();
+    await SecureStore.setItemAsync(SECURE_TOKEN_KEY, String(token), SECURE_OPTIONS);
+
+    const pairs = tenantSlug ? [[KEYS.TENANT_SLUG, tenantSlug]] : [];
+    if (pairs.length > 0) await AsyncStorage.multiSet(pairs);
+
+    // Remove legacy plaintext session payloads after the secure write succeeds.
+    await AsyncStorage.multiRemove([KEYS.TOKEN, KEYS.WALI, KEYS.ANAK, KEYS.SANTRI_IDS]);
   },
 
   async getToken() {
-    return AsyncStorage.getItem(KEYS.TOKEN);
-  },
+    await requireSecureStore();
+    const secureToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY, SECURE_OPTIONS);
+    if (secureToken) return secureToken;
 
-  async getWali() {
-    const raw = await AsyncStorage.getItem(KEYS.WALI);
-    return raw ? JSON.parse(raw) : null;
-  },
-
-  async getAnak() {
-    const raw = await AsyncStorage.getItem(KEYS.ANAK);
-    return raw ? JSON.parse(raw) : [];
-  },
-
-  async getSantriIds() {
-    const raw = await AsyncStorage.getItem(KEYS.SANTRI_IDS);
-    return raw ? JSON.parse(raw) : [];
+    // One-time, fail-safe migration from releases that used AsyncStorage.
+    const legacyToken = await AsyncStorage.getItem(KEYS.TOKEN);
+    if (!legacyToken) return null;
+    await SecureStore.setItemAsync(SECURE_TOKEN_KEY, legacyToken, SECURE_OPTIONS);
+    await AsyncStorage.removeItem(KEYS.TOKEN);
+    return legacyToken;
   },
 
   async getActiveSantriId() {
     const raw = await AsyncStorage.getItem(KEYS.ACTIVE_SANTRI);
-    return raw ? Number(raw) : null;
+    const parsed = raw ? Number(raw) : null;
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   },
 
   async setActiveSantriId(id) {
@@ -64,13 +85,18 @@ export const storage = {
   },
 
   async clearSession() {
-    await AsyncStorage.multiRemove([
+    await Promise.allSettled([
+      SecureStore.deleteItemAsync(SECURE_TOKEN_KEY, SECURE_OPTIONS),
+      AsyncStorage.multiRemove([
       KEYS.TOKEN,
       KEYS.WALI,
       KEYS.ANAK,
       KEYS.SANTRI_IDS,
       KEYS.ACTIVE_SANTRI,
       KEYS.TENANT_SLUG,
+      KEYS.PESANTREN_BRANDING,
+      KEYS.PUSH_STATUS,
+      ]),
     ]);
   },
 
@@ -92,6 +118,6 @@ export const storage = {
 
   async getPesantrenBranding() {
     const raw = await AsyncStorage.getItem(KEYS.PESANTREN_BRANDING);
-    return raw ? JSON.parse(raw) : null;
+    return safeJsonParse(raw, null);
   },
 };

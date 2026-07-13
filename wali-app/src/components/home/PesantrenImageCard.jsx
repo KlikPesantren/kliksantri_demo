@@ -12,13 +12,9 @@ import { radius, spacing } from '../../constants/theme';
 
 const FALLBACK_HERO = require('../../../assets/pesantren-hero.jpeg');
 
-function buildHeroBannerUrl(path, cacheBust, devReloadToken) {
+function buildHeroBannerUrl(path, cacheBust) {
   const resolved = resolveMediaUrl(path, cacheBust);
   if (!resolved) return null;
-  if (__DEV__ && devReloadToken != null) {
-    const sep = resolved.includes('?') ? '&' : '?';
-    return `${resolved}${sep}t=${devReloadToken}`;
-  }
   return resolved;
 }
 
@@ -32,7 +28,7 @@ const HERO_SHADOW = {
 
 function LogoMark({ pesantren }) {
   const rawPath = useMemo(() => pickPesantrenLogoPath(pesantren), [pesantren]);
-  const cacheBust = useMemo(() => resolveProfilCacheBust(pesantren), [pesantren?.updated_at]);
+  const cacheBust = useMemo(() => resolveProfilCacheBust(pesantren), [pesantren]);
   const [retryBust, setRetryBust] = useState(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -46,17 +42,6 @@ function LogoMark({ pesantren }) {
     setRetryBust(null);
   }, [rawPath]);
 
-  useEffect(() => {
-    if (!__DEV__) return;
-    console.log('[HeroMedia] logo fields:', {
-      logo_url: pesantren?.logo_url ?? null,
-      splash_logo_url: pesantren?.splash_logo_url ?? null,
-      app_icon_url: pesantren?.app_icon_url ?? null,
-      picked: rawPath,
-    });
-    console.log('[HeroMedia] resolvedLogoUrl:', resolvedLogoUrl);
-  }, [pesantren, rawPath, resolvedLogoUrl]);
-
   const hasRemoteSource = Boolean(rawPath);
 
   if (resolvedLogoUrl && !loadFailed) {
@@ -66,15 +51,7 @@ function LogoMark({ pesantren }) {
           source={{ uri: resolvedLogoUrl }}
           style={styles.logoImage}
           resizeMode="contain"
-          onLoad={() => {
-            if (__DEV__) console.log('[HeroMedia] logo onLoad OK', resolvedLogoUrl);
-          }}
-          onError={(event) => {
-            console.warn(
-              '[HeroMedia] logo onError',
-              resolvedLogoUrl,
-              event?.nativeEvent?.error
-            );
+          onError={() => {
             if (hasRemoteSource && retryBust == null) {
               setRetryBust(Date.now());
               return;
@@ -120,22 +97,16 @@ export function PesantrenImageCard({ pesantren, statistik }) {
 
   const pickedBannerPath = useMemo(
     () => pickPesantrenBannerPath(pesantren),
-    [pesantren?.banner_url, pesantren?.banner_active]
+    [pesantren]
   );
   const bannerCacheBust = useMemo(() => {
     const updatedAt = pesantren?.updated_at;
     if (updatedAt != null && updatedAt !== '') return updatedAt;
-    if (__DEV__) return Date.now();
     return undefined;
-  }, [pesantren?.updated_at]);
-  const devReloadToken = useMemo(
-    () => Date.now(),
-    [pickedBannerPath, pesantren?.updated_at, pesantren?.banner_url, bannerRetryBust]
-  );
+  }, [pesantren]);
   const resolvedBannerUrl = buildHeroBannerUrl(
     pickedBannerPath,
-    bannerRetryBust ?? bannerCacheBust,
-    devReloadToken
+    bannerRetryBust ?? bannerCacheBust
   );
   const showRemoteBanner = Boolean(resolvedBannerUrl) && !bannerError;
   const bannerImageKey = resolvedBannerUrl
@@ -146,7 +117,7 @@ export function PesantrenImageCard({ pesantren, statistik }) {
     setBannerError(false);
     setBannerRetryBust(null);
     setImageVersion((v) => v + 1);
-  }, [pickedBannerPath, pesantren?.updated_at, pesantren?.banner_url]);
+  }, [pickedBannerPath, pesantren]);
 
   const hasStats = visibleStats.length > 0;
 
@@ -167,12 +138,7 @@ export function PesantrenImageCard({ pesantren, statistik }) {
               }}
               style={styles.image}
               resizeMode="cover"
-              onError={(event) => {
-                console.warn(
-                  '[HeroMedia] banner onError',
-                  resolvedBannerUrl,
-                  event?.nativeEvent?.error
-                );
+              onError={() => {
                 if (pickedBannerPath && bannerRetryBust == null) {
                   setBannerRetryBust(Date.now());
                   return;
@@ -205,7 +171,7 @@ export function PesantrenImageCard({ pesantren, statistik }) {
               </AppText>
             ) : null}
             <AppText variant="caption" color="inverse" numberOfLines={2} style={styles.tagline}>
-              "{tagline}"
+              {`“${tagline}”`}
             </AppText>
           </View>
         </View>

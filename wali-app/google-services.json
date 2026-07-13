@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:104894088843:android:03cc3ce3b2e58e70d4f68e",
+        "android_client_info": {
+          "package_name": "com.klikpesantren.wali"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqpMZivscZDgwh9j5tFgjbkG4hasFZlrY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:104894088843:android:4208e9908adb302ad4f68e",
         "android_client_info": {
           "package_name": "com.kliksantri.wali"

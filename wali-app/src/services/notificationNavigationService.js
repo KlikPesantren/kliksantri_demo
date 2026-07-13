@@ -54,9 +54,7 @@ export async function setupNotificationNavigation(
     if (lastResponse) {
       handleResponse(lastResponse);
     }
-  } catch (err) {
-    console.warn('[notif-nav] getLastNotificationResponseAsync:', err?.message);
-  }
+  } catch {}
 
   return () => subscription.remove();
 }

@@ -37,7 +37,7 @@ function trimText(value, max = 86) {
 
 function isValidLink(url) {
   const text = String(url || '').trim();
-  return /^(https?:\/\/|whatsapp:\/\/)/i.test(text);
+  return /^(https:\/\/|whatsapp:\/\/)/i.test(text);
 }
 
 async function openUrl(url) {
@@ -48,7 +48,7 @@ async function openUrl(url) {
   }
 
   try {
-    if (/^https?:\/\//i.test(target)) {
+    if (/^https:\/\//i.test(target)) {
       await Linking.openURL(target);
       return;
     }
@@ -60,8 +60,7 @@ async function openUrl(url) {
     }
 
     Alert.alert('Tidak bisa membuka tautan', 'Perangkat belum mendukung link ini.');
-  } catch (err) {
-    console.log('[HOME LINKS] open url error', err?.message);
+  } catch {
     Alert.alert('Gagal membuka tautan', 'Coba buka kembali beberapa saat lagi.');
   }
 }

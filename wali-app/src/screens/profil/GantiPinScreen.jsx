@@ -9,7 +9,9 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useChangePin } from '../../hooks/useChangePin';
+import { useAuth } from '../../context/AuthContext';
 import {
   ScreenContainer,
   AppCard,
@@ -69,7 +71,9 @@ function PinDots({ value }) {
 }
 
 export function GantiPinScreen({ navigation }) {
+  usePreventScreenCapture('wali-change-pin');
   const { changePin, isLoading, isSuccess, error, reset } = useChangePin();
+  const { mustChangePin, markPinChanged } = useAuth();
   const [pinLama, setPinLama] = useState('');
   const [pinBaru, setPinBaru] = useState('');
   const [konfirmasi, setKonfirmasi] = useState('');
@@ -90,8 +94,12 @@ export function GantiPinScreen({ navigation }) {
 
   const handleBack = useCallback(() => {
     reset();
+    if (mustChangePin) {
+      markPinChanged();
+      return;
+    }
     navigation.goBack();
-  }, [reset, navigation]);
+  }, [reset, navigation, mustChangePin, markPinChanged]);
 
   const displayError = localError ?? error;
 
@@ -115,6 +123,13 @@ export function GantiPinScreen({ navigation }) {
     <ScreenContainer>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          {mustChangePin ? (
+            <AppCard padding="md" style={styles.info}>
+              <AppText variant="body" color="warning">
+                Demi keamanan, PIN awal harus diganti sebelum membuka fitur lain.
+              </AppText>
+            </AppCard>
+          ) : null}
           <AppCard padding="md" style={styles.info}>
             <AppText variant="h3">Ganti PIN Masuk</AppText>
             <AppText variant="caption" color="secondary">

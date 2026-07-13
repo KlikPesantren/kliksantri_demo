@@ -1,15 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { sahriyahApi } from '../api/sahriyah.api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function useSahriyah(activeSantriId) {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const requestRef = useRef(0);
 
   const fetchList = useCallback(
     async ({ silent = false } = {}) => {
       if (!activeSantriId) return;
+      const requestId = ++requestRef.current;
 
       if (!silent) setIsLoading(true);
       else setIsRefreshing(true);
@@ -18,15 +21,16 @@ export function useSahriyah(activeSantriId) {
 
       try {
         const res = await sahriyahApi.getList();
+        if (requestId !== requestRef.current) return;
         setData(res.data ?? []);
       } catch (err) {
-        setError(
-          err.response?.data?.error ??
-            'Gagal memuat data sahriyah. Periksa koneksi Anda.'
-        );
+        if (requestId !== requestRef.current) return;
+        setError(getApiErrorMessage(err, 'Gagal memuat data sahriyah. Silakan coba lagi.'));
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        if (requestId === requestRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [activeSantriId]

@@ -23,7 +23,6 @@ import {
   EmptyState,
 } from '../../components/ui';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { ErrorView } from '../../components/common/ErrorView';
 import { formatDate } from '../../utils/formatDate';
 import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/theme';
