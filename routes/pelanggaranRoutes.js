@@ -14,7 +14,7 @@ console.log("PELANGGARAN ROUTES LOADED");
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT pelanggaran.*, santri.nama
+      `SELECT pelanggaran.*, santri.nama, santri.kamar
        FROM pelanggaran
        LEFT JOIN santri
          ON pelanggaran.santri_id = santri.id

@@ -272,7 +272,7 @@ router.get("/", async (req, res) => {
     const total = countResult.rows[0]?.total || 0;
 
     let listSql = `
-      SELECT p.*, s.nama, s.nis, lpd.latest_invoice_id
+      SELECT p.*, s.nama, s.nis, s.kamar, lpd.latest_invoice_id
       FROM pembayaran p
       LEFT JOIN santri s
         ON p.santri_id = s.id
@@ -578,7 +578,7 @@ router.put("/bayar/:id", async (req, res) => {
     const { nominal, petugas } = req.body;
 
     const pembayaran = await pool.query(
-      `SELECT pembayaran.*, santri.nama
+      `SELECT pembayaran.*, santri.nama, santri.kamar
        FROM pembayaran
        LEFT JOIN santri
          ON pembayaran.santri_id = santri.id

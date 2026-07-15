@@ -142,7 +142,7 @@ function RFIDTopupPage() {
 
         {selectedSantri ? (
           <div className="form-modal-summary-v3" style={{ marginTop: "var(--space-4)" }}>
-            <p><strong>Santri:</strong> {selectedSantri.nama}</p>
+            <p><strong>Santri:</strong> {selectedSantri.nama} · Kamar/Asrama: {selectedSantri.kamar || "—"}</p>
             <p><strong>NIS:</strong> {selectedSantri.nis || "—"}</p>
             <p><strong>UID Kartu:</strong> {selectedSantri.uid_rfid || "—"}</p>
             <p><strong>Saldo Saat Ini:</strong> {formatCurrency(saldoTampil)}</p>
@@ -218,6 +218,7 @@ function RFIDTopupPage() {
                   <tr>
                     <th>NIS</th>
                     <th>Nama</th>
+                    <th>Kamar / Asrama</th>
                     <th>Kelas</th>
                     <th>UID RFID</th>
                     <th>Saldo</th>
@@ -228,6 +229,7 @@ function RFIDTopupPage() {
                     <tr key={s.id}>
                       <td>{s.nis || "—"}</td>
                       <td className="table-v3__cell--strong">{s.nama}</td>
+                      <td>{s.kamar || "—"}</td>
                       <td>{s.nama_kelas || "—"}</td>
                       <td className="table-v3__cell--mono">{s.uid_rfid || "—"}</td>
                       <td className="table-v3__cell--strong">

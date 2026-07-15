@@ -269,6 +269,7 @@ function PelanggaranPage() {
                   <thead>
                     <tr>
                       <th>Nama</th>
+                      <th>Kamar / Asrama</th>
                       <th>Tanggal</th>
                       <th>Jenis</th>
                       <th>Poin</th>
@@ -281,6 +282,7 @@ function PelanggaranPage() {
                     {paginatedItems.map((p) => (
                       <tr key={p.id}>
                         <td className="table-v3__cell--strong">{p.nama}</td>
+                        <td>{p.kamar || "—"}</td>
                         <td>{p.tanggal}</td>
                         <td>{p.jenis}</td>
                         <td>

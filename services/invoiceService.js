@@ -86,6 +86,7 @@ async function getSahriyahInvoice(tenantId, invoiceId) {
       s.id AS santri_id,
       s.nis,
       s.nama AS santri_nama,
+      s.kamar,
       s.orang_tua,
       s.nomor_hp_ortu,
       k.id AS kelas_id,
@@ -162,6 +163,7 @@ async function getSahriyahInvoice(tenantId, invoiceId) {
       id: row.santri_id,
       nis: row.nis,
       nama: row.santri_nama,
+      kamar: row.kamar,
     },
     kelas: {
       id: row.kelas_id,
@@ -220,6 +222,7 @@ async function getPembayaranInvoice(tenantId, invoiceId) {
       s.id AS santri_id,
       s.nis,
       s.nama AS santri_nama,
+      s.kamar,
       s.orang_tua,
       s.nomor_hp_ortu,
       k.id AS kelas_id,
@@ -295,6 +298,7 @@ async function getPembayaranInvoice(tenantId, invoiceId) {
       id: row.santri_id,
       nis: row.nis,
       nama: row.santri_nama,
+      kamar: row.kamar,
     },
     kelas: {
       id: row.kelas_id,

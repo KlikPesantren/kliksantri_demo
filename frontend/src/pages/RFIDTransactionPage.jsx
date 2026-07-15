@@ -204,6 +204,7 @@ function RFIDTransactionPage() {
                   <tr>
                     <th>Waktu</th>
                     <th>Santri</th>
+                    <th>Kamar / Asrama</th>
                     <th>Tipe</th>
                     <th>Metode</th>
                     <th>Petugas</th>
@@ -222,6 +223,7 @@ function RFIDTransactionPage() {
                         {new Date(trx.created_at).toLocaleString()}
                       </td>
                       <td className="table-v3__cell--strong">{trx.nama_santri}</td>
+                      <td>{trx.kamar || "—"}</td>
                       <td>
                         <Badge variant={trxTypeBadgeVariant(trx.trx_type)}>
                           {trxTypeLabel(trx.trx_type)}

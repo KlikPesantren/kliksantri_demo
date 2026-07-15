@@ -13,6 +13,7 @@ const TEMPLATE_HEADERS = [
   "nama_wali",
   "no_hp_wali",
   "kelas",
+  "kamar",
   "status",
 ];
 
@@ -113,6 +114,7 @@ function buildTemplateWorkbook() {
       "Bapak Fauzi",
       "081234567890",
       "Kelas 1A",
+      "A-12",
       "aktif",
     ],
   ]);
@@ -161,6 +163,7 @@ function validateRow(mapped, context) {
   const namaWali = cellToString(mapped.nama_wali);
   const noHpWali = cellToString(mapped.no_hp_wali);
   const alamat = cellToString(mapped.alamat);
+  const kamar = cellToString(mapped.kamar);
 
   if (!nama) {
     errors.push("nama wajib diisi");
@@ -233,6 +236,7 @@ function validateRow(mapped, context) {
       tanggal_lahir: dateParsed.value,
       tanggal_masuk_pesantren: masukParsed.value,
       alamat: alamat || null,
+      kamar: kamar || null,
       nama_wali: namaWali || null,
       no_hp_wali: normalizedHp,
       kelas: kelasName,
@@ -277,6 +281,7 @@ async function previewImport(tenantId, buffer) {
           nama: cellToString(mapped.nama) || null,
           nis: cellToString(mapped.nis) || null,
           kelas: cellToString(mapped.kelas) || null,
+          kamar: cellToString(mapped.kamar) || null,
         },
       });
     }
@@ -302,6 +307,7 @@ async function validateCommitRow(tenantId, rowData, context) {
     tanggal_lahir: rowData.tanggal_lahir,
     tanggal_masuk_pesantren: rowData.tanggal_masuk_pesantren,
     alamat: rowData.alamat,
+    kamar: rowData.kamar,
     nama_wali: rowData.nama_wali,
     no_hp_wali: rowData.no_hp_wali,
     kelas: rowData.kelas,
@@ -369,16 +375,17 @@ async function commitImport(tenantId, inputRows) {
     for (const { row_number, data } of validated) {
       const insertResult = await client.query(
         `INSERT INTO santri (
-           nis, nama, alamat, kelas_id, status, tenant_id,
+           nis, nama, alamat, kelas_id, kamar, status, tenant_id,
            jenis_kelamin, tanggal_lahir, tanggal_masuk_pesantren, orang_tua, nomor_hp_ortu
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING *`,
         [
           data.nis,
           data.nama,
           data.alamat,
           data.kelas_id,
+          data.kamar,
           data.status,
           tenantId,
           data.jenis_kelamin,

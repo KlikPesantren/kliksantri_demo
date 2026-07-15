@@ -287,6 +287,7 @@ function KesehatanPage() {
                     <thead>
                       <tr>
                         <th>Nama Santri</th>
+                        <th>Kamar / Asrama</th>
                         <th>Status</th>
                         <th>Keluhan</th>
                         <th>Tindakan Pertama</th>
@@ -299,6 +300,7 @@ function KesehatanPage() {
                       {list.map((row) => (
                         <tr key={row.id}>
                           <td>{row.nama_santri || "-"}</td>
+                          <td>{row.kamar || "-"}</td>
                           <td>
                             <span className={`ops-health ops-health--${resolveHealthClass(row.status_kesehatan)}`}>
                               <StatusBadge status={row.status_kesehatan === "sakit" ? "danger" : "success"}>

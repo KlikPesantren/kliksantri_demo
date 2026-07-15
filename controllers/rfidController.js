@@ -27,7 +27,7 @@ exports.lookupCard = async (req, res) => {
 
     const { rows } = await pool.query(
       `
-      SELECT id, nama, uid_rfid, saldo, limit_harian, status
+      SELECT id, nama, uid_rfid, saldo, limit_harian, status, kamar
       FROM santri
       WHERE uid_rfid = $1
         AND tenant_id = $2
@@ -574,6 +574,7 @@ async(req,res)=>{
           tr.nominal,
           tr.trx_type,
           s.nama AS nama_santri,
+          s.kamar,
           m.nama_merchant
         FROM transaksi_rfid tr
         LEFT JOIN santri s
@@ -730,6 +731,7 @@ async(req,res)=>{
       SELECT
         tr.*,
         s.nama AS nama_santri,
+        s.kamar,
         s.nis,
         m.nama_merchant,
         d.device_id,
@@ -1060,6 +1062,7 @@ async(req,res)=>{
         SELECT
           tr.created_at,
           s.nama AS nama_santri,
+          s.kamar,
           tr.trx_type,
           m.nama_merchant,
           d.device_id,

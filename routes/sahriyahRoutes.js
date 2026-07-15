@@ -120,7 +120,7 @@ router.get("/", async (req, res) => {
     );
 
     let listSql = `
-      SELECT t.*, s.nama, s.nis, s.kelas_id, lp.latest_invoice_id
+      SELECT t.*, s.nama, s.nis, s.kelas_id, s.kamar, lp.latest_invoice_id
       ${joinSql}
       LEFT JOIN LATERAL (
         SELECT ps.id AS latest_invoice_id
@@ -271,7 +271,7 @@ router.put("/bayar/:id", async (req, res) => {
     const { nominal, beras, petugas } = req.body;
 
     const tagihan = await pool.query(
-      `SELECT t.*, s.nama
+      `SELECT t.*, s.nama, s.kamar
        FROM tagihan_sahriyah t
        LEFT JOIN santri s
          ON t.santri_id = s.id

@@ -75,7 +75,7 @@ router.get("/santri", async (req, res) => {
 
     const kelasId = req.query.kelas_id ? Number(req.query.kelas_id) : null;
     const params = [access.tenantId];
-    let query = `SELECT id, nis, nama, kelas_id
+    let query = `SELECT id, nis, nama, kelas_id, kamar
                  FROM santri
                  WHERE tenant_id = $1`;
     let idx = 2;
@@ -112,6 +112,7 @@ router.get("/", async (req, res) => {
     const tahun = req.query.tahun ? Number(req.query.tahun) : null;
 
     let query = `SELECT id, santri_id, sesi, status,
+                     (SELECT kamar FROM santri WHERE id = a.santri_id AND tenant_id = a.tenant_id) AS kamar,
                   TO_CHAR(tanggal::date, 'YYYY-MM-DD') AS tanggal
                  FROM absensi a
                  WHERE a.tenant_id = $1

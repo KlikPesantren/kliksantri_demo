@@ -154,7 +154,7 @@ router.get("/", async (req, res) => {
 
     const dataResult = await pool.query(
       `
-      SELECT k.*, s.nama AS nama_santri
+      SELECT k.*, s.nama AS nama_santri, s.kamar
       FROM kesehatan_santri k
       LEFT JOIN santri s ON s.id = k.santri_id AND s.tenant_id = k.tenant_id
       ${where}
@@ -184,7 +184,7 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
     const result = await pool.query(
       `
-      SELECT k.*, s.nama AS nama_santri
+      SELECT k.*, s.nama AS nama_santri, s.kamar
       FROM kesehatan_santri k
       LEFT JOIN santri s ON s.id = k.santri_id AND s.tenant_id = k.tenant_id
       WHERE k.id = $1 AND k.tenant_id = $2

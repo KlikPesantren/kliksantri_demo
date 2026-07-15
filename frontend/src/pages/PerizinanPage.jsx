@@ -270,6 +270,7 @@ function PerizinanPage() {
                   <thead>
                     <tr>
                       <th>Nama</th>
+                      <th>Kamar / Asrama</th>
                       <th>Tanggal</th>
                       <th>Tujuan</th>
                       <th>Alasan</th>
@@ -285,6 +286,7 @@ function PerizinanPage() {
                     {paginatedItems.map((p) => (
                       <tr key={p.id}>
                         <td className="table-v3__cell--strong">{p.nama}</td>
+                        <td>{p.kamar || "—"}</td>
                         <td>{p.tanggal}</td>
                         <td>{p.tujuan || "—"}</td>
                         <td>{p.alasan || "—"}</td>

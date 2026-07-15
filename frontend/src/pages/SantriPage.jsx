@@ -90,6 +90,7 @@ function SantriPage() {
     orang_tua: "",
     nomor_hp_ortu: "",
     kelas_id: "",
+    kamar: "",
     foto: "",
     status: "aktif",
     limit_harian: "0",
@@ -132,6 +133,7 @@ function SantriPage() {
         item.tanggal_masuk_pesantren,
         item.alamat,
         item.nama_kelas,
+        item.kamar,
         item.orang_tua,
         item.nomor_hp_ortu,
         item.uid_rfid,
@@ -186,6 +188,7 @@ function SantriPage() {
       orang_tua: item.orang_tua || "",
       nomor_hp_ortu: item.nomor_hp_ortu || "",
       kelas_id: item.kelas_id || "",
+      kamar: item.kamar || "",
       foto: item.foto || "",
       status: item.status || "aktif",
       limit_harian: item.limit_harian === null || item.limit_harian === undefined
@@ -249,6 +252,7 @@ function SantriPage() {
       orang_tua: "",
       nomor_hp_ortu: "",
       kelas_id: "",
+      kamar: "",
       foto: "",
       status: "aktif",
       limit_harian: "0",
@@ -267,6 +271,7 @@ function SantriPage() {
       JenisKelamin: item.jenis_kelamin,
       TanggalMasukPesantren: item.tanggal_masuk_pesantren,
       Kelas: item.nama_kelas,
+      Kamar: item.kamar,
       OrangTua: item.orang_tua,
       NomorHPWali: item.nomor_hp_ortu,
       RFID: item.uid_rfid,
@@ -359,6 +364,16 @@ function SantriPage() {
                     </option>
                   ))}
                 </Select>
+              </FormField>
+              <FormField label="Kamar / Asrama" htmlFor="santri-kamar" helper="Alamat internal santri di pesantren.">
+                <Input
+                  id="santri-kamar"
+                  type="text"
+                  name="kamar"
+                  value={form.kamar}
+                  onChange={handleChange}
+                  placeholder="Contoh: A-12 / Asrama Putra"
+                />
               </FormField>
               <FormField label="Status" htmlFor="santri-status">
                 <Select id="santri-status" name="status" value={form.status} onChange={handleChange}>
@@ -527,6 +542,7 @@ function SantriPage() {
                       <th>JK</th>
                       <th>Tanggal Masuk</th>
                       <th>Kelas</th>
+                      <th>Kamar / Asrama</th>
                       <th>Wali</th>
                       <th translate="no">Nomor HP Wali</th>
                       <th>RFID</th>
@@ -559,6 +575,7 @@ function SantriPage() {
                         <td>{item.jenis_kelamin || "-"}</td>
                         <td>{formatDateIndonesia(item.tanggal_masuk_pesantren) || "-"}</td>
                         <td>{item.nama_kelas || "—"}</td>
+                        <td>{item.kamar || "—"}</td>
                         <td translate="no">{item.orang_tua || "—"}</td>
                         <td translate="no">{item.nomor_hp_ortu || "—"}</td>
                         <td className="table-v3__cell--mono">{item.uid_rfid || "—"}</td>
@@ -613,6 +630,7 @@ function SantriPage() {
               value={formatDateIndonesia(detailSantri.tanggal_masuk_pesantren) || "-"}
             />
             <DetailItem label="Kelas" value={detailSantri.nama_kelas || "-"} />
+            <DetailItem label="Kamar / Asrama" value={detailSantri.kamar || "-"} />
             <DetailItem label="Wali" value={detailSantri.orang_tua || "-"} translate="no" />
             <DetailItem label="Nomor HP Wali" value={detailSantri.nomor_hp_ortu || "-"} translate="no" />
             <DetailItem label="UID RFID" value={detailSantri.uid_rfid || "-"} />

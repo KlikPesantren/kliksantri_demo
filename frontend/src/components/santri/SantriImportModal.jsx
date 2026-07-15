@@ -155,6 +155,7 @@ function SantriImportModal({ open, onClose, onImported }) {
                     <th>Nama</th>
                     <th>NIS</th>
                     <th>Kelas</th>
+                    <th>Kamar / Asrama</th>
                     <th>Error</th>
                   </tr>
                 </thead>
@@ -170,6 +171,7 @@ function SantriImportModal({ open, onClose, onImported }) {
                       <td>{row.data?.nama || "—"}</td>
                       <td>{row.data?.nis || "—"}</td>
                       <td>{row.data?.kelas || "—"}</td>
+                      <td>{row.data?.kamar || "—"}</td>
                       <td style={{ color: "var(--danger)", fontSize: 12 }}>
                         {row.errors?.join("; ") || "—"}
                       </td>

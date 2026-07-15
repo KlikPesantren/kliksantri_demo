@@ -157,6 +157,7 @@ router.post(
         orang_tua,
         nomor_hp_ortu,
         kelas_id,
+        kamar,
         foto,
         limit_harian,
       } = req.body;
@@ -179,9 +180,9 @@ router.post(
         `INSERT INTO santri (
            nis, nama, tempat_lahir, tanggal_lahir, jenis_kelamin,
            tanggal_masuk_pesantren, uid_rfid, alamat, orang_tua,
-           nomor_hp_ortu, kelas_id, foto, limit_harian, tenant_id
+           nomor_hp_ortu, kelas_id, kamar, foto, limit_harian, tenant_id
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING *,
             to_char(tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
             to_char(tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren`,
@@ -197,6 +198,7 @@ router.post(
           orang_tua,
           nomor_hp_ortu,
           kelas_id || null,
+          kamar || null,
           foto,
           normalizedLimitHarian,
           req.tenantId,
@@ -273,6 +275,7 @@ router.put(
         orang_tua,
         nomor_hp_ortu,
         kelas_id,
+        kamar,
         foto,
         status,
         limit_harian,
@@ -321,10 +324,11 @@ router.put(
              orang_tua = $9,
              nomor_hp_ortu = $10,
              kelas_id = $11,
-             foto = $12,
-             status = $13,
-             limit_harian = $14
-         WHERE id = $15 AND tenant_id = $16
+             kamar = $12,
+             foto = $13,
+             status = $14,
+             limit_harian = $15
+         WHERE id = $16 AND tenant_id = $17
           RETURNING *,
             to_char(tanggal_lahir, 'YYYY-MM-DD') AS tanggal_lahir,
             to_char(tanggal_masuk_pesantren, 'YYYY-MM-DD') AS tanggal_masuk_pesantren`,
@@ -340,6 +344,7 @@ router.put(
           orang_tua,
           nomor_hp_ortu,
           kelas_id || null,
+          kamar || null,
           foto,
           nextStatus,
           normalizedLimitHarian,
@@ -411,7 +416,7 @@ router.delete(
 router.get("/rfid/:uid", ...withTenant, requirePermission("santri.view"), async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, nama, uid_rfid, saldo, limit_harian
+      `SELECT id, nama, uid_rfid, saldo, limit_harian, kamar
        FROM santri
        WHERE uid_rfid = $1
          AND tenant_id = $2`,

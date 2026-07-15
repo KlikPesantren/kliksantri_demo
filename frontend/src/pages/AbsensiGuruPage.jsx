@@ -30,45 +30,42 @@ function AkademikResponsiveStyles() {
         max-width: 100%;
       }
 
-      .akademik-filter-panel select,
-      .akademik-filter-panel input[type="number"],
-      .absensi-guru-input {
+      .akademik-filter-panel.filter-bar-v3 {
+        margin-bottom: 0;
+      }
+
+      .akademik-filter-panel .filter-bar-v3__fields select,
+      .akademik-filter-panel .filter-bar-v3__fields input[type="number"] {
         min-width: 0;
         flex: 1 1 140px;
-        max-width: 100%;
-        height: 40px;
-        box-sizing: border-box;
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        background: var(--card);
-        color: var(--text-primary);
-        padding: 8px 10px;
-        font: inherit;
-      }
-
-      .akademik-filter-panel select:focus,
-      .akademik-filter-panel input[type="number"]:focus,
-      .absensi-guru-input:focus {
-        outline: 2px solid color-mix(in srgb, var(--primary) 28%, transparent);
-        outline-offset: 1px;
-        border-color: var(--primary);
-      }
-
-      .akademik-filter-panel select option {
-        background: var(--card);
-        color: var(--text-primary);
+        max-width: 220px;
       }
 
       .absensi-guru-input {
         width: 92px;
+        min-height: 36px;
         flex: initial;
         text-align: center;
+        box-sizing: border-box;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--text-primary);
+        padding: 6px 8px;
+        font: inherit;
+      }
+
+      .absensi-guru-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--focus-ring);
       }
 
       @media (max-width: 767px) {
-        .akademik-filter-panel select,
-        .akademik-filter-panel input[type="number"] {
+        .akademik-filter-panel .filter-bar-v3__fields select,
+        .akademik-filter-panel .filter-bar-v3__fields input[type="number"] {
           flex: 1 1 100%;
+          max-width: 100%;
         }
       }
     `}</style>
@@ -259,34 +256,29 @@ function AbsensiGuruPage() {
 
       <Card padding="md" shadow="card" border={false} radius="xl">
 
-        <div className="akademik-filter-panel" style={filterPanelStyle}>
+        <div className="akademik-filter-panel ops-page__filter filter-bar-v3 filter-bar-v3--table">
+          <span className="filter-bar-v3__label">Filter absensi guru</span>
+          <div className="filter-bar-v3__fields" style={filterPanelStyle}>
+            <select
+              className="form-select-v3"
+              value={bulan}
+              onChange={(e) => setBulan(e.target.value)}
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  Bulan {i + 1}
+                </option>
+              ))}
+            </select>
 
-          <select value={bulan} onChange={(e) => setBulan(e.target.value)}>
-
-            {Array.from({ length: 12 }).map((_, i) => (
-
-              <option key={i + 1} value={i + 1}>
-
-                Bulan {i + 1}
-
-              </option>
-
-            ))}
-
-          </select>
-
-
-
-          <input
-
-            type="number"
-
-            value={tahun}
-
-            onChange={(e) => setTahun(e.target.value)}
-
-          />
-
+            <input
+              className="form-control-v3"
+              type="number"
+              value={tahun}
+              onChange={(e) => setTahun(e.target.value)}
+              aria-label="Tahun"
+            />
+          </div>
         </div>
 
       </Card>

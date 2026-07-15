@@ -502,6 +502,7 @@ router.get(
             s.id,
             s.nis,
             s.nama,
+            s.kamar,
             s.foto,
             s.saldo,
             k.nama_kelas
@@ -799,6 +800,7 @@ router.get(
             s.id AS santri_id,
             s.nis,
             s.nama,
+            s.kamar,
             s.alamat,
             s.orang_tua,
             s.nomor_hp_ortu,
@@ -1124,6 +1126,7 @@ router.get(
           SELECT
             s.id AS santri_id,
             s.nama,
+            s.kamar,
             s.uid_rfid,
             s.saldo,
             s.limit_harian

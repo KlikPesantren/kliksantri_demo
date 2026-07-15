@@ -34,13 +34,18 @@ function PageHeader({
   onMenuClick,
   hideUserCard = false,
   compact = false,
+  dashboardMode = false,
 }) {
   const user = getUser();
   const userName = user?.nama || user?.username || "Admin Sistem";
   const role = formatRole(user?.role);
+  const showUserCard = !hideUserCard && !dashboardMode;
 
   return (
-    <header className="page-header" style={compact ? compactHeaderStyle : headerStyle}>
+    <header
+      className={`page-header${dashboardMode ? " page-header--dashboard" : ""}`}
+      style={dashboardMode || compact ? compactHeaderStyle : headerStyle}
+    >
       <div className="page-header-leading">
         {onMenuClick && (
           <button
@@ -53,16 +58,18 @@ function PageHeader({
           </button>
         )}
 
-        <div className="page-header-copy">
-          {breadcrumb && <div style={breadcrumbStyle}>{breadcrumb}</div>}
-          {title && <h1 style={titleStyle}>{title}</h1>}
-          {description && <p style={descriptionStyle}>{description}</p>}
-        </div>
+        {!dashboardMode && (
+          <div className="page-header-copy">
+            {breadcrumb && <div style={breadcrumbStyle}>{breadcrumb}</div>}
+            {title && <h1 style={titleStyle}>{title}</h1>}
+            {description && <p style={descriptionStyle}>{description}</p>}
+          </div>
+        )}
       </div>
 
       <div className="page-header-actions">
         <ThemeToggle size="sm" />
-        {!hideUserCard && (
+        {showUserCard && (
           <div className="page-header-user" style={userCardStyle}>
             <div style={avatarStyle}>{getInitials(userName)}</div>
             <div style={{ minWidth: 0 }}>
@@ -81,7 +88,8 @@ const headerStyle = {
 };
 
 const compactHeaderStyle = {
-  marginBottom: "var(--space-1)",
+  marginBottom: 0,
+  minHeight: 0,
 };
 
 const breadcrumbStyle = {

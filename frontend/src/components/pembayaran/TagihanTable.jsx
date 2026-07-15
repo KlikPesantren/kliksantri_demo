@@ -125,7 +125,8 @@ function TagihanTable({
             <Table>
               <thead>
                 <tr>
-                  <th>Santri</th>
+              <th>Santri</th>
+              <th>Kamar / Asrama</th>
                   <th>Nama Tagihan</th>
                   <th>Periode</th>
                   <th>Nominal</th>
@@ -139,6 +140,7 @@ function TagihanTable({
                 {pembayaran.map((p) => (
                   <tr key={p.id}>
                     <td className="table-v3__cell--strong">{p.nama}</td>
+                    <td>{p.kamar || "—"}</td>
                     <td>{p.nama_tagihan}</td>
                     <td>
                       {p.bulan} {p.tahun}

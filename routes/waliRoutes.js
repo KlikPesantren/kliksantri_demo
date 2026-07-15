@@ -16,7 +16,8 @@ router.get("/", ...withTenant, async (req, res) => {
     const result = await pool.query(
       `SELECT
          wali_santri.*,
-         santri.nama AS nama_santri
+         santri.nama AS nama_santri,
+         santri.kamar
        FROM wali_santri
        LEFT JOIN santri
          ON wali_santri.santri_id = santri.id

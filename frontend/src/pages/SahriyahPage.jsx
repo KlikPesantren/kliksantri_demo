@@ -347,6 +347,7 @@ function SahriyahPage() {
       const response = await api.get("/sahriyah", { params });
       const rows = (response.data.data || []).map((d) => ({
         Nama: d.nama,
+        Kamar: d.kamar,
         Tagihan: Number(d.nominal),
         SudahBayar: Number(d.total_bayar),
         Sisa: Number(d.sisa_tagihan),
@@ -455,6 +456,7 @@ function SahriyahPage() {
                   <thead>
                     <tr>
                       <th>Nama</th>
+                      <th>Kamar / Asrama</th>
                       <th>Tagihan Uang</th>
                       <th>Sudah Bayar</th>
                       <th>Sisa Uang</th>
@@ -471,6 +473,7 @@ function SahriyahPage() {
                     {data.map((d) => (
                       <tr key={d.id}>
                         <td className="table-v3__cell--strong">{d.nama}</td>
+                        <td>{d.kamar || "—"}</td>
                         <td>Rp {Number(d.nominal || 0).toLocaleString()}</td>
                         <td>Rp {Number(d.total_bayar || 0).toLocaleString()}</td>
                         <td>Rp {Number(d.sisa_tagihan || 0).toLocaleString()}</td>

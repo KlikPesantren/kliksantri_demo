@@ -14,7 +14,7 @@ console.log("PERIZINAN ROUTES LOADED");
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT perizinan.*, santri.nama
+      `SELECT perizinan.*, santri.nama, santri.kamar
        FROM perizinan
        LEFT JOIN santri
          ON perizinan.santri_id = santri.id

@@ -126,7 +126,7 @@ function RFIDMutasiPage() {
           title="Mutasi Saldo"
           subtitle={
             infoSantri
-              ? `${infoSantri.nama} · UID ${infoSantri.uid_rfid} · Saldo Rp ${Number(infoSantri.saldo).toLocaleString()}`
+              ? `${infoSantri.nama} · Kamar/Asrama ${infoSantri.kamar || "—"} · UID ${infoSantri.uid_rfid} · Saldo Rp ${Number(infoSantri.saldo).toLocaleString()}`
               : "Pilih santri untuk melihat mutasi saldo"
           }
           actions={

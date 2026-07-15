@@ -52,6 +52,7 @@ function AppShell({ children, title, description, breadcrumb }) {
           onMenuClick={openDrawer}
           hideUserCard={isDashboard}
           compact={isDashboard}
+          dashboardMode={isDashboard}
         />
 
         <div className="app-shell-content">{children}</div>

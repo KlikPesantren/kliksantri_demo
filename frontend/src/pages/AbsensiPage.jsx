@@ -219,6 +219,7 @@ function AbsensiPage() {
         for (let hari = 1; hari <= totalHari; hari++) {
           rows.push({
             Nama: s.nama,
+            Kamar: s.kamar,
             Sesi: sesi,
             Tanggal: `${hari}/${bulan}/${tahun}`,
             Status: absensi[buildKey(sesi, s.id, bulan, tahun, hari)] || "-",
@@ -291,7 +292,7 @@ function AbsensiPage() {
               <Table>
               <thead>
                 <tr>
-                  <th className="table-v3__col--sticky">Nama</th>
+                  <th className="table-v3__col--sticky">Nama / Kamar</th>
                   {Array.from({ length: totalHari }).map((_, i) => (
                     <th key={i}>{i + 1}</th>
                   ))}
@@ -300,7 +301,10 @@ function AbsensiPage() {
               <tbody>
                 {santri.map((s) => (
                   <tr key={s.id}>
-                    <td className="table-v3__col--sticky table-v3__cell--strong">{s.nama}</td>
+                    <td className="table-v3__col--sticky table-v3__cell--strong">
+                      <div>{s.nama}</div>
+                      <small style={{ color: "var(--text-secondary)" }}>{s.kamar || "—"}</small>
+                    </td>
                     {Array.from({ length: totalHari }).map((_, i) => {
                       const hari = i + 1;
                       const key = buildKey(sesi, s.id, bulan, tahun, hari);
