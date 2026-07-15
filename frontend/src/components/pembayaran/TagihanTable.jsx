@@ -170,7 +170,10 @@ function TagihanTable({
                           { type: "history", onClick: () => onHistori(p) },
                           {
                             type: "delete",
-                            hidden: tagihanHasPayment(p),
+                            title: tagihanHasPayment(p)
+                              ? "Tidak dapat dihapus: sudah ada pembayaran"
+                              : "Hapus tagihan",
+                            disabled: tagihanHasPayment(p),
                             onClick: () => onHapus(p.id),
                           },
                         ]}

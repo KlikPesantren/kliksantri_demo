@@ -15,6 +15,7 @@ const {
 } = require("../utils/bulanNormalize");
 const { isSantriAktif, SQL_SANTri_AKTIF } = require("../utils/santriStatus");
 const notificationService = require("../services/notificationService");
+const requirePermission = require("../middleware/requirePermission");
 
 async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, santri_ids }) {
   if (scope === "selected" || (!scope && Array.isArray(santri_ids) && santri_ids.length)) {
@@ -665,7 +666,7 @@ router.put("/bayar/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePermission("pembayaran.manage"), async (req, res) => {
   try {
     const owned = await assertPembayaranInTenant(req.tenantId, req.params.id);
     if (!owned.ok) {
