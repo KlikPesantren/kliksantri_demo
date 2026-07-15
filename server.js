@@ -119,7 +119,9 @@ const hafalanRoutes =
 require("./routes/hafalanRoutes");
 
 const nilaiRoutes =
-require("./routes/nilaiRoutes");
+  require("./routes/nilaiRoutes");
+const mataPelajaranRoutes =
+  require("./routes/mataPelajaranRoutes");
 
 const bukuKasRoutes =
 require( "./routes/bukuKasRoutes" );
@@ -474,6 +476,13 @@ app.use(
   tenantMiddleware,
   requirePermission("nilai.view"),
   nilaiRoutes
+);
+app.use(
+  "/mata-pelajaran",
+  authMiddleware,
+  tenantMiddleware,
+  requirePermission("nilai.view"),
+  mataPelajaranRoutes
 );
 
 app.use(

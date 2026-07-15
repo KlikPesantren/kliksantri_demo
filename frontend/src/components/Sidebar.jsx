@@ -44,6 +44,7 @@ const MENU = [
   { name: "Pengumuman", path: "/pengumuman", perm: "pengumuman.view", feature: "pengumuman", icon: <FaClipboardList /> },
   { name: "Konten Pesantren", path: "/wali-home-links", perm: "pengumuman.view", feature: "pengumuman", icon: <FaClipboardList /> },
   { name: "Nilai", path: "/nilai", perm: "nilai.view", feature: "pendidikan", icon: <FaClipboardList /> },
+  { name: "Mata Pelajaran", path: "/mata-pelajaran", perm: "nilai.view", feature: "pendidikan", icon: <FaClipboardList /> },
   { name: "Hafalan", path: "/hafalan", perm: "hafalan.view", feature: "pendidikan", icon: <FaClipboardList /> },
   { name: "Program Unit", path: "/program-unit", perm: "program_unit.view", feature: "program_unit", icon: <FaClipboardList /> },
   { name: "Absensi", path: "/absensi", perm: "absensi.view", feature: "pendidikan", icon: <FaClipboardList /> },
@@ -91,7 +92,7 @@ const MENU_GROUPS = [
     id: "akademik",
     title: "Akademik",
     collapsible: true,
-    items: ["Nilai", "Hafalan", "Program Unit", "Absensi", "Absensi Guru"],
+    items: ["Nilai", "Mata Pelajaran", "Hafalan", "Program Unit", "Absensi", "Absensi Guru"],
   },
   {
     id: "keuangan",

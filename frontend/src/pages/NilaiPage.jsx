@@ -55,6 +55,7 @@ function NilaiPage() {
   const [tahun, setTahun] = useState(new Date().getFullYear());
   const [santri, setSantri] = useState([]);
   const [nilai, setNilai] = useState({});
+  const [mapelList, setMapelList] = useState([]);
 
   const getNilai = async (b, t) => {
     try {
@@ -72,7 +73,22 @@ function NilaiPage() {
     }
   };
 
-  const mapelList = ["Nahwu", "Fiqih", "Tajwid", "Akhlak", "Tauhid"];
+  const defaultMapel = ["Nahwu", "Fiqih", "Tajwid", "Akhlak", "Tauhid"];
+
+  const getMapel = async (id) => {
+    if (!id) {
+      setMapelList([]);
+      return;
+    }
+    try {
+      const response = await api.get("/mata-pelajaran", { params: { kelas_id: id } });
+      const assigned = (response.data.data || []).filter((item) => item.ditugaskan).map((item) => item.nama);
+      setMapelList(assigned.length ? assigned : defaultMapel);
+    } catch (err) {
+      console.error(err);
+      setMapelList(defaultMapel);
+    }
+  };
 
   const getKelas = async () => {
     try {
@@ -189,6 +205,7 @@ function NilaiPage() {
             onChange={(e) => {
               setKelasId(e.target.value);
               getSantri(e.target.value);
+              getMapel(e.target.value);
             }}
           >
             <option value="">Pilih Kelas</option>
