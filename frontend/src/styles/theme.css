@@ -102,6 +102,7 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
+  --bg: #0B1220;
   --surface: #111827;
   --surface-muted: #1E293B;
   --card: #1E293B;
@@ -115,8 +116,8 @@
   --brand-navy-muted: #334155;
   --neutral-subtle: var(--surface-muted);
 
-  --primary: #166534;
-  --primary-hover: #15803D;
+  --primary: #22C55E;
+  --primary-hover: #16A34A;
   --primary-subtle: rgba(22, 101, 52, 0.22);
 
   --danger: #DC2626;
