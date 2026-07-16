@@ -80,10 +80,6 @@ const EMPTY_FORM = {
 
   banner_active: true,
 
-  splash_logo_url: "",
-
-  app_icon_url: "",
-
   tagline: "",
 
   tentang: "",
@@ -259,10 +255,6 @@ function ProfilPesantrenPage() {
 
           banner_active: d.banner_active !== false,
 
-          splash_logo_url: d.splash_logo_url ?? "",
-
-          app_icon_url: d.app_icon_url ?? "",
-
           tagline: d.tagline ?? "",
 
           tentang: d.tentang ?? "",
@@ -353,9 +345,9 @@ function ProfilPesantrenPage() {
 
         banner_active: form.banner_active !== false,
 
-        splash_logo_url: form.splash_logo_url || null,
-
-        app_icon_url: form.app_icon_url || null,
+        // Logo pesantren menjadi logo splash/login; icon native tetap KlikPesantren.
+        splash_logo_url: form.logo_url || null,
+        app_icon_url: null,
 
         tagline: form.tagline || null,
 
@@ -422,10 +414,6 @@ function ProfilPesantrenPage() {
         banner_url: form.banner_url,
 
         banner_active: form.banner_active,
-
-        splash_logo_url: form.splash_logo_url,
-
-        app_icon_url: form.app_icon_url,
 
         tagline: form.tagline,
 
@@ -657,11 +645,10 @@ function ProfilPesantrenPage() {
 
                 <p style={helperTextStyle}>
 
-                  Logo, splash, tagline, dan banner tampil di Admin Panel dan APK Wali Santri.
+                  Logo pesantren digunakan untuk splash/login. Icon aplikasi tetap memakai KlikPesantren.
 
                   Upload file PNG/JPG/WEBP (maks. 5MB). URL hasil upload otomatis tersimpan.
 
-                  Jika logo splash kosong, preview menggunakan logo pesantren.
 
                 </p>
 
@@ -718,38 +705,6 @@ function ProfilPesantrenPage() {
                       value={form.logo_url}
 
                       onChange={setField("logo_url")}
-
-                    />
-
-                  </FormField>
-
-                  <FormField label="Logo Splash Screen" htmlFor="profil-splash-logo" fullWidth>
-
-                    <ImageUploadField
-
-                      id="profil-splash-logo"
-
-                      label="Splash Logo"
-
-                      value={form.splash_logo_url}
-
-                      onChange={setField("splash_logo_url")}
-
-                    />
-
-                  </FormField>
-
-                  <FormField label="App Icon (persiapan build)" htmlFor="profil-app-icon" fullWidth>
-
-                    <ImageUploadField
-
-                      id="profil-app-icon"
-
-                      label="App Icon"
-
-                      value={form.app_icon_url}
-
-                      onChange={setField("app_icon_url")}
 
                     />
 
