@@ -448,7 +448,13 @@ await pool.query(
 SELECT
 
 COALESCE(
-SUM(sisa_tagihan),
+SUM(
+  CASE
+    WHEN LOWER(TRIM(status)) = 'belum lunas' THEN COALESCE(nominal, 0)
+    WHEN LOWER(TRIM(status)) LIKE '%cicil%' THEN COALESCE(sisa_tagihan, 0)
+    ELSE 0
+  END
+),
 0
 ) AS total
 
@@ -483,22 +489,17 @@ await pool.query(
     COUNT(s.id)::int AS total_santri,
     COUNT(*) FILTER (
       WHERE b.santri_id IS NOT NULL
-        AND (
-          LOWER(COALESCE(b.status, '')) = 'lunas'
-          OR COALESCE(b.sisa_tagihan, 0) <= 0
-        )
+        AND LOWER(TRIM(COALESCE(b.status, ''))) = 'lunas'
     )::int AS lunas,
     COUNT(*) FILTER (
       WHERE b.santri_id IS NOT NULL
-        AND LOWER(COALESCE(b.status, '')) LIKE '%cicil%'
-        AND COALESCE(b.sisa_tagihan, 0) > 0
+        AND LOWER(TRIM(COALESCE(b.status, ''))) LIKE '%cicil%'
     )::int AS cicilan,
     COUNT(*) FILTER (
       WHERE b.santri_id IS NULL
         OR (
-          COALESCE(b.sisa_tagihan, 0) > 0
-          AND LOWER(COALESCE(b.status, '')) NOT LIKE '%cicil%'
-          AND LOWER(COALESCE(b.status, '')) <> 'lunas'
+          LOWER(TRIM(COALESCE(b.status, ''))) <> 'lunas'
+          AND LOWER(TRIM(COALESCE(b.status, ''))) NOT LIKE '%cicil%'
         )
     )::int AS belum_bayar
   FROM santri s
