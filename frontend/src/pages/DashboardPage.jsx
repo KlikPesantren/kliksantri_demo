@@ -48,7 +48,7 @@ function DashboardPage() {
     saldo_kas: 0,
     total_pembayaran: 0,
     total_tunggakan: 0,
-    sahriyah_status: { total: 0, lunas: 0, cicilan: 0, belum_bayar: 0 },
+    sahriyah_status: { total_santri: 0, lunas: 0, cicilan: 0, belum_bayar: 0 },
     total_pelanggaran: 0,
     total_perizinan: 0,
     belum_kembali: 0,

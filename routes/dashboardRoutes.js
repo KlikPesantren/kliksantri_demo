@@ -431,10 +431,12 @@ SUM(total_bayar),
 FROM tagihan_sahriyah
 
 WHERE tenant_id = $1
+  AND bulan = $2
+  AND tahun = $3
 
 `,
 
-[tenantId]
+[tenantId, bulanIni, tahunIni]
 
 );
 
@@ -453,36 +455,59 @@ SUM(sisa_tagihan),
 FROM tagihan_sahriyah
 
 WHERE tenant_id = $1
+  AND bulan = $2
+  AND tahun = $3
   AND COALESCE(sisa_tagihan, 0) > 0
 
 `,
 
-[tenantId]
+[tenantId, bulanIni, tahunIni]
 
 );
 
 const statusSahriyah =
 await pool.query(
   `
+  WITH current_bills AS (
+    SELECT DISTINCT ON (santri_id)
+      santri_id,
+      status,
+      total_tagihan,
+      total_bayar,
+      sisa_tagihan
+    FROM tagihan_sahriyah
+    WHERE tenant_id = $1
+      AND bulan = $2
+      AND tahun = $3
+    ORDER BY santri_id, id DESC
+  )
   SELECT
-    COUNT(*)::int AS total,
+    COUNT(s.id)::int AS total_santri,
     COUNT(*) FILTER (
-      WHERE LOWER(COALESCE(status, '')) = 'lunas'
-         OR COALESCE(sisa_tagihan, 0) <= 0
+      WHERE b.santri_id IS NOT NULL
+        AND (
+          LOWER(COALESCE(b.status, '')) = 'lunas'
+          OR COALESCE(b.sisa_tagihan, 0) <= 0
+        )
     )::int AS lunas,
     COUNT(*) FILTER (
-      WHERE LOWER(COALESCE(status, '')) LIKE '%cicil%'
-        AND COALESCE(sisa_tagihan, 0) > 0
+      WHERE b.santri_id IS NOT NULL
+        AND LOWER(COALESCE(b.status, '')) LIKE '%cicil%'
+        AND COALESCE(b.sisa_tagihan, 0) > 0
     )::int AS cicilan,
     COUNT(*) FILTER (
-      WHERE COALESCE(sisa_tagihan, 0) > 0
-        AND LOWER(COALESCE(status, '')) NOT LIKE '%cicil%'
-        AND LOWER(COALESCE(status, '')) <> 'lunas'
+      WHERE b.santri_id IS NULL
+        OR (
+          COALESCE(b.sisa_tagihan, 0) > 0
+          AND LOWER(COALESCE(b.status, '')) NOT LIKE '%cicil%'
+          AND LOWER(COALESCE(b.status, '')) <> 'lunas'
+        )
     )::int AS belum_bayar
-  FROM tagihan_sahriyah
-  WHERE tenant_id = $1
+  FROM santri s
+  LEFT JOIN current_bills b ON b.santri_id = s.id
+  WHERE s.tenant_id = $1
   `,
-  [tenantId]
+  [tenantId, bulanIni, tahunIni]
 );
 
 // ======================
@@ -820,7 +845,7 @@ total_tunggakan:
   ),
 
 sahriyah_status: {
-  total: Number(statusSahriyah.rows[0].total),
+  total_santri: Number(statusSahriyah.rows[0].total_santri),
   lunas: Number(statusSahriyah.rows[0].lunas),
   cicilan: Number(statusSahriyah.rows[0].cicilan),
   belum_bayar: Number(statusSahriyah.rows[0].belum_bayar),

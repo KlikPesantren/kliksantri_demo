@@ -20,7 +20,7 @@ function DashboardAnnouncement({ pembayaranTerbaru, sahriyahStatus, totalPembaya
       <Card {...DASHBOARD_PANEL}>
         <ExecSectionTitle
           title="Status Sahriyah"
-          subtitle={`Total pembayaran ${formatCurrency(sahriyahDonut.totalPembayaran)}`}
+          subtitle={`Total santri ${sahriyahDonut.totalSantri} · pembayaran ${formatCurrency(sahriyahDonut.totalPembayaran)}`}
         />
         <div className="dashboard-donut-layout">
           <DonutChart
@@ -38,7 +38,9 @@ function DashboardAnnouncement({ pembayaranTerbaru, sahriyahStatus, totalPembaya
                   <span className="dashboard-donut-legend-dot" style={{ background: slice.color }} />
                   {slice.label}
                 </span>
-                <span className="dashboard-donut-legend-pct">{slice.pct}%</span>
+                <span className="dashboard-donut-legend-pct">
+                  {slice.value} / {sahriyahDonut.totalSantri} ({slice.pct}%)
+                </span>
               </div>
             ))}
           </div>

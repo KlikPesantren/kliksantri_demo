@@ -76,16 +76,18 @@ export function buildSahriyahDonut(_pembayaranList, sahriyahStatus, totalPembaya
     { label: "Belum Bayar", value: counts.belum, color: "var(--danger)" },
   ];
 
-  const sliceTotal = slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
+  const totalSantri = Number(sahriyahStatus?.total_santri || 0);
+  const denominator = totalSantri || slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
   const mappedSlices = slices.map((slice) => ({
     ...slice,
-    pct: Math.round((slice.value / sliceTotal) * 100),
+    pct: Math.round((slice.value / denominator) * 100),
   }));
 
   const lunasPct = mappedSlices.find((s) => s.label === "Lunas")?.pct ?? 0;
 
   return {
     slices: mappedSlices,
+    totalSantri,
     totalPembayaran: Number(totalPembayaran) || 0,
     lunasPct,
   };
