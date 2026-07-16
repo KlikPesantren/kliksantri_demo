@@ -472,8 +472,6 @@ await pool.query(
     SELECT DISTINCT ON (santri_id)
       santri_id,
       status,
-      total_tagihan,
-      total_bayar,
       sisa_tagihan
     FROM tagihan_sahriyah
     WHERE tenant_id = $1
