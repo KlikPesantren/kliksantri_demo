@@ -445,25 +445,41 @@ await pool.query(
 
 `
 
-SELECT
-
-COALESCE(
-SUM(
+WITH current_bills AS (
+  SELECT DISTINCT ON (santri_id)
+    santri_id,
+    status,
+    nominal,
+    total_bayar,
+    sisa_tagihan
+  FROM tagihan_sahriyah
+  WHERE tenant_id = $1
+    AND bulan = $2
+    AND tahun = $3
+  ORDER BY santri_id, id DESC
+)
+SELECT COALESCE(SUM(
   CASE
-    WHEN LOWER(TRIM(status)) = 'belum lunas' THEN COALESCE(nominal, 0)
-    WHEN LOWER(TRIM(status)) LIKE '%cicil%' THEN COALESCE(sisa_tagihan, 0)
+    WHEN b.santri_id IS NULL
+      OR LOWER(TRIM(COALESCE(b.status, ''))) NOT IN ('lunas', 'cicilan')
+      THEN COALESCE(NULLIF(b.nominal, 0), ss.nominal_uang, 0)
+    WHEN LOWER(TRIM(COALESCE(b.status, ''))) LIKE '%cicil%'
+      THEN GREATEST(
+        COALESCE(
+          NULLIF(b.sisa_tagihan, 0),
+          COALESCE(NULLIF(b.nominal, 0), ss.nominal_uang, 0) - COALESCE(b.total_bayar, 0)
+        ),
+        0
+      )
     ELSE 0
   END
-),
-0
-) AS total
-
-FROM tagihan_sahriyah
-
-WHERE tenant_id = $1
-  AND bulan = $2
-  AND tahun = $3
-  AND COALESCE(sisa_tagihan, 0) > 0
+), 0)::bigint AS total
+FROM santri s
+LEFT JOIN current_bills b ON b.santri_id = s.id
+LEFT JOIN sahriyah_setting ss
+  ON ss.santri_id = s.id
+ AND ss.tenant_id = s.tenant_id
+WHERE s.tenant_id = $1
 
 `,
 
