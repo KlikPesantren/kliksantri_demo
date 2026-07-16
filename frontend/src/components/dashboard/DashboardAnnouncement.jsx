@@ -7,9 +7,10 @@ import {
   buildSahriyahDonut,
 } from "./dashboardShared.jsx";
 
-function DashboardAnnouncement({ pembayaranTerbaru, totalPembayaran, totalTunggakan }) {
+function DashboardAnnouncement({ pembayaranTerbaru, sahriyahStatus, totalPembayaran, totalTunggakan }) {
   const sahriyahDonut = buildSahriyahDonut(
     pembayaranTerbaru,
+    sahriyahStatus,
     totalPembayaran,
     totalTunggakan,
   );

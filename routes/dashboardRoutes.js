@@ -453,11 +453,36 @@ SUM(sisa_tagihan),
 FROM tagihan_sahriyah
 
 WHERE tenant_id = $1
+  AND COALESCE(sisa_tagihan, 0) > 0
 
 `,
 
 [tenantId]
 
+);
+
+const statusSahriyah =
+await pool.query(
+  `
+  SELECT
+    COUNT(*)::int AS total,
+    COUNT(*) FILTER (
+      WHERE LOWER(COALESCE(status, '')) = 'lunas'
+         OR COALESCE(sisa_tagihan, 0) <= 0
+    )::int AS lunas,
+    COUNT(*) FILTER (
+      WHERE LOWER(COALESCE(status, '')) LIKE '%cicil%'
+        AND COALESCE(sisa_tagihan, 0) > 0
+    )::int AS cicilan,
+    COUNT(*) FILTER (
+      WHERE COALESCE(sisa_tagihan, 0) > 0
+        AND LOWER(COALESCE(status, '')) NOT LIKE '%cicil%'
+        AND LOWER(COALESCE(status, '')) <> 'lunas'
+    )::int AS belum_bayar
+  FROM tagihan_sahriyah
+  WHERE tenant_id = $1
+  `,
+  [tenantId]
 );
 
 // ======================
@@ -793,6 +818,13 @@ total_tunggakan:
   Number(
     tunggakanSahriyah.rows[0].total
   ),
+
+sahriyah_status: {
+  total: Number(statusSahriyah.rows[0].total),
+  lunas: Number(statusSahriyah.rows[0].lunas),
+  cicilan: Number(statusSahriyah.rows[0].cicilan),
+  belum_bayar: Number(statusSahriyah.rows[0].belum_bayar),
+},
 
 grafik_kas:
   grafikKas.rows,

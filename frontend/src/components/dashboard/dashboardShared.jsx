@@ -63,29 +63,18 @@ export function DashboardCompactList({ items, emptyNote = "Belum ada data." }) {
   );
 }
 
-export function buildSahriyahDonut(pembayaranList, totalPembayaran, totalTunggakan) {
-  const counts = { lunas: 0, cicilan: 0, belum: 0 };
+export function buildSahriyahDonut(_pembayaranList, sahriyahStatus, totalPembayaran, _totalTunggakan) {
+  const counts = {
+    lunas: Number(sahriyahStatus?.lunas || 0),
+    cicilan: Number(sahriyahStatus?.cicilan || 0),
+    belum: Number(sahriyahStatus?.belum_bayar || 0),
+  };
 
-  pembayaranList.forEach((p) => {
-    const s = String(p.status || "").toLowerCase();
-    if (s === "lunas") counts.lunas += 1;
-    else if (s.includes("cicil")) counts.cicilan += 1;
-    else counts.belum += 1;
-  });
-
-  const countTotal = counts.lunas + counts.cicilan + counts.belum;
-
-  const slices = countTotal > 0
-    ? [
-        { label: "Lunas", value: counts.lunas, color: "var(--primary)" },
-        { label: "Cicilan", value: counts.cicilan, color: "var(--warning)" },
-        { label: "Belum Bayar", value: counts.belum, color: "var(--danger)" },
-      ]
-    : [
-        { label: "Lunas", value: Number(totalPembayaran) || 0, color: "var(--primary)" },
-        { label: "Cicilan", value: 0, color: "var(--warning)" },
-        { label: "Belum Bayar", value: Number(totalTunggakan) || 0, color: "var(--danger)" },
-      ];
+  const slices = [
+    { label: "Lunas", value: counts.lunas, color: "var(--primary)" },
+    { label: "Cicilan", value: counts.cicilan, color: "var(--warning)" },
+    { label: "Belum Bayar", value: counts.belum, color: "var(--danger)" },
+  ];
 
   const sliceTotal = slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
   const mappedSlices = slices.map((slice) => ({

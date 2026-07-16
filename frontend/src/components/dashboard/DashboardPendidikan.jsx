@@ -48,7 +48,7 @@ function DashboardPendidikan({ summary }) {
           accent="success"
         />
         <KpiCard
-          label="Hafalan Minggu Ini"
+            label="Hafalan Bulan Ini"
           value={formatNumber(summary.total_hafalan || 0)}
           accent="primary"
         />
@@ -70,7 +70,7 @@ function DashboardPendidikan({ summary }) {
         </Card>
 
         <Card {...DASHBOARD_PANEL}>
-          <ExecSectionTitle title="Hafalan" subtitle="Capaian hafalan periode berjalan" />
+          <ExecSectionTitle title="Hafalan" subtitle="Capaian hafalan bulan berjalan" />
           <div className="dashboard-monitor-stat">
             <span className="dashboard-monitor-stat__value">
               {formatNumber(summary.total_hafalan || 0)}
@@ -83,7 +83,7 @@ function DashboardPendidikan({ summary }) {
         </Card>
 
         <Card {...DASHBOARD_PANEL}>
-          <ExecSectionTitle title="Nilai" subtitle="Rata-rata nilai mingguan" />
+          <ExecSectionTitle title="Nilai" subtitle="Rata-rata nilai bulan berjalan" />
           <div className="dashboard-monitor-stat">
             <span className="dashboard-monitor-stat__value">
               {formatNumber(summary.rata_nilai || 0)}
