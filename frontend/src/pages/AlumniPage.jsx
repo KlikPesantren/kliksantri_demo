@@ -8,7 +8,7 @@ import { FormField, Input, Select, Textarea, FormGrid, FormSection, FormActionBa
 
 const EMPTY = {
   nama: "", nis: "", jenis_kelamin: "", tahun_masuk: "", tahun_lulus: "",
-  angkatan: "", status_kelulusan: "lulus", kontak: "", alamat: "", pekerjaan: "", catatan: "",
+  angkatan: "", status_kelulusan: "lulus", kelas_terakhir: "", kontak: "", alamat: "", pekerjaan: "", catatan: "",
 };
 
 export default function AlumniPage() {
@@ -31,13 +31,15 @@ export default function AlumniPage() {
   const resetForm = () => { setForm(EMPTY); setEditId(null); };
   const editAlumni = (item) => {
     setEditId(item.id);
-    setForm(Object.fromEntries(Object.keys(EMPTY).map((key) => [key, item[key] ?? EMPTY[key]])));
+    setForm(Object.fromEntries(Object.keys(EMPTY).map((key) => [key, key === "kelas_terakhir"
+      ? (item.kelas_terakhir ?? item.nama_kelas ?? EMPTY[key])
+      : (item[key] ?? EMPTY[key])] )));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const filtered = list.filter((item) => {
     const q = search.trim().toLowerCase();
     return !q || [item.nama, item.nis, item.jenis_kelamin, item.angkatan, item.tahun_masuk,
-      item.tahun_lulus, item.status_kelulusan, item.nama_kelas, item.kontak, item.alamat,
+      item.tahun_lulus, item.status_kelulusan, item.kelas_terakhir, item.nama_kelas, item.kontak, item.alamat,
       item.pekerjaan, item.catatan]
       .some((value) => String(value || "").toLowerCase().includes(q));
   });
@@ -69,6 +71,7 @@ export default function AlumniPage() {
             <FormField label="Angkatan"><Input value={form.angkatan} onChange={set("angkatan")} placeholder="Contoh: 2015" /></FormField>
             <FormField label="Tahun Masuk"><Input type="number" value={form.tahun_masuk} onChange={set("tahun_masuk")} /></FormField>
             <FormField label="Tahun Lulus"><Input type="number" value={form.tahun_lulus} onChange={set("tahun_lulus")} /></FormField>
+            <FormField label="Kelas Terakhir"><Input value={form.kelas_terakhir} onChange={set("kelas_terakhir")} placeholder="Contoh: 3 Aliyah" /></FormField>
             <FormField label="Kontak"><Input value={form.kontak} onChange={set("kontak")} /></FormField>
             <FormField label="Pekerjaan"><Input value={form.pekerjaan} onChange={set("pekerjaan")} /></FormField>
             <FormField label="Alamat" fullWidth><Textarea rows={2} value={form.alamat} onChange={set("alamat")} /></FormField>

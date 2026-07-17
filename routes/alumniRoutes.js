@@ -10,7 +10,7 @@ const withTenant = [authMiddleware, tenantMiddleware];
 router.get("/", ...withTenant, requirePermission("santri.view"), async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT a.*, s.kelas_id, k.nama_kelas
+      `SELECT a.*, s.kelas_id, COALESCE(a.kelas_terakhir, k.nama_kelas) AS nama_kelas
        FROM alumni a
        LEFT JOIN santri s ON s.id = a.santri_id AND s.tenant_id = a.tenant_id
        LEFT JOIN kelas k ON k.id = s.kelas_id AND k.tenant_id = a.tenant_id
@@ -29,7 +29,7 @@ router.post("/", ...withTenant, requirePermission("santri.create"), async (req, 
   try {
     const {
       nama, nis, jenis_kelamin, tahun_masuk, tahun_lulus, angkatan,
-      status_kelulusan, kontak, alamat, pekerjaan, catatan,
+      status_kelulusan, kelas_terakhir, kontak, alamat, pekerjaan, catatan,
     } = req.body;
     if (!String(nama || "").trim()) {
       return res.status(400).json({ success: false, error: "Nama alumni wajib diisi" });
@@ -40,13 +40,13 @@ router.post("/", ...withTenant, requirePermission("santri.create"), async (req, 
     const result = await pool.query(
       `INSERT INTO alumni (
          tenant_id, nama, nis, jenis_kelamin, tahun_masuk, tahun_lulus,
-         angkatan, status_kelulusan, kontak, alamat, pekerjaan, catatan
+         angkatan, status_kelulusan, kelas_terakhir, kontak, alamat, pekerjaan, catatan
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [req.tenantId, String(nama).trim(), nis || null, jenis_kelamin || null,
         tahun_masuk || null, tahun_lulus || null, angkatan || null, status,
-        kontak || null, alamat || null, pekerjaan || null, catatan || null],
+        kelas_terakhir || null, kontak || null, alamat || null, pekerjaan || null, catatan || null],
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
@@ -59,7 +59,7 @@ router.put("/:id", ...withTenant, requirePermission("santri.update"), async (req
   try {
     const {
       nama, nis, jenis_kelamin, tahun_masuk, tahun_lulus, angkatan,
-      status_kelulusan, kontak, alamat, pekerjaan, catatan,
+      status_kelulusan, kelas_terakhir, kontak, alamat, pekerjaan, catatan,
     } = req.body;
     if (!String(nama || "").trim()) {
       return res.status(400).json({ success: false, error: "Nama alumni wajib diisi" });
@@ -71,13 +71,13 @@ router.put("/:id", ...withTenant, requirePermission("santri.update"), async (req
       `UPDATE alumni
        SET nama = $1, nis = $2, jenis_kelamin = $3, tahun_masuk = $4,
            tahun_lulus = $5, angkatan = $6, status_kelulusan = $7,
-           kontak = $8, alamat = $9, pekerjaan = $10, catatan = $11,
+           kelas_terakhir = $8, kontak = $9, alamat = $10, pekerjaan = $11, catatan = $12,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $12 AND tenant_id = $13
+       WHERE id = $13 AND tenant_id = $14
        RETURNING *`,
       [String(nama).trim(), nis || null, jenis_kelamin || null,
         tahun_masuk || null, tahun_lulus || null, angkatan || null, status,
-        kontak || null, alamat || null, pekerjaan || null, catatan || null,
+        kelas_terakhir || null, kontak || null, alamat || null, pekerjaan || null, catatan || null,
         req.params.id, req.tenantId],
     );
     if (result.rowCount === 0) {
