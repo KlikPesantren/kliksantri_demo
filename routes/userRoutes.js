@@ -68,7 +68,15 @@ router.get(
 router.get(
   "/meta/units",
   ...withTenant,
-  requirePermission("user.view"),
+  requirePermission.requireAnyPermission([
+    "user.view",
+    "santri.view",
+    "kelas.view",
+    "guru.view",
+    "pembayaran.view",
+    "nilai.view",
+    "pengumuman.view",
+  ]),
   async (req, res) => {
     try {
       const result = await pool.query(
