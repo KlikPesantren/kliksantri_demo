@@ -7,6 +7,7 @@
 export const ROUTE_PERMISSIONS = {
   "/dashboard":         "dashboard.view",
   "/santri":            "santri.view",
+  "/alumni":            "alumni.view",
   "/kelas":             "kelas.view",
   "/wali":              "wali.view",
   "/guru":              "guru.view",
@@ -27,7 +28,7 @@ export const ROUTE_PERMISSIONS = {
   "/perizinan":         "perizinan.view",
   "/tamu":              "tamu.view",
   "/pengumuman":        "pengumuman.view",
-  "/wali-home-links":   "pengumuman.view",
+  "/wali-home-links":   "konten_pesantren.view",
   "/profil-pesantren":  "profil.view",
   "/devices":           "device.view",
   "/audit":             "audit.view",

@@ -502,7 +502,7 @@ app.use(
   "/wali-home-links",
   authMiddleware,
   tenantMiddleware,
-  requirePermission("pengumuman.view"),
+  requirePermission("konten_pesantren.view"),
   waliHomeLinkRoutes
 );
 
@@ -523,6 +523,7 @@ app.use(
     "profil.manage",
     "santri.manage",
     "pengumuman.manage",
+    "konten_pesantren.manage",
   ]),
   uploadRoutes
 );

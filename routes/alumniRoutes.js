@@ -7,7 +7,7 @@ const requirePermission = require("../middleware/requirePermission");
 const router = express.Router();
 const withTenant = [authMiddleware, tenantMiddleware];
 
-router.get("/", ...withTenant, requirePermission("santri.view"), async (req, res) => {
+router.get("/", ...withTenant, requirePermission("alumni.view"), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT a.*, s.kelas_id, COALESCE(a.kelas_terakhir, k.nama_kelas) AS nama_kelas
@@ -25,7 +25,7 @@ router.get("/", ...withTenant, requirePermission("santri.view"), async (req, res
   }
 });
 
-router.post("/", ...withTenant, requirePermission("santri.create"), async (req, res) => {
+router.post("/", ...withTenant, requirePermission("alumni.manage"), async (req, res) => {
   try {
     const {
       nama, nis, jenis_kelamin, tahun_masuk, tahun_lulus, angkatan,
@@ -55,7 +55,7 @@ router.post("/", ...withTenant, requirePermission("santri.create"), async (req, 
   }
 });
 
-router.put("/:id", ...withTenant, requirePermission("santri.update"), async (req, res) => {
+router.put("/:id", ...withTenant, requirePermission("alumni.manage"), async (req, res) => {
   try {
     const {
       nama, nis, jenis_kelamin, tahun_masuk, tahun_lulus, angkatan,
