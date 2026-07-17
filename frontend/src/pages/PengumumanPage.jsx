@@ -112,6 +112,7 @@ const EMPTY_FORM = {
   prioritas: "normal",
   expires_at: "",
   is_active: true,
+  unit_id: "",
 };
 
 function PengumumanPageStyles() {
@@ -631,6 +632,7 @@ function PengumumanPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState(null);
   const [coverUploading, setCoverUploading] = useState(false);
+  const [units, setUnits] = useState([]);
   const fileInputRef = useRef(null);
 
   const getList = async () => {
@@ -647,6 +649,12 @@ function PengumumanPage() {
 
   useEffect(() => {
     getList();
+    api.get("/users/meta/units").then((res) => {
+      const nextUnits = res.data.data || [];
+      setUnits(nextUnits);
+      const pesantren = nextUnits.find((unit) => String(unit.kode).toUpperCase() === "PESANTREN");
+      setForm((prev) => ({ ...prev, unit_id: prev.unit_id || String(pesantren?.id || nextUnits[0]?.id || "") }));
+    }).catch(() => {});
   }, []);
 
   const save = async () => {
@@ -683,6 +691,7 @@ function PengumumanPage() {
       prioritas: item.prioritas ?? "normal",
       expires_at: item.expires_at ? item.expires_at.split("T")[0] : "",
       is_active: item.is_active,
+      unit_id: item.unit_id ? String(item.unit_id) : "",
     });
     setEditId(item.id);
     setFormOpen(true);
@@ -886,6 +895,18 @@ function PengumumanPage() {
                 onChange={(e) => setForm({ ...form, judul: e.target.value })}
                 maxLength={200}
               />
+            </FormField>
+            <FormField label="Unit Pendidikan" htmlFor="pengumuman-unit" required>
+              <Select
+                id="pengumuman-unit"
+                value={form.unit_id}
+                onChange={(e) => setForm((prev) => ({ ...prev, unit_id: e.target.value }))}
+              >
+                <option value="">Pilih Unit</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>{unit.nama}</option>
+                ))}
+              </Select>
             </FormField>
 
             <FormField label="Isi Pengumuman" htmlFor="pengumuman-isi" required>

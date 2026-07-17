@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require("../db");
 const { assertRecordInTenant } = require("../services/tenantScope");
 const notificationService = require("../services/notificationService");
+const { getScopedUnitIds } = require("../middleware/dataUnitScope");
 
 function buildPengumumanNotificationTitle(prioritas) {
   const key = String(prioritas || "normal").trim().toLowerCase();
@@ -35,16 +36,18 @@ async function sendPengumumanNotification({ tenantId, pengumuman }) {
 
 router.get("/", async (req, res) => {
   try {
+    const scopedUnitIds = await getScopedUnitIds(req);
     const result = await pool.query(
       `
       SELECT
-        id, judul, isi, cover_url, prioritas,
+        id, judul, isi, cover_url, prioritas, unit_id,
         published_at, expires_at, is_active, created_by, created_at, tenant_id
       FROM pengumuman
       WHERE tenant_id = $1
+        AND ($2::int[] IS NULL OR unit_id = ANY($2::int[]))
       ORDER BY created_at DESC
       `,
-      [req.tenantId]
+      [req.tenantId, scopedUnitIds]
     );
 
     res.json({ success: true, data: result.rows });
@@ -56,7 +59,16 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { judul, isi, cover_url, prioritas, expires_at, is_active } = req.body;
+    const { judul, isi, cover_url, prioritas, expires_at, is_active, unit_id } = req.body;
+    const unitValue = unit_id || (await pool.query(
+      `SELECT id FROM unit_pendidikan WHERE tenant_id = $1 AND UPPER(kode) = 'PESANTREN' AND is_active = true`,
+      [req.tenantId],
+    )).rows[0]?.id;
+    const unitCheck = await pool.query(
+      `SELECT id FROM unit_pendidikan WHERE id = $1 AND tenant_id = $2 AND is_active = true`,
+      [unitValue, req.tenantId],
+    );
+    if (unitCheck.rows.length === 0) return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
 
     if (!judul || !isi) {
       return res.status(400).json({
@@ -68,9 +80,9 @@ router.post("/", async (req, res) => {
     const result = await pool.query(
       `
       INSERT INTO pengumuman (
-        judul, isi, cover_url, prioritas, expires_at, is_active, tenant_id, created_by
+        judul, isi, cover_url, prioritas, expires_at, is_active, tenant_id, created_by, unit_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
       `,
       [
@@ -82,6 +94,7 @@ router.post("/", async (req, res) => {
         is_active !== undefined ? is_active : true,
         req.tenantId,
         req.user?.id ?? null,
+        unitValue,
       ]
     );
 
@@ -114,13 +127,22 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ success: false, error: owned.error });
     }
 
-    const { judul, isi, cover_url, prioritas, expires_at, is_active } = req.body;
-
     const existing = await pool.query(
       "SELECT * FROM pengumuman WHERE id = $1 AND tenant_id = $2",
       [id, req.tenantId]
     );
     const current = existing.rows[0];
+    const { judul, isi, cover_url, prioritas, expires_at, is_active, unit_id } = req.body;
+    const scopedUnitIds = await getScopedUnitIds(req);
+    if (scopedUnitIds && !scopedUnitIds.includes(Number(current?.unit_id))) {
+      return res.status(403).json({ success: false, error: "Pengumuman berada di luar unit operator" });
+    }
+    const nextUnitId = unit_id ?? current?.unit_id;
+    const unitCheck = await pool.query(
+      `SELECT id FROM unit_pendidikan WHERE id = $1 AND tenant_id = $2 AND is_active = true`,
+      [nextUnitId, req.tenantId],
+    );
+    if (unitCheck.rows.length === 0) return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
     const nextCoverUrl = Object.prototype.hasOwnProperty.call(req.body, "cover_url")
       ? (cover_url ?? null)
       : current.cover_url;
@@ -134,8 +156,9 @@ router.put("/:id", async (req, res) => {
         cover_url   = $3,
         prioritas   = COALESCE($4, prioritas),
         expires_at  = $5,
-        is_active   = COALESCE($6, is_active)
-      WHERE id = $7 AND tenant_id = $8
+        is_active   = COALESCE($6, is_active),
+        unit_id     = $7
+      WHERE id = $8 AND tenant_id = $9
       RETURNING *
       `,
       [
@@ -145,6 +168,7 @@ router.put("/:id", async (req, res) => {
         prioritas ?? null,
         expires_at !== undefined ? expires_at : null,
         is_active !== undefined ? is_active : null,
+        nextUnitId,
         id,
         req.tenantId,
       ]

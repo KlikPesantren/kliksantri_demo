@@ -16,6 +16,7 @@ const {
 const { isSantriAktif, SQL_SANTri_AKTIF } = require("../utils/santriStatus");
 const notificationService = require("../services/notificationService");
 const requirePermission = require("../middleware/requirePermission");
+const { getScopedKelasIds, assertSantriInScopedUnit } = require("../middleware/dataUnitScope");
 
 async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, santri_ids }) {
   if (scope === "selected" || (!scope && Array.isArray(santri_ids) && santri_ids.length)) {
@@ -258,6 +259,12 @@ router.get("/", async (req, res) => {
       req.tenantId,
       req.query,
     );
+    const scopedKelasIds = await getScopedKelasIds(req);
+    const scopedWhereSql = scopedKelasIds
+      ? `${whereSql} AND s.kelas_id = ANY($${nextIndex}::int[])`
+      : whereSql;
+    const scopedParams = scopedKelasIds ? [...params, scopedKelasIds] : params;
+    const scopedNextIndex = scopedKelasIds ? nextIndex + 1 : nextIndex;
 
     const countResult = await pool.query(
       `SELECT COUNT(*)::int AS total
@@ -265,8 +272,8 @@ router.get("/", async (req, res) => {
        LEFT JOIN santri s
          ON p.santri_id = s.id
         AND s.tenant_id = p.tenant_id
-       WHERE ${whereSql}`,
-      params,
+       WHERE ${scopedWhereSql}`,
+      scopedParams,
     );
 
     const total = countResult.rows[0]?.total || 0;
@@ -285,14 +292,14 @@ router.get("/", async (req, res) => {
         ORDER BY pd.tanggal DESC, pd.id DESC
         LIMIT 1
       ) lpd ON true
-      WHERE ${whereSql}
+      WHERE ${scopedWhereSql}
       ORDER BY p.id DESC
     `;
 
-    const listParams = [...params];
+    const listParams = [...scopedParams];
 
     if (paging.hasPagingParams) {
-      listSql += ` LIMIT $${nextIndex} OFFSET $${nextIndex + 1}`;
+      listSql += ` LIMIT $${scopedNextIndex} OFFSET $${scopedNextIndex + 1}`;
       listParams.push(paging.limit, paging.offset);
     }
 
@@ -424,6 +431,11 @@ router.post("/generate", async (req, res) => {
         skipped_count += 1;
         continue;
       }
+      const scopeCheck = await assertSantriInScopedUnit(req, santriId, client);
+      if (!scopeCheck.ok) {
+        skipped_count += 1;
+        continue;
+      }
 
       const existing = await findExistingPembayaran(
         client,
@@ -509,6 +521,8 @@ router.post("/", async (req, res) => {
     if (!santriCheck.ok) {
       return res.status(400).json({ success: false, error: santriCheck.error });
     }
+    const scopeCheck = await assertSantriInScopedUnit(req, santri_id, client);
+    if (!scopeCheck.ok) return res.status(403).json({ success: false, error: scopeCheck.error });
 
     await client.query("BEGIN");
 
