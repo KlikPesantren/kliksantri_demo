@@ -12,15 +12,18 @@ console.log("GURU ROUTES LOADED");
 router.get("/", ...withTenant, requirePermission("guru.view"), async (req, res) => {
   try {
     const { q } = req.query;
-    let query = "SELECT * FROM guru WHERE tenant_id = $1";
+    let query = `SELECT guru.*, u.kode AS unit_kode, u.nama AS unit_nama
+                 FROM guru
+                 INNER JOIN unit_pendidikan u ON u.id = guru.unit_id AND u.tenant_id = guru.tenant_id
+                 WHERE guru.tenant_id = $1`;
     const params = [req.tenantId];
 
     if (q) {
-      query += " AND (nama ILIKE $2 OR jabatan ILIKE $2 OR email ILIKE $2)";
+      query += " AND (guru.nama ILIKE $2 OR guru.jabatan ILIKE $2 OR guru.email ILIKE $2)";
       params.push(`%${q}%`);
     }
 
-    query += " ORDER BY nama ASC";
+    query += " ORDER BY guru.nama ASC";
 
     const result = await pool.query(query, params);
     res.json({ success: true, data: result.rows });
@@ -41,18 +44,31 @@ router.post("/", ...withTenant, requirePermission("guru.create"), async (req, re
       tanggal_masuk,
       status,
       catatan,
+      unit_id,
     } = req.body;
 
     if (!nama || !nama.trim()) {
       return res.status(400).json({ success: false, error: "Nama guru wajib diisi" });
     }
 
+    const unitValue = unit_id || (await pool.query(
+      `SELECT id FROM unit_pendidikan WHERE tenant_id = $1 AND UPPER(kode) = 'PESANTREN' AND is_active = true`,
+      [req.tenantId],
+    )).rows[0]?.id;
+    const unit = await pool.query(
+      `SELECT id FROM unit_pendidikan WHERE id = $1 AND tenant_id = $2 AND is_active = true`,
+      [unitValue, req.tenantId],
+    );
+    if (unit.rows.length === 0) {
+      return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
+    }
+
     const result = await pool.query(
       `INSERT INTO guru (
          nama, jabatan, nomor_hp, email, alamat,
-         tanggal_masuk, status, catatan, tenant_id
+         tanggal_masuk, status, catatan, tenant_id, unit_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         nama.trim(),
@@ -64,6 +80,7 @@ router.post("/", ...withTenant, requirePermission("guru.create"), async (req, re
         status || "Aktif",
         catatan || null,
         req.tenantId,
+        unitValue,
       ]
     );
 
@@ -86,10 +103,23 @@ router.put("/:id", ...withTenant, requirePermission("guru.update"), async (req, 
       tanggal_masuk,
       status,
       catatan,
+      unit_id,
     } = req.body;
 
     if (!nama || !nama.trim()) {
       return res.status(400).json({ success: false, error: "Nama guru wajib diisi" });
+    }
+
+    const unitValue = unit_id || (await pool.query(
+      `SELECT id FROM unit_pendidikan WHERE tenant_id = $1 AND UPPER(kode) = 'PESANTREN' AND is_active = true`,
+      [req.tenantId],
+    )).rows[0]?.id;
+    const unit = await pool.query(
+      `SELECT id FROM unit_pendidikan WHERE id = $1 AND tenant_id = $2 AND is_active = true`,
+      [unitValue, req.tenantId],
+    );
+    if (unit.rows.length === 0) {
+      return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
     }
 
     const result = await pool.query(
@@ -101,8 +131,9 @@ router.put("/:id", ...withTenant, requirePermission("guru.update"), async (req, 
            alamat        = $5,
            tanggal_masuk = $6,
            status        = $7,
-           catatan       = $8
-       WHERE id = $9 AND tenant_id = $10
+           catatan       = $8,
+           unit_id       = $9
+       WHERE id = $10 AND tenant_id = $11
        RETURNING *`,
       [
         nama.trim(),
@@ -113,6 +144,7 @@ router.put("/:id", ...withTenant, requirePermission("guru.update"), async (req, 
         tanggal_masuk || null,
         status || "Aktif",
         catatan || null,
+        unitValue,
         id,
         req.tenantId,
       ]

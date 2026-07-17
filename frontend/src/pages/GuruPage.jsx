@@ -37,6 +37,7 @@ const FORM_INIT = {
   tanggal_masuk: "",
   status: "Aktif",
   catatan: "",
+  unit_id: "",
 };
 
 function GuruPage() {
@@ -48,6 +49,7 @@ function GuruPage() {
   const [form, setForm] = useState(FORM_INIT);
   const [editId, setEditId] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [units, setUnits] = useState([]);
 
   const getGuru = async () => {
     try {
@@ -60,6 +62,7 @@ function GuruPage() {
 
   useEffect(() => {
     getGuru();
+    api.get("/users/meta/units").then((res) => setUnits(res.data.data || [])).catch(() => {});
   }, []);
 
   const filteredGuru = useMemo(() => {
@@ -99,6 +102,7 @@ function GuruPage() {
       tanggal_masuk: g.tanggal_masuk ? String(g.tanggal_masuk).slice(0, 10) : "",
       status: g.status || "Aktif",
       catatan: g.catatan || "",
+      unit_id: g.unit_id ? String(g.unit_id) : "",
     });
     setEditId(g.id);
     setShowForm(true);
@@ -144,6 +148,7 @@ function GuruPage() {
         tanggal_masuk: g.tanggal_masuk ? String(g.tanggal_masuk).slice(0, 10) : "",
         status: newStatus,
         catatan: g.catatan || "",
+        unit_id: g.unit_id,
       });
       getGuru();
     } catch (err) {
@@ -253,6 +258,12 @@ function GuruPage() {
                 <option value="Nonaktif">Nonaktif</option>
               </Select>
             </FormField>
+            <FormField label="Unit Pendidikan" htmlFor="guru-unit" required>
+              <Select id="guru-unit" name="unit_id" value={form.unit_id} onChange={handleChange}>
+                <option value="">Pilih Unit</option>
+                {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+              </Select>
+            </FormField>
             <FormField label="Alamat" htmlFor="guru-alamat" fullWidth>
               <Textarea
                 id="guru-alamat"
@@ -344,6 +355,7 @@ function GuruPage() {
                       <th>No</th>
                       <th>Nama</th>
                       <th>Jabatan</th>
+                      <th>Unit</th>
                       <th>Nomor HP</th>
                       <th>Email</th>
                       <th>Tgl Masuk</th>
@@ -363,6 +375,7 @@ function GuruPage() {
                         <td className="table-v3__cell--muted">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="table-v3__cell--strong">{g.nama}</td>
                         <td>{g.jabatan || <Dash />}</td>
+                        <td>{g.unit_nama || <Dash />}</td>
                         <td>{g.nomor_hp || <Dash />}</td>
                         <td>{g.email || <Dash />}</td>
                         <td>

@@ -10,9 +10,10 @@ const withTenant = [authMiddleware, tenantMiddleware];
 router.get("/", ...withTenant, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT *
+      `SELECT kelas.*, u.kode AS unit_kode, u.nama AS unit_nama
        FROM kelas
-       WHERE tenant_id = $1
+       INNER JOIN unit_pendidikan u ON u.id = kelas.unit_id AND u.tenant_id = kelas.tenant_id
+       WHERE kelas.tenant_id = $1
        ORDER BY id ASC`,
       [req.tenantId]
     );
@@ -30,13 +31,25 @@ router.post(
   requirePermission("kelas.manage"),
   async (req, res) => {
     try {
-      const { nama_kelas } = req.body;
+      const { nama_kelas, unit_id } = req.body;
+      const unitValue = unit_id || (await pool.query(
+        `SELECT id FROM unit_pendidikan WHERE tenant_id = $1 AND UPPER(kode) = 'PESANTREN' AND is_active = true`,
+        [req.tenantId],
+      )).rows[0]?.id;
+
+      const unit = await pool.query(
+        `SELECT id FROM unit_pendidikan WHERE id = $1 AND tenant_id = $2 AND is_active = true`,
+        [unitValue, req.tenantId],
+      );
+      if (unit.rows.length === 0) {
+        return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
+      }
 
       const result = await pool.query(
-        `INSERT INTO kelas (nama_kelas, tenant_id)
-         VALUES ($1, $2)
+        `INSERT INTO kelas (nama_kelas, tenant_id, unit_id)
+         VALUES ($1, $2, $3)
          RETURNING *`,
-        [nama_kelas, req.tenantId]
+        [nama_kelas, req.tenantId, unitValue]
       );
 
       res.json({ success: true, data: result.rows[0] });
