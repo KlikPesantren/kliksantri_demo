@@ -11,6 +11,7 @@ const {
   getExitSummary,
 } = require("../services/santriOperationalService");
 const { isSantriNonAktif } = require("../utils/santriStatus");
+const { ensureAlumni } = require("../services/alumniService");
 const {
   buildTemplateWorkbook,
   previewImport,
@@ -206,6 +207,7 @@ router.post(
       );
 
       const santri = result.rows[0];
+      await ensureAlumni(client, { tenantId: req.tenantId, santri, status: nextStatus });
       const waliSync = await syncWaliFromSantri(client, {
         tenantId: req.tenantId,
         santri,

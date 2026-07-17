@@ -25,6 +25,7 @@ const RFIDMutasiPage = lazy(() => import("./pages/RFIDMutasiPage"));
 const RFIDRefundPage = lazy(() => import("./pages/RFIDRefundPage"));
 
 import SantriPage from "./pages/SantriPage";
+import AlumniPage from "./pages/AlumniPage";
 import AuditPage from "./pages/AuditPage";
 import DevicePage from "./pages/DevicePage";
 import KelasPage from "./pages/KelasPage";
@@ -279,6 +280,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/alumni" element={<ProtectedRoute><AlumniPage /></ProtectedRoute>} />
 
         <Route
           path="/kelas"

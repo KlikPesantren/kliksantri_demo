@@ -79,6 +79,9 @@ const platformBackupRoutes =
 const santriRoutes =
   require("./routes/santriRoutes");
 
+const alumniRoutes =
+  require("./routes/alumniRoutes");
+
 const transaksiRoutes =
   require("./routes/transaksiRoutes");
 
@@ -366,6 +369,8 @@ app.use(
   santriRoutes
 
 );
+
+app.use("/alumni", alumniRoutes);
 
 app.use(
 

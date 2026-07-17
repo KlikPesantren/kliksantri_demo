@@ -37,6 +37,7 @@ const SIDEBAR = {
 const MENU = [
   { name: "Dashboard", path: "/dashboard", perm: "dashboard.view", feature: "dashboard", icon: <FaHome /> },
   { name: "Santri", path: "/santri", perm: "santri.view", feature: "santri", icon: <FaUsers /> },
+  { name: "Alumni", path: "/alumni", perm: "santri.view", feature: "santri", icon: <FaUsers /> },
   { name: "Wali Santri", path: "/wali", perm: "wali.view", feature: "wali", icon: <FaUsers /> },
   { name: "Guru", path: "/guru", perm: "guru.view", feature: "guru", icon: <FaUsers /> },
   { name: "Kelas", path: "/kelas", perm: "kelas.view", feature: "kelas", icon: <FaSchool /> },
@@ -86,7 +87,7 @@ const MENU_GROUPS = [
     id: "data-utama",
     title: "Data Utama",
     collapsible: true,
-    items: ["Santri", "Wali Santri", "Guru", "Kelas", "Profil Pesantren", "Pengumuman", "Konten Pesantren"],
+    items: ["Santri", "Alumni", "Wali Santri", "Guru", "Kelas", "Profil Pesantren", "Pengumuman", "Konten Pesantren"],
   },
   {
     id: "akademik",
