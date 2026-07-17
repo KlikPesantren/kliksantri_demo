@@ -55,4 +55,39 @@ router.post("/", ...withTenant, requirePermission("santri.create"), async (req, 
   }
 });
 
+router.put("/:id", ...withTenant, requirePermission("santri.update"), async (req, res) => {
+  try {
+    const {
+      nama, nis, jenis_kelamin, tahun_masuk, tahun_lulus, angkatan,
+      status_kelulusan, kontak, alamat, pekerjaan, catatan,
+    } = req.body;
+    if (!String(nama || "").trim()) {
+      return res.status(400).json({ success: false, error: "Nama alumni wajib diisi" });
+    }
+    const status = ["lulus", "keluar"].includes(String(status_kelulusan || "lulus"))
+      ? String(status_kelulusan || "lulus")
+      : "lulus";
+    const result = await pool.query(
+      `UPDATE alumni
+       SET nama = $1, nis = $2, jenis_kelamin = $3, tahun_masuk = $4,
+           tahun_lulus = $5, angkatan = $6, status_kelulusan = $7,
+           kontak = $8, alamat = $9, pekerjaan = $10, catatan = $11,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $12 AND tenant_id = $13
+       RETURNING *`,
+      [String(nama).trim(), nis || null, jenis_kelamin || null,
+        tahun_masuk || null, tahun_lulus || null, angkatan || null, status,
+        kontak || null, alamat || null, pekerjaan || null, catatan || null,
+        req.params.id, req.tenantId],
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, error: "Data alumni tidak ditemukan" });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
