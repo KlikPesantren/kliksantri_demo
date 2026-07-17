@@ -4,6 +4,7 @@ const pool = require("../db");
 const authMiddleware = require("../middleware/authMiddleware");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
+const { getScopedUnitIds } = require("../middleware/dataUnitScope");
 
 const withTenant = [authMiddleware, tenantMiddleware];
 
@@ -12,14 +13,20 @@ console.log("GURU ROUTES LOADED");
 router.get("/", ...withTenant, requirePermission("guru.view"), async (req, res) => {
   try {
     const { q } = req.query;
+    const scopedUnitIds = await getScopedUnitIds(req);
     let query = `SELECT guru.*, u.kode AS unit_kode, u.nama AS unit_nama
                  FROM guru
                  INNER JOIN unit_pendidikan u ON u.id = guru.unit_id AND u.tenant_id = guru.tenant_id
                  WHERE guru.tenant_id = $1`;
     const params = [req.tenantId];
+    if (scopedUnitIds) {
+      query += " AND guru.unit_id = ANY($2::int[])";
+      params.push(scopedUnitIds);
+    }
 
     if (q) {
-      query += " AND (guru.nama ILIKE $2 OR guru.jabatan ILIKE $2 OR guru.email ILIKE $2)";
+      const index = params.length + 1;
+      query += ` AND (guru.nama ILIKE $${index} OR guru.jabatan ILIKE $${index} OR guru.email ILIKE $${index})`;
       params.push(`%${q}%`);
     }
 
@@ -61,6 +68,10 @@ router.post("/", ...withTenant, requirePermission("guru.create"), async (req, re
     );
     if (unit.rows.length === 0) {
       return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
+    }
+    const scopedUnitIds = await getScopedUnitIds(req);
+    if (scopedUnitIds && !scopedUnitIds.includes(Number(unitValue))) {
+      return res.status(403).json({ success: false, error: "Unit berada di luar scope operator" });
     }
 
     const result = await pool.query(
@@ -120,6 +131,10 @@ router.put("/:id", ...withTenant, requirePermission("guru.update"), async (req, 
     );
     if (unit.rows.length === 0) {
       return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
+    }
+    const scopedUnitIds = await getScopedUnitIds(req);
+    if (scopedUnitIds && !scopedUnitIds.includes(Number(unitValue))) {
+      return res.status(403).json({ success: false, error: "Unit berada di luar scope operator" });
     }
 
     const result = await pool.query(

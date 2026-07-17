@@ -3,19 +3,22 @@ const pool = require("../db");
 const authMiddleware = require("../middleware/authMiddleware");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
 const requirePermission = require("../middleware/requirePermission");
+const { getScopedUnitIds } = require("../middleware/dataUnitScope");
 
 const router = express.Router();
 const withTenant = [authMiddleware, tenantMiddleware];
 
 router.get("/", ...withTenant, async (req, res) => {
   try {
+    const scopedUnitIds = await getScopedUnitIds(req);
+    const scopeSql = scopedUnitIds ? " AND kelas.unit_id = ANY($2::int[])" : "";
     const result = await pool.query(
       `SELECT kelas.*, u.kode AS unit_kode, u.nama AS unit_nama
        FROM kelas
        INNER JOIN unit_pendidikan u ON u.id = kelas.unit_id AND u.tenant_id = kelas.tenant_id
-       WHERE kelas.tenant_id = $1
+       WHERE kelas.tenant_id = $1${scopeSql}
        ORDER BY id ASC`,
-      [req.tenantId]
+      scopedUnitIds ? [req.tenantId, scopedUnitIds] : [req.tenantId]
     );
 
     res.json({ success: true, data: result.rows });
@@ -43,6 +46,10 @@ router.post(
       );
       if (unit.rows.length === 0) {
         return res.status(400).json({ success: false, error: "Unit pendidikan tidak valid" });
+      }
+      const scopedUnitIds = await getScopedUnitIds(req);
+      if (scopedUnitIds && !scopedUnitIds.includes(Number(unitValue))) {
+        return res.status(403).json({ success: false, error: "Unit berada di luar scope operator" });
       }
 
       const result = await pool.query(

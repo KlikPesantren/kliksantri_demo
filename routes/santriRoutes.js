@@ -12,6 +12,7 @@ const {
 } = require("../services/santriOperationalService");
 const { isSantriNonAktif } = require("../utils/santriStatus");
 const { ensureAlumni } = require("../services/alumniService");
+const { getScopedKelasIds, assertKelasInScopedUnit } = require("../middleware/dataUnitScope");
 const {
   buildTemplateWorkbook,
   previewImport,
@@ -111,6 +112,9 @@ router.post("/import/commit", ...withImportAuth, async (req, res) => {
 
 router.get("/", ...withTenant, async (req, res) => {
   try {
+    const scopedKelasIds = await getScopedKelasIds(req);
+    const scopeSql = scopedKelasIds ? " AND santri.kelas_id = ANY($2::int[])" : "";
+    const scopeParams = scopedKelasIds ? [req.tenantId, scopedKelasIds] : [req.tenantId];
     const result = await pool.query(
       `SELECT
          santri.*,
@@ -126,9 +130,9 @@ router.get("/", ...withTenant, async (req, res) => {
        LEFT JOIN wali_santri
          ON santri.id = wali_santri.santri_id
         AND wali_santri.tenant_id = santri.tenant_id
-       WHERE santri.tenant_id = $1
+       WHERE santri.tenant_id = $1${scopeSql}
        ORDER BY santri.id DESC`,
-      [req.tenantId]
+      scopeParams
     );
 
     res.json({ success: true, data: result.rows });
@@ -174,6 +178,9 @@ router.post(
       if (!kelasCheck.ok) {
         return res.status(400).json({ success: false, error: kelasCheck.error });
       }
+
+      const unitKelasCheck = await assertKelasInScopedUnit(req, kelas_id, client);
+      if (!unitKelasCheck.ok) return res.status(403).json({ success: false, error: unitKelasCheck.error });
 
       await client.query("BEGIN");
 
@@ -288,11 +295,12 @@ router.put(
       } catch (limitErr) {
         return res.status(400).json({ success: false, error: limitErr.message });
       }
-
       const kelasCheck = await assertKelasInTenant(req.tenantId, kelas_id, client);
       if (!kelasCheck.ok) {
         return res.status(400).json({ success: false, error: kelasCheck.error });
       }
+      const unitKelasCheck = await assertKelasInScopedUnit(req, kelas_id, client);
+      if (!unitKelasCheck.ok) return res.status(403).json({ success: false, error: unitKelasCheck.error });
 
       await client.query("BEGIN");
 

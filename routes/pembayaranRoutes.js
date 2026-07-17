@@ -18,7 +18,8 @@ const notificationService = require("../services/notificationService");
 const requirePermission = require("../middleware/requirePermission");
 const { getScopedKelasIds, assertSantriInScopedUnit } = require("../middleware/dataUnitScope");
 
-async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, santri_ids }) {
+async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, santri_ids, scopedKelasIds }) {
+  const scopeClause = scopedKelasIds ? " AND s.kelas_id = ANY($3::int[])" : "";
   if (scope === "selected" || (!scope && Array.isArray(santri_ids) && santri_ids.length)) {
     const ids = [...new Set((santri_ids || []).map((id) => Number(id)).filter(Boolean))];
     if (ids.length === 0) return [];
@@ -28,9 +29,9 @@ async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, san
        FROM santri s
        WHERE s.tenant_id = $1
          AND s.id = ANY($2::int[])
-         AND ${SQL_SANTri_AKTIF}
+         AND ${SQL_SANTri_AKTIF}${scopeClause}
        ORDER BY s.id`,
-      [tenantId, ids],
+      scopedKelasIds ? [tenantId, ids, scopedKelasIds] : [tenantId, ids],
     );
     return result.rows.map((row) => row.id);
   }
@@ -40,10 +41,10 @@ async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, san
       `SELECT s.id
        FROM santri s
        WHERE s.tenant_id = $1
-         AND s.kelas_id = $2
+         AND s.kelas_id = $2${scopedKelasIds ? " AND s.kelas_id = ANY($3::int[])" : ""}
          AND ${SQL_SANTri_AKTIF}
        ORDER BY s.id`,
-      [tenantId, Number(kelas_id)],
+      scopedKelasIds ? [tenantId, Number(kelas_id), scopedKelasIds] : [tenantId, Number(kelas_id)],
     );
     return result.rows.map((row) => row.id);
   }
@@ -52,9 +53,9 @@ async function resolveGenerateTargetIds(client, tenantId, { scope, kelas_id, san
     `SELECT s.id
      FROM santri s
      WHERE s.tenant_id = $1
-       AND ${SQL_SANTri_AKTIF}
+       AND ${SQL_SANTri_AKTIF}${scopedKelasIds ? " AND s.kelas_id = ANY($2::int[])" : ""}
      ORDER BY s.id`,
-    [tenantId],
+    scopedKelasIds ? [tenantId, scopedKelasIds] : [tenantId],
   );
   return result.rows.map((row) => row.id);
 }
@@ -333,10 +334,12 @@ router.get("/generate-preview", async (req, res) => {
       .map((id) => Number(id))
       .filter(Boolean);
 
+    const scopedKelasIds = await getScopedKelasIds(req, client);
     const targetIds = await resolveGenerateTargetIds(client, req.tenantId, {
       scope,
       kelas_id,
       santri_ids,
+      scopedKelasIds,
     });
 
     res.json({
@@ -365,10 +368,12 @@ router.post("/generate", async (req, res) => {
       nominal_tagihan,
     } = req.body;
 
+    const scopedKelasIds = await getScopedKelasIds(req, client);
     const targetIds = await resolveGenerateTargetIds(client, req.tenantId, {
       scope,
       kelas_id,
       santri_ids,
+      scopedKelasIds,
     });
 
     const uniqueIds = [...new Set(targetIds)];

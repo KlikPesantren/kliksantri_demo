@@ -2,15 +2,24 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const { assertSantriInTenant } = require("../services/tenantScope");
+const { getScopedKelasIds, assertSantriInScopedUnit } = require("../middleware/dataUnitScope");
 
 router.get("/", async (req, res) => {
   try {
     const bulan = req.query.bulan ? Number(req.query.bulan) : null;
     const tahun = req.query.tahun ? Number(req.query.tahun) : null;
 
-    let query = "SELECT * FROM hafalan WHERE tenant_id = $1";
+    let query = `SELECT h.* FROM hafalan h
+                 INNER JOIN santri s ON s.id = h.santri_id AND s.tenant_id = h.tenant_id
+                 WHERE h.tenant_id = $1`;
     const params = [req.tenantId];
     let paramIdx = 2;
+    const scopedKelasIds = await getScopedKelasIds(req);
+    if (scopedKelasIds) {
+      query += ` AND s.kelas_id = ANY($${paramIdx}::int[])`;
+      params.push(scopedKelasIds);
+      paramIdx += 1;
+    }
 
     if (bulan && tahun) {
       query += ` AND bulan = $${paramIdx} AND tahun = $${paramIdx + 1}`;
@@ -23,7 +32,7 @@ router.get("/", async (req, res) => {
       params.push(tahun);
     }
 
-    query += " ORDER BY id DESC";
+    query += " ORDER BY h.id DESC";
 
     const result = await pool.query(query, params);
     res.json({ success: true, data: result.rows });
@@ -51,6 +60,8 @@ router.post("/", async (req, res) => {
     if (!santriCheck.ok) {
       return res.status(400).json({ success: false, error: santriCheck.error });
     }
+    const scopeCheck = await assertSantriInScopedUnit(req, santri_id);
+    if (!scopeCheck.ok) return res.status(403).json({ success: false, error: scopeCheck.error });
 
     const cek = await pool.query(
       `SELECT id

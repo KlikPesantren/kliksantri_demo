@@ -36,4 +36,11 @@ async function assertSantriInScopedUnit(req, santriId, client = pool) {
     : { ok: false, error: "Data berada di luar unit operator" };
 }
 
-module.exports = { getScopedKelasIds, getScopedUnitIds, assertSantriInScopedUnit };
+async function assertKelasInScopedUnit(req, kelasId, client = pool) {
+  if (kelasId === null || kelasId === undefined || kelasId === "") return { ok: true };
+  const kelasIds = await getScopedKelasIds(req, client);
+  if (!kelasIds || kelasIds.includes(Number(kelasId))) return { ok: true };
+  return { ok: false, error: "Kelas berada di luar unit operator" };
+}
+
+module.exports = { getScopedKelasIds, getScopedUnitIds, assertSantriInScopedUnit, assertKelasInScopedUnit };
