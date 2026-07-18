@@ -7,12 +7,15 @@ const bcrypt = require("bcryptjs");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
 const waliAppService = require("../services/waliAppService");
 const { assertSantriInTenant } = require("../services/tenantScope");
+const { getScopedKelasIds, assertSantriInScopedUnit } = require("../middleware/dataUnitScope");
 
 const DEFAULT_PIN = "456789";
 const withTenant = [tenantMiddleware];
 
 router.get("/", ...withTenant, async (req, res) => {
   try {
+    const scopedKelasIds = await getScopedKelasIds(req);
+    const scopeSql = scopedKelasIds ? " AND santri.kelas_id = ANY($2::int[])" : "";
     const result = await pool.query(
       `SELECT
          wali_santri.*,
@@ -22,9 +25,9 @@ router.get("/", ...withTenant, async (req, res) => {
        LEFT JOIN santri
          ON wali_santri.santri_id = santri.id
         AND santri.tenant_id = wali_santri.tenant_id
-       WHERE wali_santri.tenant_id = $1
+       WHERE wali_santri.tenant_id = $1${scopeSql}
        ORDER BY wali_santri.id DESC`,
-      [req.tenantId]
+      scopedKelasIds ? [req.tenantId, scopedKelasIds] : [req.tenantId]
     );
 
     res.json({ success: true, data: result.rows });
@@ -49,6 +52,8 @@ router.post("/", ...withTenant, async (req, res) => {
     if (!santriCheck.ok) {
       return res.status(400).json({ success: false, error: santriCheck.error });
     }
+    const scopeCheck = await assertSantriInScopedUnit(req, santri_id, client);
+    if (!scopeCheck.ok) return res.status(403).json({ success: false, error: scopeCheck.error });
 
     await client.query("BEGIN");
 
@@ -98,6 +103,8 @@ router.put("/:id", ...withTenant, async (req, res) => {
     if (!santriCheck.ok) {
       return res.status(400).json({ success: false, error: santriCheck.error });
     }
+    const scopeCheck = await assertSantriInScopedUnit(req, santri_id, client);
+    if (!scopeCheck.ok) return res.status(403).json({ success: false, error: scopeCheck.error });
 
     await client.query("BEGIN");
 
@@ -155,14 +162,18 @@ router.put("/:id", ...withTenant, async (req, res) => {
 
 router.post("/sync-akun", ...withTenant, async (req, res) => {
   try {
+    const scopedKelasIds = await getScopedKelasIds(req);
     const waliList = await pool.query(
       `SELECT id, nomor_hp, nama
        FROM wali_santri
        WHERE tenant_id = $1
          AND nomor_hp IS NOT NULL
          AND TRIM(nomor_hp) <> ''
+         AND ($2::int[] IS NULL OR santri_id IN (
+           SELECT s.id FROM santri s WHERE s.id = wali_santri.santri_id AND s.kelas_id = ANY($2::int[])
+         ))
        ORDER BY id ASC`,
-      [req.tenantId]
+      [req.tenantId, scopedKelasIds]
     );
 
     let created = 0;
@@ -202,11 +213,15 @@ router.post("/sync-akun", ...withTenant, async (req, res) => {
 
 router.delete("/:id", ...withTenant, async (req, res) => {
   try {
+    const scopedKelasIds = await getScopedKelasIds(req);
     const result = await pool.query(
       `DELETE FROM wali_santri
        WHERE id = $1 AND tenant_id = $2
+         AND ($3::int[] IS NULL OR santri_id IN (
+           SELECT s.id FROM santri s WHERE s.id = wali_santri.santri_id AND s.kelas_id = ANY($3::int[])
+         ))
        RETURNING id`,
-      [req.params.id, req.tenantId]
+      [req.params.id, req.tenantId, scopedKelasIds]
     );
 
     if (result.rows.length === 0) {
@@ -223,10 +238,15 @@ router.delete("/:id", ...withTenant, async (req, res) => {
 router.put("/:id/reset-pin", ...withTenant, async (req, res) => {
   try {
     const { id } = req.params;
+    const scopedKelasIds = await getScopedKelasIds(req);
 
     const waliResult = await pool.query(
-      `SELECT nomor_hp FROM wali_santri WHERE id = $1 AND tenant_id = $2`,
-      [id, req.tenantId]
+      `SELECT nomor_hp FROM wali_santri
+       WHERE id = $1 AND tenant_id = $2
+         AND ($3::int[] IS NULL OR santri_id IN (
+           SELECT s.id FROM santri s WHERE s.id = wali_santri.santri_id AND s.kelas_id = ANY($3::int[])
+         ))`,
+      [id, req.tenantId, scopedKelasIds]
     );
 
     if (waliResult.rows.length === 0) {
