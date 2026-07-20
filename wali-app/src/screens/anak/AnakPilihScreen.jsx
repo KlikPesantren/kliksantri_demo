@@ -54,6 +54,8 @@ function AnakCard({ anak, isActive, onPress }) {
       <View style={styles.metaRow}>
         <MetaItem label="Kelas" value={anak.nama_kelas} />
         <View style={styles.metaDivider} />
+        <MetaItem label="Unit" value={anak.unit_nama || anak.unit_kode} />
+        <View style={styles.metaDivider} />
         <MetaItem label="Kamar" value={anak.kamar ? `Kamar ${anak.kamar}` : null} />
         <View style={styles.metaDivider} />
         <View style={styles.metaItem}>

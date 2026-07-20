@@ -5,10 +5,14 @@ import { KeuanganScreen } from '../screens/keuangan/KeuanganScreen';
 import { RFIDScreen } from '../screens/rfid/RFIDScreen';
 import { SahriyahScreen } from '../screens/sahriyah/SahriyahScreen';
 import { DetailTagihanScreen } from '../screens/sahriyah/DetailTagihanScreen';
+import { useActiveChild } from '../context/ActiveChildContext';
+import { isPesantrenUnit } from '../utils/unitFeatures';
 
 const Stack = createNativeStackNavigator();
 
 export function KeuanganStack() {
+  const { activeChild } = useActiveChild();
+  const pesantren = isPesantrenUnit(activeChild);
   return (
     <Stack.Navigator screenOptions={stackHeaderOptions}>
       <Stack.Screen
@@ -16,7 +20,7 @@ export function KeuanganStack() {
         component={KeuanganScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="RFID" component={RFIDScreen} options={{ title: 'Saldo & Mutasi RFID' }} />
+      {pesantren ? <Stack.Screen name="RFID" component={RFIDScreen} options={{ title: 'Saldo & Mutasi RFID' }} /> : null}
       <Stack.Screen name="Sahriyah" component={SahriyahScreen} options={{ title: 'Sahriyah' }} />
       <Stack.Screen
         name="DetailTagihan"

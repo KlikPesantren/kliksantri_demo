@@ -13,6 +13,7 @@ import { useNilai } from '../../hooks/useNilai';
 import { useHafalan } from '../../hooks/useHafalan';
 import { usePerizinan } from '../../hooks/usePerizinan';
 import { usePelanggaran } from '../../hooks/usePelanggaran';
+import { useWaliFeatures } from '../../hooks/useWaliFeatures';
 import { TabPesantrenHeader } from '../../components/home/TabPesantrenHeader';
 import {
   ScreenContainer,
@@ -71,7 +72,8 @@ function SectionBlock({ title, onLihatSemua, children, emptyTitle, emptyDesc, is
 
 export function MonitoringScreen() {
   const navigation = useNavigation();
-  const { activeSantriId } = useActiveChild();
+  const { activeSantriId, activeChild } = useActiveChild();
+  const { features } = useWaliFeatures(activeChild);
   const now = new Date();
   const bulan = now.getMonth() + 1;
   const tahun = now.getFullYear();
@@ -174,16 +176,16 @@ export function MonitoringScreen() {
               value={`Nilai: ${row.nilai ?? '-'}`}
             />
           ))}
-          {hafalanLatest.map((row, i) => (
+          {features.hafalan ? hafalanLatest.map((row, i) => (
             <MiniRow
               key={`h-${row.id ?? i}`}
               label={row.kitab ?? 'Hafalan'}
               value={row.surat ?? row.keterangan}
             />
-          ))}
+          )) : null}
         </SectionBlock>
 
-        <SectionBlock
+        {features.perizinan || features.pelanggaran ? <SectionBlock
           title="Disiplin"
           onLihatSemua={() => navigation.navigate('Perizinan')}
           isEmpty={izinLatest.length === 0 && pelLatest.length === 0}
@@ -206,7 +208,7 @@ export function MonitoringScreen() {
               badge={row.tindakan}
             />
           ))}
-        </SectionBlock>
+        </SectionBlock> : null}
 
         <View style={styles.navRow}>
           <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Absensi')}>
@@ -215,15 +217,15 @@ export function MonitoringScreen() {
           <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Nilai')}>
             <AppText variant="caption" color="brand">Nilai</AppText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Hafalan')}>
+          {features.hafalan ? <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Hafalan')}>
             <AppText variant="caption" color="brand">Hafalan</AppText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Perizinan')}>
+          </TouchableOpacity> : null}
+          {features.perizinan ? <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Perizinan')}>
             <AppText variant="caption" color="brand">Perizinan</AppText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Pelanggaran')}>
+          </TouchableOpacity> : null}
+          {features.pelanggaran ? <TouchableOpacity style={styles.navChip} onPress={() => navigation.navigate('Pelanggaran')}>
             <AppText variant="caption" color="brand">Pelanggaran</AppText>
-          </TouchableOpacity>
+          </TouchableOpacity> : null}
         </View>
       </ScrollView>
     </ScreenContainer>

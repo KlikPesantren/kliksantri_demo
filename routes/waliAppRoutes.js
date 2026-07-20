@@ -19,6 +19,7 @@ const waliAppAuthMiddleware =
 
 const waliSantriGuard =
   require("../middleware/waliSantriGuard");
+const { requirePesantrenUnit } = require("../middleware/waliUnitFeatureGuard");
 
 const notificationService =
   require("../services/notificationService");
@@ -38,7 +39,15 @@ const {
 
 const withWaliAuth = [waliAppAuthMiddleware, requireTenantFeature("wali_app")];
 
-function buildWaliFeatureConfig(features = []) {
+function isPesantrenUnit(unit = null) {
+  // Legacy santri yang belum memiliki unit tetap diperlakukan sebagai pesantren.
+  if (!unit || !unit.unit_id) return true;
+  const code = String(unit.unit_kode || '').trim().toUpperCase();
+  const name = String(unit.unit_nama || '').trim().toLowerCase();
+  return code === 'PESANTREN' || code === 'MADINAH' || code === 'MADIN' || name.includes('pesantren');
+}
+
+function buildWaliFeatureConfig(features = [], unit = null) {
   const featureMap = new Map(
     features.map((feature) => [feature.key, feature.enabled === true])
   );
@@ -49,16 +58,21 @@ function buildWaliFeatureConfig(features = []) {
   const keamanan = enabled("keamanan", true);
   const pembayaran = enabled("pembayaran", true);
 
+  const pesantren = isPesantrenUnit(unit);
   return {
     absensi: pendidikan,
     nilai: pendidikan,
-    hafalan: pendidikan,
-    perizinan: enabled("perizinan", true),
-    pelanggaran: enabled("pelanggaran", true),
-    kesehatan: keamanan,
+    hafalan: pesantren && pendidikan,
+    perizinan: pesantren && enabled("perizinan", true),
+    pelanggaran: pesantren && enabled("pelanggaran", true),
+    kesehatan: pesantren && keamanan,
     sahriyah: enabled("sahriyah", pembayaran),
-    rfid: enabled("rfid", false),
+    rfid: pesantren && enabled("rfid", false),
     pengumuman: enabled("pengumuman", true),
+    unit_id: unit?.unit_id || null,
+    unit_kode: unit?.unit_kode || null,
+    unit_nama: unit?.unit_nama || null,
+    unit_kategori: pesantren ? 'pesantren' : 'pendidikan',
   };
 }
 
@@ -320,9 +334,16 @@ router.post(
 router.get("/features", ...withWaliAuth, async (req, res) => {
   try {
     const features = await getTenantFeaturesForPlatform(req.wali.tenant_id);
+    const rawSantriId = Number(req.headers["x-santri-id"]);
+    const ownsChild = Number.isInteger(rawSantriId) && rawSantriId > 0
+      ? await waliAppService.ownsSantri(req.wali.nomor_hp, rawSantriId, req.wali.tenant_id)
+      : false;
+    const unit = ownsChild
+      ? await waliAppService.getSantriUnit(rawSantriId, req.wali.tenant_id)
+      : null;
     res.json({
       success: true,
-      data: buildWaliFeatureConfig(features),
+      data: buildWaliFeatureConfig(features, unit),
     });
   } catch (err) {
     console.error("[wali-app features]", err);
@@ -505,11 +526,17 @@ router.get(
             s.kamar,
             s.foto,
             s.saldo,
-            k.nama_kelas
+            k.nama_kelas,
+            k.unit_id,
+            u.kode AS unit_kode,
+            u.nama AS unit_nama
           FROM santri s
           LEFT JOIN kelas k
             ON k.id = s.kelas_id
            AND k.tenant_id = s.tenant_id
+          LEFT JOIN unit_pendidikan u
+            ON u.id = k.unit_id
+           AND u.tenant_id = s.tenant_id
           WHERE s.id = $1
             AND s.tenant_id = $2
           LIMIT 1
@@ -808,6 +835,9 @@ router.get(
             s.saldo,
             s.limit_harian,
             k.nama_kelas,
+            k.unit_id,
+            u.kode AS unit_kode,
+            u.nama AS unit_nama,
             ws.nama AS nama_wali,
             ws.nomor_hp AS nomor_hp_wali,
             ws.alamat AS alamat_wali
@@ -815,6 +845,9 @@ router.get(
           LEFT JOIN kelas k
             ON k.id = s.kelas_id
            AND k.tenant_id = s.tenant_id
+          LEFT JOIN unit_pendidikan u
+            ON u.id = k.unit_id
+           AND u.tenant_id = s.tenant_id
           LEFT JOIN wali_santri ws
             ON ws.santri_id = s.id
            AND ws.tenant_id = s.tenant_id
@@ -1112,6 +1145,7 @@ router.get(
   ...withWaliAuth,
 
   waliSantriGuard,
+  requirePesantrenUnit,
 
   async (req, res) => {
 
@@ -1213,6 +1247,7 @@ router.get(
   ...withWaliAuth,
 
   waliSantriGuard,
+  requirePesantrenUnit,
 
   async (req, res) => {
 
@@ -1324,6 +1359,7 @@ router.get(
   ...withWaliAuth,
 
   waliSantriGuard,
+  requirePesantrenUnit,
 
   async (req, res) => {
 
@@ -1625,6 +1661,7 @@ router.get(
   ...withWaliAuth,
 
   waliSantriGuard,
+  requirePesantrenUnit,
 
   async (req, res) => {
 
@@ -1732,6 +1769,7 @@ router.get(
   ...withWaliAuth,
 
   waliSantriGuard,
+  requirePesantrenUnit,
 
   async (req, res) => {
 
@@ -1868,6 +1906,7 @@ router.get(
   ...withWaliAuth,
 
   waliSantriGuard,
+  requirePesantrenUnit,
 
   async (req, res) => {
 

@@ -4,7 +4,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 
 const PAGE_LIMIT = 20;
 
-export function useRFID(activeSantriId) {
+export function useRFID(activeSantriId, enabled = true) {
   const [saldo, setSaldo] = useState(null);
   const [mutasi, setMutasi] = useState([]);
   const [total, setTotal] = useState(0);
@@ -19,7 +19,7 @@ export function useRFID(activeSantriId) {
 
   const fetchAll = useCallback(
     async ({ silent = false } = {}) => {
-      if (!activeSantriId) return;
+      if (!activeSantriId || !enabled) return;
       const requestId = ++requestRef.current;
 
       if (!silent) setIsLoadingFirst(true);
@@ -47,13 +47,13 @@ export function useRFID(activeSantriId) {
         }
       }
     },
-    [activeSantriId]
+    [activeSantriId, enabled]
   );
 
   const loadMore = useCallback(async () => {
     if (isFetchingMore.current) return;
     if (mutasi.length >= total) return; // Semua data sudah di-load
-    if (!activeSantriId) return;
+    if (!activeSantriId || !enabled) return;
 
     isFetchingMore.current = true;
     const requestId = requestRef.current;
@@ -74,7 +74,7 @@ export function useRFID(activeSantriId) {
       setIsLoadingMore(false);
       isFetchingMore.current = false;
     }
-  }, [activeSantriId, mutasi.length, total]);
+  }, [activeSantriId, enabled, mutasi.length, total]);
 
   const refresh = useCallback(() => fetchAll({ silent: true }), [fetchAll]);
 
@@ -85,8 +85,8 @@ export function useRFID(activeSantriId) {
     setMutasi([]);
     setTotal(0);
     setError(null);
-    fetchAll({ silent: false });
-  }, [fetchAll]);
+    if (enabled) fetchAll({ silent: false });
+  }, [enabled, fetchAll]);
 
   const hasMore = mutasi.length < total;
 

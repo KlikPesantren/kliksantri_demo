@@ -19,7 +19,7 @@ function dash(value) {
   return String(value);
 }
 
-function buildItems(d) {
+function buildItems(d, features = {}) {
   if (!d) return [];
 
   const isSakit = d.kesehatan_aktif?.status_kesehatan === 'sakit';
@@ -29,7 +29,7 @@ function buildItems(d) {
   const hadir = d.kehadiran?.hadir;
   const total = d.kehadiran?.total;
 
-  return [
+  const items = [
     {
       key: 'kehadiran',
       icon: 'checkmark-circle-outline',
@@ -41,22 +41,22 @@ function buildItems(d) {
           : '—',
       tone: (d.izin_aktif ?? 0) > 0 ? 'memorization' : 'attendance',
     },
-    {
+    features.kesehatan !== false ? {
       key: 'kesehatan',
       icon: 'heart-outline',
       label: 'Kesehatan',
       value: isSakit ? 'Sakit' : 'Sehat',
       desc: isSakit ? 'Perlu perhatian' : 'Kondisi baik',
       tone: 'health',
-    },
-    {
+    } : null,
+    features.hafalan !== false ? {
       key: 'hafalan',
       icon: 'star-outline',
       label: 'Hafalan',
       value: dash(hafalan ?? 0),
       desc: 'Setoran',
       tone: 'memorization',
-    },
+    } : null,
     {
       key: 'keuangan',
       icon: 'wallet-outline',
@@ -68,6 +68,7 @@ function buildItems(d) {
       tone: sahriyahLunas ? 'finance' : 'memorization',
     },
   ];
+  return items.filter(Boolean);
 }
 
 function StatusTile({ item }) {
@@ -93,8 +94,8 @@ function StatusTile({ item }) {
   );
 }
 
-export function StatusHariIni({ data, onLihatSemua }) {
-  const items = buildItems(data);
+export function StatusHariIni({ data, onLihatSemua, features }) {
+  const items = buildItems(data, features);
   if (!items.length) return null;
 
   return (

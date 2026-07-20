@@ -39,7 +39,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
   const { data: pengumuman, refresh: refreshPengumuman } = usePengumuman();
   const { data: pesantren, refresh: refreshPesantren } = useProfilPesantren();
   const { unreadCount, refreshUnreadCount } = useNotifications({ limit: 1 });
-  const { features, refresh: refreshFeatures } = useWaliFeatures();
+  const { features, refresh: refreshFeatures } = useWaliFeatures(activeChild);
   const { data: homeLinks, refresh: refreshHomeLinks } = useHomeLinks();
 
   const hasPengumuman = (pengumuman?.length ?? 0) > 0;
@@ -144,6 +144,7 @@ export function DashboardScreen({ navigation: tabNavigation }) {
 
         <StatusHariIni
           data={data}
+          features={features}
           onLihatSemua={() => tabNavigation.navigate('Monitoring')}
         />
 

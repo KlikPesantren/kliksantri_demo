@@ -172,7 +172,10 @@ const getAnakList = async (nomorHp, tenantId) => {
       s.nis,
       s.nama,
       s.foto,
-      k.nama_kelas
+      k.nama_kelas,
+      k.unit_id,
+      u.kode AS unit_kode,
+      u.nama AS unit_nama
     FROM wali_santri ws
     INNER JOIN santri s
       ON s.id = ws.santri_id
@@ -180,6 +183,9 @@ const getAnakList = async (nomorHp, tenantId) => {
     LEFT JOIN kelas k
       ON k.id = s.kelas_id
      AND k.tenant_id = s.tenant_id
+    LEFT JOIN unit_pendidikan u
+      ON u.id = k.unit_id
+     AND u.tenant_id = s.tenant_id
     WHERE ws.nomor_hp = $1
       AND ws.tenant_id = $2
     ORDER BY s.id ASC, ws.id DESC
@@ -187,6 +193,30 @@ const getAnakList = async (nomorHp, tenantId) => {
     [nomorHp, tenantId]
   );
   return result.rows;
+};
+
+const getSantriUnit = async (santriId, tenantId) => {
+  const result = await pool.query(
+    `
+    SELECT
+      s.id AS santri_id,
+      k.unit_id,
+      u.kode AS unit_kode,
+      u.nama AS unit_nama
+    FROM santri s
+    LEFT JOIN kelas k
+      ON k.id = s.kelas_id
+     AND k.tenant_id = s.tenant_id
+    LEFT JOIN unit_pendidikan u
+      ON u.id = k.unit_id
+     AND u.tenant_id = s.tenant_id
+    WHERE s.id = $1
+      AND s.tenant_id = $2
+    LIMIT 1
+    `,
+    [santriId, tenantId]
+  );
+  return result.rows[0] || null;
 };
 
 const ownsSantri = async (nomorHp, santriId, tenantId) => {
@@ -208,6 +238,12 @@ const ownsSantri = async (nomorHp, santriId, tenantId) => {
 };
 
 const signWaliToken = (akun, santriIds, tenant) => {
+  const santriProfiles = (santriIds || []).filter(
+    (item) => item && typeof item === "object"
+  );
+  const normalizedSantriIds = (santriIds || []).map((item) =>
+    typeof item === "object" ? item.santri_id : item
+  );
   const payload = {
     typ: "wali",
     sub: akun.nomor_hp,
@@ -215,7 +251,14 @@ const signWaliToken = (akun, santriIds, tenant) => {
     nomor_hp: akun.nomor_hp,
     tenant_id: tenant.id,
     tenant_slug: tenant.slug,
-    santri_ids: santriIds,
+    santri_ids: normalizedSantriIds,
+    // Metadata unit membantu aplikasi wali memilih fitur tanpa mengubah schema.
+    // Otorisasi data tetap divalidasi ulang oleh waliSantriGuard.
+    santri_units: (santriProfiles.length ? santriProfiles : santriIds || []).map((item) =>
+      typeof item === "object"
+        ? { santri_id: item.santri_id, unit_id: item.unit_id, unit_kode: item.unit_kode }
+        : { santri_id: item, unit_id: null, unit_kode: null }
+    ),
   };
 
   if (WALI_TOKEN_VERSION_ENABLED) {
@@ -285,7 +328,7 @@ const buildWaliProfile = (akun) => ({
 const buildLoginResponse = async (akun, tenant) => {
   const anak = await getAnakList(akun.nomor_hp, tenant.id);
   const santriIds = anak.map((item) => item.santri_id);
-  const token = signWaliToken(akun, santriIds, tenant);
+  const token = signWaliToken(akun, anak, tenant);
 
   return {
     token,
@@ -347,7 +390,8 @@ module.exports = {
   registerSuccessfulLogin,
   getAkunStatus,
   getSantriIdsForPhone,
-  getAnakList,
+    getAnakList,
+  getSantriUnit,
   ownsSantri,
   signWaliToken,
   verifyWaliToken,

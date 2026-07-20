@@ -8,10 +8,14 @@ import { HafalanScreen } from '../screens/hafalan/HafalanScreen';
 import { PerizinanScreen } from '../screens/perizinan/PerizinanScreen';
 import { PelanggaranScreen } from '../screens/pelanggaran/PelanggaranScreen';
 import { KesehatanScreen } from '../screens/kesehatan/KesehatanScreen';
+import { useActiveChild } from '../context/ActiveChildContext';
+import { isPesantrenUnit } from '../utils/unitFeatures';
 
 const Stack = createNativeStackNavigator();
 
 export function MonitoringStack() {
+  const { activeChild } = useActiveChild();
+  const pesantren = isPesantrenUnit(activeChild);
   return (
     <Stack.Navigator screenOptions={stackHeaderOptions}>
       <Stack.Screen
@@ -21,10 +25,10 @@ export function MonitoringStack() {
       />
       <Stack.Screen name="Absensi" component={AbsensiScreen} options={{ title: 'Absensi' }} />
       <Stack.Screen name="Nilai" component={NilaiScreen} options={{ title: 'Nilai Akademik' }} />
-      <Stack.Screen name="Hafalan" component={HafalanScreen} options={{ title: 'Hafalan' }} />
-      <Stack.Screen name="Perizinan" component={PerizinanScreen} options={{ title: 'Riwayat Izin' }} />
-      <Stack.Screen name="Pelanggaran" component={PelanggaranScreen} options={{ title: 'Pelanggaran' }} />
-      <Stack.Screen name="Kesehatan" component={KesehatanScreen} options={{ title: 'Kesehatan' }} />
+      {pesantren ? <Stack.Screen name="Hafalan" component={HafalanScreen} options={{ title: 'Hafalan' }} /> : null}
+      {pesantren ? <Stack.Screen name="Perizinan" component={PerizinanScreen} options={{ title: 'Riwayat Izin' }} /> : null}
+      {pesantren ? <Stack.Screen name="Pelanggaran" component={PelanggaranScreen} options={{ title: 'Pelanggaran' }} /> : null}
+      {pesantren ? <Stack.Screen name="Kesehatan" component={KesehatanScreen} options={{ title: 'Kesehatan' }} /> : null}
     </Stack.Navigator>
   );
 }

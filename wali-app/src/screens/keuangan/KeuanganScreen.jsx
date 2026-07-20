@@ -17,6 +17,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import { useActiveChild } from '../../context/ActiveChildContext';
+import { isPesantrenUnit } from '../../utils/unitFeatures';
 
 import { useSahriyah } from '../../hooks/useSahriyah';
 
@@ -60,11 +61,11 @@ export function KeuanganScreen() {
 
   const navigation = useNavigation();
 
-  const { activeSantriId } = useActiveChild();
+  const { activeSantriId, activeChild } = useActiveChild();
 
   const sahriyah = useSahriyah(activeSantriId);
 
-  const rfid = useRFID(activeSantriId);
+  const rfid = useRFID(activeSantriId, isPesantrenUnit(activeChild));
 
 
 

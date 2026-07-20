@@ -1,20 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { featuresApi } from '../api/features.api';
+import { getUnitFeatureFallback } from '../utils/unitFeatures';
 
-export const WALI_FEATURE_FALLBACK = {
-  absensi: true,
-  nilai: true,
-  hafalan: true,
-  perizinan: true,
-  pelanggaran: true,
-  kesehatan: true,
-  sahriyah: true,
-  rfid: false,
-  pengumuman: true,
-};
+export const WALI_FEATURE_FALLBACK = getUnitFeatureFallback();
 
-export function useWaliFeatures() {
-  const [features, setFeatures] = useState(WALI_FEATURE_FALLBACK);
+export function useWaliFeatures(activeChild = null) {
+  const fallback = useMemo(
+    () => getUnitFeatureFallback(activeChild),
+    [activeChild],
+  );
+  const [features, setFeatures] = useState(fallback);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -25,16 +20,16 @@ export function useWaliFeatures() {
     try {
       const res = await featuresApi.getFeatures();
       setFeatures({
-        ...WALI_FEATURE_FALLBACK,
+        ...fallback,
         ...(res.data || {}),
       });
     } catch {
-      setFeatures(WALI_FEATURE_FALLBACK);
+      setFeatures(fallback);
       setError('Konfigurasi fitur belum dapat dimuat.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fallback]);
 
   useEffect(() => {
     fetchFeatures();
