@@ -13,7 +13,9 @@ router.get("/resolve-domain/by-hostname", async (req, res) => {
     const domain = await resolveActiveTenantByHostname(req.query.hostname || req.headers["x-tenant-hostname"]);
     if (!domain) return res.status(404).json({ success: false, error: "Portal pesantren tidak ditemukan" });
     return res.json({ success: true, data: {
-      hostname: domain.hostname, tenant_slug: domain.slug, nama: domain.nama,
+      hostname: domain.hostname, tenant_slug: domain.slug,
+      tenant_display_name: domain.tenant_display_name || domain.nama,
+      nama: domain.tenant_display_name || domain.nama,
       logo_url: domain.logo_url || null, tagline: domain.tagline || null,
       alamat: domain.alamat || null, telepon: domain.telepon || null,
       status: domain.status, service_available: true,
@@ -50,7 +52,8 @@ router.get("/:slug/profile", async (req, res) => {
       success: true,
       data: {
         slug: tenant.slug,
-        nama: whiteLabel?.app_name || tenant.nama,
+        tenant_display_name: tenant.tenant_display_name || tenant.nama,
+        nama: tenant.tenant_display_name || tenant.nama,
         logo_url: whiteLabel?.logo_url || tenant.logo_url || null,
         tagline: whiteLabel?.slogan || tenant.tagline || null,
         primary_color: whiteLabel?.primary_color || null,

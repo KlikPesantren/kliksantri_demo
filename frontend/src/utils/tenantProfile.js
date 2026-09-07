@@ -107,7 +107,10 @@ export function resolvePublicTenantDisplay(publicProfile) {
     "";
 
   return {
-    name: publicProfile.nama?.trim() || TENANT_FALLBACKS.name,
+    name:
+      publicProfile.tenant_display_name?.trim() ||
+      publicProfile.nama?.trim() ||
+      TENANT_FALLBACKS.name,
     address: address || TENANT_FALLBACKS.address,
     logo: trimUrl(publicProfile.logo_url),
     tagline:
@@ -115,7 +118,9 @@ export function resolvePublicTenantDisplay(publicProfile) {
       "Sistem Administrasi Pesantren Modern",
     primary_color: publicProfile.primary_color || null,
     powered_by_klikpesantren: true,
-    hasCustomName: Boolean(publicProfile.nama?.trim()),
+    hasCustomName: Boolean(
+      publicProfile.tenant_display_name?.trim() || publicProfile.nama?.trim(),
+    ),
     service_available: publicProfile.service_available !== false,
     status: publicProfile.status,
     message: publicProfile.message,

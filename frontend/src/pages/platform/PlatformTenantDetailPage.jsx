@@ -111,6 +111,7 @@ function PlatformTenantDetailPage() {
   const [confirmDefaultSlug, setConfirmDefaultSlug] = useState(false);
   const [editForm, setEditForm] = useState({
     nama: "",
+    tenant_display_name: "",
     slug: "",
     status: "active",
     alamat: "",
@@ -308,6 +309,7 @@ function PlatformTenantDetailPage() {
     setConfirmDefaultSlug(false);
     setEditForm({
       nama: tenantDisplayName(tenant),
+      tenant_display_name: tenant?.tenant_display_name || "",
       slug: tenant?.slug || "",
       status: tenant?.status || "active",
       alamat: tenant?.alamat || "",
@@ -329,6 +331,7 @@ function PlatformTenantDetailPage() {
     try {
       const payload = {
         nama: editForm.nama.trim(),
+        tenant_display_name: editForm.tenant_display_name.trim() || null,
         slug: editForm.slug.trim(),
         status: editForm.status,
         alamat: editForm.alamat.trim() || null,
@@ -1105,6 +1108,15 @@ function PlatformTenantDetailPage() {
               style={fieldInputStyle}
               value={editForm.nama}
               onChange={(e) => setEditForm((prev) => ({ ...prev, nama: e.target.value }))}
+            />
+          </label>
+          <label style={fieldLabelStyle}>
+            Nama Tampilan Admin/PWA
+            <input
+              style={fieldInputStyle}
+              value={editForm.tenant_display_name}
+              placeholder="Kosongkan untuk memakai nama tenant canonical"
+              onChange={(e) => setEditForm((prev) => ({ ...prev, tenant_display_name: e.target.value }))}
             />
           </label>
           <label style={fieldLabelStyle}>

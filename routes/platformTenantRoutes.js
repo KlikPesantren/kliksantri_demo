@@ -60,7 +60,7 @@ router.get(
       }
 
       if (q) {
-        conditions.push(`(t.nama ILIKE $${i} OR t.slug ILIKE $${i})`);
+        conditions.push(`(t.nama ILIKE ${i} OR t.slug ILIKE ${i})`);
         params.push(`%${q}%`);
         i += 1;
       }
@@ -71,7 +71,7 @@ router.get(
 
       const result = await pool.query(
         `SELECT
-           t.id, t.slug, t.nama, t.status, t.alamat, t.telepon, t.logo_url,
+           t.id, t.slug, t.nama, t.tenant_display_name, t.status, t.alamat, t.telepon, t.logo_url,
            t.tagline, t.onboarded_at, t.suspended_at, t.suspended_reason,
            t.created_at, t.plan_code, t.billing_status,
            t.subscription_started_at, t.subscription_expires_at,

@@ -15,7 +15,7 @@ function buildInactiveTenantPayload() {
 
 async function getTenantBySlug(slug) {
   const { rows } = await pool.query(
-    `SELECT id, slug, nama, status, logo_url, tagline, alamat, telepon,
+    `SELECT id, slug, nama, tenant_display_name, status, logo_url, tagline, alamat, telepon,
             suspended_at, suspended_reason, onboarded_at, created_at,
             plan_code, billing_status, subscription_started_at,
             subscription_expires_at, last_payment_at, next_invoice_at,
@@ -33,7 +33,7 @@ async function getDefaultTenant() {
 
 async function getTenantById(id) {
   const { rows } = await pool.query(
-    `SELECT id, slug, nama, status, logo_url, tagline, alamat, telepon,
+    `SELECT id, slug, nama, tenant_display_name, status, logo_url, tagline, alamat, telepon,
             suspended_at, suspended_reason, onboarded_at, created_at, created_by,
             plan_code, billing_status, subscription_started_at,
             subscription_expires_at, last_payment_at, next_invoice_at,

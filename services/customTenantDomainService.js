@@ -28,7 +28,7 @@ async function resolveActiveTenantByHostname(hostHeader, db = pool) {
   if (!hostname) return null;
   const { rows } = await db.query(
     `SELECT td.id AS domain_id, td.hostname, td.tenant_id, td.domain_type,
-            t.slug, t.nama, t.status, t.logo_url, t.tagline, t.alamat, t.telepon
+            t.slug, t.nama, t.tenant_display_name, t.status, t.logo_url, t.tagline, t.alamat, t.telepon
      FROM tenant_domains td JOIN tenants t ON t.id = td.tenant_id
      WHERE td.hostname = $1 AND td.overall_status = 'active' AND t.status = 'active'
      LIMIT 1`, [hostname]

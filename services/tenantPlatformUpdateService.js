@@ -42,7 +42,7 @@ function assertValidSlug(slug) {
 
 async function getTenantRowById(tenantId) {
   const { rows } = await pool.query(
-    `SELECT id, slug, nama, status, alamat, telepon, logo_url, tagline
+    `SELECT id, slug, nama, tenant_display_name, status, alamat, telepon, logo_url, tagline
      FROM tenants
      WHERE id = $1`,
     [tenantId]
@@ -102,6 +102,12 @@ async function updateTenantFromPlatform(tenantId, patch = {}) {
     updates.nama = nama;
     setClauses.push(`nama = $${i++}`);
     params.push(nama);
+  }
+
+  if (patch.tenant_display_name !== undefined) {
+    updates.tenant_display_name = normalizeOptionalString(patch.tenant_display_name);
+    setClauses.push("tenant_display_name = " + String.fromCharCode(36) + i++);
+    params.push(updates.tenant_display_name);
   }
 
   if (patch.alamat !== undefined) {
