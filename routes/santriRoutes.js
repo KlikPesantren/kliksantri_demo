@@ -11,7 +11,11 @@ const {
   getExitSummary,
 } = require("../services/santriOperationalService");
 const { isSantriNonAktif } = require("../utils/santriStatus");
-const { ensureAlumni } = require("../services/alumniService");
+const {
+  ensureAlumni,
+  isAlumniStatus,
+  resolveEffectiveExitDate,
+} = require("../services/alumniService");
 const { resolveActiveUnit } = require("../services/unitAccessService");
 const {
   assertSantriUnitAccess,
@@ -397,6 +401,7 @@ router.put(
         foto,
         status,
         limit_harian,
+        effective_exit_date,
       } = req.body;
 
       let normalizedLimitHarian;
@@ -488,13 +493,16 @@ router.put(
       }
 
       const santri = result.rows[0];
-      await assignClassEnrollment({
-        tenantId: req.tenantId,
-        membership,
-        kelasId: kelas_id || null,
-      }, client);
-      await syncLegacyClass(req.tenantId, id, membership, kelas_id || null, client);
+      if (!willNonAktif) {
+        await assignClassEnrollment({
+          tenantId: req.tenantId,
+          membership,
+          kelasId: kelas_id || null,
+        }, client);
+        await syncLegacyClass(req.tenantId, id, membership, kelas_id || null, client);
+      }
       if (willNonAktif) {
+        const effectiveExitDate = await resolveEffectiveExitDate(client, effective_exit_date);
         const membershipStatus = String(nextStatus).trim().toLowerCase() === "lulus"
           ? "graduated"
           : String(nextStatus).trim().toLowerCase() === "keluar" ? "left" : "inactive";
@@ -503,16 +511,17 @@ router.put(
           : membershipStatus === "left" ? "moved" : "cancelled";
         await client.query(
           `UPDATE santri_units
-           SET status = $1, left_at = COALESCE(left_at, CURRENT_DATE), is_primary = false, updated_at = NOW()
-           WHERE id = $2 AND tenant_id = $3 AND santri_id = $4`,
-          [membershipStatus, membership.id, req.tenantId, id],
+           SET status = $1, left_at = $2, is_primary = false, updated_at = NOW()
+           WHERE id = $3 AND tenant_id = $4 AND santri_id = $5
+             AND status = 'active' AND left_at IS NULL`,
+          [membershipStatus, effectiveExitDate, membership.id, req.tenantId, id],
         );
         await client.query(
           `UPDATE santri_kelas_enrollments
-           SET status = $1, end_date = COALESCE(end_date, CURRENT_DATE), updated_at = NOW()
-           WHERE tenant_id = $2 AND santri_unit_id = $3
-             AND status = 'active' AND end_date IS NULL`,
-          [enrollmentStatus, req.tenantId, membership.id],
+           SET status = $1, end_date = $2, updated_at = NOW()
+           WHERE tenant_id = $3 AND santri_unit_id = $4
+              AND status = 'active' AND end_date IS NULL`,
+          [enrollmentStatus, effectiveExitDate, req.tenantId, membership.id],
         );
         if (hasOtherActiveMembership && membership.is_primary === true) {
           const promoted = await client.query(
@@ -545,9 +554,16 @@ router.put(
             );
           }
         }
-      }
-      if (!hasOtherActiveMembership) {
-        await ensureAlumni(client, { tenantId: req.tenantId, santri, status: nextGlobalStatus });
+        if (isAlumniStatus(nextStatus)) {
+          await ensureAlumni(client, {
+            tenantId: req.tenantId,
+            santri,
+            status: nextStatus,
+            membership,
+            unitId: workspace.unitId,
+            effectiveExitDate,
+          });
+        }
       }
       const waliSync = await syncWaliFromSantri(client, {
         tenantId: req.tenantId,
@@ -588,34 +604,91 @@ router.delete(
     try {
       await client.query("BEGIN");
       const workspace = await resolveSantriWorkspace(req, client, { requireUnit: true });
-      await assertSantriUnitAccess(req.tenantId, req.params.id, workspace.unitId, client);
-      const memberships = await client.query(
-        `SELECT COUNT(*)::integer AS count FROM santri_units
-         WHERE tenant_id = $1 AND santri_id = $2
-           AND status = 'active' AND left_at IS NULL`,
-        [req.tenantId, req.params.id],
+      const membership = await assertSantriUnitAccess(
+        req.tenantId,
+        req.params.id,
+        workspace.unitId,
+        client,
       );
-      if (Number(memberships.rows[0]?.count) > 1) {
-        throw Object.assign(new Error("Identitas santri multi-unit tidak dapat dihapus dari workspace unit"), {
-          status: 409,
-          code: "MULTI_UNIT_IDENTITY_DELETE_BLOCKED",
-        });
-      }
-
-      const result = await client.query(
-        `DELETE FROM santri
-         WHERE id = $1 AND tenant_id = $2
-         RETURNING id`,
-        [req.params.id, req.tenantId]
+      const santriResult = await client.query(
+        `SELECT * FROM santri WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
+        [req.params.id, req.tenantId],
       );
-
-      if (result.rows.length === 0) {
+      if (!santriResult.rows[0]) {
         await client.query("ROLLBACK");
         return res.status(404).json({ success: false, error: "Santri tidak ditemukan" });
       }
+      const effectiveExitDate = await resolveEffectiveExitDate(
+        client,
+        req.body?.effective_exit_date ?? req.query?.effective_exit_date,
+      );
+      const memberships = await client.query(
+        `SELECT COUNT(*)::integer AS count FROM santri_units
+         WHERE tenant_id = $1 AND santri_id = $2
+           AND id <> $3
+           AND status = 'active' AND left_at IS NULL`,
+        [req.tenantId, req.params.id, membership.id],
+      );
+      const hasOtherActiveMembership = Number(memberships.rows[0]?.count) > 0;
+
+      await client.query(
+        `UPDATE santri_units
+         SET status = 'left', left_at = $1, is_primary = false, updated_at = NOW()
+         WHERE id = $2 AND tenant_id = $3 AND santri_id = $4
+           AND status = 'active' AND left_at IS NULL`,
+        [effectiveExitDate, membership.id, req.tenantId, req.params.id],
+      );
+      await client.query(
+        `UPDATE santri_kelas_enrollments
+         SET status = 'moved', end_date = $1, updated_at = NOW()
+         WHERE tenant_id = $2 AND santri_unit_id = $3
+           AND status = 'active' AND end_date IS NULL`,
+        [effectiveExitDate, req.tenantId, membership.id],
+      );
+      await ensureAlumni(client, {
+        tenantId: req.tenantId,
+        santri: santriResult.rows[0],
+        status: "keluar",
+        membership,
+        unitId: workspace.unitId,
+        effectiveExitDate,
+      });
+      await client.query(
+        `UPDATE santri SET status = $1 WHERE id = $2 AND tenant_id = $3`,
+        [hasOtherActiveMembership ? "aktif" : "keluar", req.params.id, req.tenantId],
+      );
+      if (hasOtherActiveMembership && membership.is_primary === true) {
+        await client.query(
+          `WITH candidate AS (
+             SELECT id FROM santri_units
+             WHERE tenant_id = $1 AND santri_id = $2
+               AND status = 'active' AND left_at IS NULL
+             ORDER BY id LIMIT 1
+           ), promoted AS (
+             UPDATE santri_units su
+             SET is_primary = true, updated_at = NOW()
+             FROM candidate WHERE su.id = candidate.id
+             RETURNING su.id
+           )
+           UPDATE santri s
+           SET kelas_id = (
+             SELECT e.kelas_id FROM santri_kelas_enrollments e
+             JOIN promoted p ON p.id = e.santri_unit_id
+             WHERE e.tenant_id = $1 AND e.status = 'active' AND e.end_date IS NULL
+             ORDER BY e.id DESC LIMIT 1
+           )
+           WHERE s.id = $2 AND s.tenant_id = $1`,
+          [req.tenantId, req.params.id],
+        );
+      }
 
       await client.query("COMMIT");
-      res.json({ success: true });
+      res.json({
+        success: true,
+        transition: "keluar",
+        effective_exit_date: effectiveExitDate,
+        identity_preserved: true,
+      });
     } catch (err) {
       await client.query("ROLLBACK");
       console.log(err);

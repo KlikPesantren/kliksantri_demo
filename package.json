@@ -42,7 +42,10 @@
     "test:tenant-system-role-overrides": "node scripts/test-tenant-system-role-overrides.js",
     "test:academic-multi-unit": "node scripts/test-academic-multi-unit.js",
     "migration:088:production": "node scripts/run-migration-088-production.js",
-    "migration:089:production": "node scripts/run-migration-089-production.js"
+    "migration:089:production": "node scripts/run-migration-089-production.js",
+    "migration:090:production": "node scripts/run-migration-090-production.js --confirm-production",
+    "migration:090:rehearse": "node scripts/run-migration-090-production.js --rollback-rehearsal",
+    "test:sahriyah-alumni-090": "node scripts/test-sahriyah-alumni-hardening-090.js --local-isolated"
   },
   "keywords": [],
   "author": "",

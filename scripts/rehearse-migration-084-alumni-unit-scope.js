@@ -77,7 +77,7 @@ async function main() {
       ["Fixture Invalid", "", "L", "2018", "", "", "lulus", "", "", "", "", "invalid"],
     ]);
     const firstPreview = await previewImport(unit.tenant_id, unit.id, buffer, client);
-    assert.strictEqual(firstPreview.summary.EXISTING_SANTRI, 1);
+    assert.strictEqual(firstPreview.summary.ACTIVE_SANTRI_REQUIRES_TRANSITION, 1);
     assert.strictEqual(firstPreview.summary.NEW_ALUMNI, 1);
     assert.strictEqual(firstPreview.summary.CONFLICT, 1);
     assert.strictEqual(firstPreview.summary.INVALID, 1);
@@ -88,7 +88,7 @@ async function main() {
       firstPreview.rows.filter((row) => row.status === "valid"),
       client,
     );
-    assert.strictEqual(firstCommit.imported, 2);
+    assert.strictEqual(firstCommit.imported, 1);
     assert.strictEqual(Number((await client.query(
       `SELECT COUNT(1) AS total FROM santri WHERE tenant_id=$1 AND nis=$2`,
       [unit.tenant_id, existingNis],
@@ -98,7 +98,7 @@ async function main() {
        FROM alumni WHERE tenant_id=$1 AND nis=$2`,
       [unit.tenant_id, existingNis, santriId],
     );
-    assert.deepStrictEqual(linkedSnapshot.rows[0], { total: 1, linked: 1 }, "Alumni manual tidak direkonsiliasi ke Santri identity");
+    assert.deepStrictEqual(linkedSnapshot.rows[0], { total: 1, linked: 0 }, "Alumni manual tidak boleh menandai membership aktif sebagai Alumni");
     assert.strictEqual(Number((await client.query(
       `SELECT COUNT(1) AS total FROM santri WHERE tenant_id=$1 AND nis=$2`,
       [unit.tenant_id, newNis],
@@ -110,7 +110,8 @@ async function main() {
     assert.strictEqual(membershipAfter, membershipBefore, "import archival mengubah membership Santri aktif");
 
     const secondPreview = await previewImport(unit.tenant_id, unit.id, buffer, client);
-    assert.strictEqual(secondPreview.summary.ALREADY_ALUMNI, 2);
+    assert.strictEqual(secondPreview.summary.ACTIVE_SANTRI_REQUIRES_TRANSITION, 1);
+    assert.strictEqual(secondPreview.summary.ALREADY_ALUMNI, 1);
     const retry = await commitImport(
       unit.tenant_id,
       unit.id,
@@ -118,10 +119,10 @@ async function main() {
       client,
     );
     assert.strictEqual(retry.imported, 0);
-    assert.strictEqual(retry.summary.ALREADY_ALUMNI, 2);
+    assert.strictEqual(retry.summary.ALREADY_ALUMNI, 1);
 
     const filtered = await listScopedAlumni({ tenantId: unit.tenant_id, unitId: unit.id, search: "ZZ-ALUMNI-", client });
-    assert.strictEqual(filtered.rows.length, 2);
+    assert.strictEqual(filtered.rows.length, 1);
     const yearFiltered = await listScopedAlumni({ tenantId: unit.tenant_id, unitId: unit.id, search: "ZZ-ALUMNI-", tahunLulus: 2018, client });
     assert.strictEqual(yearFiltered.rows.length, 1);
     const exportBuffer = buildExportWorkbook(filtered.rows);

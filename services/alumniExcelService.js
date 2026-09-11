@@ -147,7 +147,15 @@ function parseWorkbookBuffer(buffer) {
 }
 
 function emptySummary() {
-  return { NEW_ALUMNI: 0, EXISTING_SANTRI: 0, EXISTING_ALUMNI: 0, ALREADY_ALUMNI: 0, CONFLICT: 0, INVALID: 0 };
+  return {
+    NEW_ALUMNI: 0,
+    EXISTING_SANTRI: 0,
+    EXISTING_ALUMNI: 0,
+    ALREADY_ALUMNI: 0,
+    ACTIVE_SANTRI_REQUIRES_TRANSITION: 0,
+    CONFLICT: 0,
+    INVALID: 0,
+  };
 }
 
 async function classifyNormalizedRow(tenantId, unitId, data, client = pool) {
@@ -168,6 +176,21 @@ async function classifyNormalizedRow(tenantId, unitId, data, client = pool) {
     const santri = santriResult.rows[0];
     if (normalizeName(santri.nama) !== normalizeName(data.nama)) {
       return { action: "CONFLICT", status: "conflict", errors: ["Nama tidak cocok dengan identity Santri untuk NIS ini"] };
+    }
+    const activeMembership = await client.query(
+      `SELECT id FROM santri_units
+       WHERE tenant_id = $1 AND santri_id = $2 AND unit_id = $3
+         AND status = 'active' AND left_at IS NULL
+       LIMIT 1`,
+      [tenantId, santri.id, unitId],
+    );
+    if (activeMembership.rows.length) {
+      return {
+        action: "ACTIVE_SANTRI_REQUIRES_TRANSITION",
+        status: "conflict",
+        santri_id: santri.id,
+        errors: ["Santri masih aktif di unit ini; lakukan transisi keluar/lulus dari halaman Santri"],
+      };
     }
     const result = await client.query(
       `SELECT * FROM alumni WHERE tenant_id = $1 AND santri_id = $2 LIMIT 1`,

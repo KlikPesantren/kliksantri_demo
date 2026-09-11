@@ -7,7 +7,7 @@ const {
   parsePagination,
   buildPaginationResponse,
 } = require("../utils/paginationHelpers");
-const { SQL_SANTri_AKTIF } = require("../utils/santriStatus");
+const { generateSahriyah } = require("../services/sahriyahGenerationService");
 const {
   accessResponse,
   requireSantriInActiveUnit,
@@ -192,84 +192,21 @@ router.get("/", async (req, res) => {
 router.post("/generate", async (req, res) => {
   try {
     const access = await resolveOperationalAccess(req, pool, { requireSpecific: true });
-    const { bulan, tahun } = req.body;
-
-    const santri = await pool.query(
-      `SELECT s.id, su.id AS santri_unit_id,
-              ss.id AS setting_id, ss.nominal_uang, ss.nominal_beras, ss.keterangan
-       FROM santri_units su
-       JOIN santri s
-         ON s.id = su.santri_id
-        AND s.tenant_id = su.tenant_id
-       LEFT JOIN sahriyah_setting ss
-         ON s.id = ss.santri_id
-        AND ss.tenant_id = s.tenant_id
-        AND ss.unit_id = su.unit_id
-       WHERE su.tenant_id = $1
-         AND su.unit_id = $2
-         AND su.status = 'active'
-         AND su.left_at IS NULL
-         AND ${SQL_SANTri_AKTIF}
-       ORDER BY s.id`,
-      [req.tenantId, access.unitId]
-    );
-
-    let created_count = 0;
-    let skipped_existing_count = 0;
-    let skipped_no_setting_count = 0;
-    const total_target = santri.rows.length;
-    const createdRows = [];
-
-    for (const s of santri.rows) {
-      if (!s.setting_id) {
-        skipped_no_setting_count += 1;
-        continue;
-      }
-
-      const cek = await pool.query(
-        `SELECT id
-         FROM tagihan_sahriyah
-         WHERE tenant_id = $1
-           AND santri_id = $2
-           AND unit_id = $3
-           AND bulan = $4
-           AND tahun = $5`,
-        [req.tenantId, s.id, access.unitId, bulan, tahun]
-      );
-
-      if (cek.rows.length === 0) {
-        const created = await pool.query(
-          `INSERT INTO tagihan_sahriyah (
-             santri_id, bulan, tahun, nominal, nominal_beras, keterangan,
-             tenant_id, unit_id, santri_unit_id, actor_user_id, source
-           )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'manual')
-           RETURNING id`,
-          [
-            s.id,
-            bulan,
-            tahun,
-            s.nominal_uang || 0,
-            s.nominal_beras || 0,
-            s.keterangan || "",
-            req.tenantId,
-            access.unitId,
-            s.santri_unit_id,
-            req.user?.id || null,
-          ]
-        );
-        createdRows.push({
-          id: created.rows[0]?.id,
-          santri_id: s.id,
-          bulan,
-          tahun,
-          nominal: s.nominal_uang || 0,
-        });
-        created_count += 1;
-      } else {
-        skipped_existing_count += 1;
-      }
-    }
+    const bulan = Number(req.body.bulan);
+    const tahun = Number(req.body.tahun);
+    const generation = await generateSahriyah({
+      tenantId: req.tenantId,
+      unitId: access.unitId,
+      bulan,
+      tahun,
+      actorUserId: req.user?.id || null,
+    });
+    const createdRows = generation.createdRows;
+    const created_count = generation.createdCount;
+    const total_target = generation.totalTarget;
+    const skipped_no_setting_count = generation.skippedNoSettingCount;
+    const eligible_count = generation.eligibleCount;
+    const skipped_existing_count = generation.skippedExistingCount;
 
     const notificationResults = await Promise.allSettled(
       createdRows.map((row) =>
@@ -294,6 +231,7 @@ router.post("/generate", async (req, res) => {
       skipped_count: skipped_existing_count,
       skipped_existing_count,
       skipped_no_setting_count,
+      eligible_count,
       total_target,
       notification_count,
     });
