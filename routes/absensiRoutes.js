@@ -10,6 +10,48 @@ const {
   getActiveStudentContext,
   getAttendanceSessionInUnit,
 } = require("../services/academicUnitService");
+const { upsertAttendanceBatch } = require("../services/attendanceBatchService");
+
+const ATTENDANCE_STATUSES = new Set(["H", "I", "S", "A"]);
+const MAX_BATCH_SIZE = 5000;
+
+function normalizeAttendanceDate(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const parsed = new Date(`${text}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== text
+    ? null
+    : text;
+}
+
+function normalizeBatchEntries(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw Object.assign(new Error("Data absensi wajib diisi"), { status: 400, code: "ATTENDANCE_ENTRIES_REQUIRED" });
+  }
+  if (entries.length > MAX_BATCH_SIZE) {
+    throw Object.assign(new Error(`Maksimal ${MAX_BATCH_SIZE} entri per simpan`), { status: 413, code: "ATTENDANCE_BATCH_TOO_LARGE" });
+  }
+
+  const unique = new Map();
+  for (const raw of entries) {
+    const santriId = Number(raw?.santri_id);
+    const sessionId = Number(raw?.session_id);
+    const tanggal = normalizeAttendanceDate(raw?.tanggal);
+    const status = String(raw?.status || "").trim().toUpperCase();
+    if (!Number.isInteger(santriId) || santriId <= 0 ||
+        !Number.isInteger(sessionId) || sessionId <= 0 || !tanggal ||
+        !ATTENDANCE_STATUSES.has(status)) {
+      throw Object.assign(new Error("Format entri absensi tidak valid"), { status: 400, code: "INVALID_ATTENDANCE_ENTRY" });
+    }
+    unique.set(`${santriId}|${tanggal}|${sessionId}`, {
+      santri_id: santriId,
+      tanggal,
+      session_id: sessionId,
+      status,
+    });
+  }
+  return [...unique.values()];
+}
 
 async function loadAccess(req, res) {
   const access = await resolveKelasScopeAccess(req);
@@ -125,6 +167,7 @@ router.get("/", async (req, res) => {
 
     const bulan = req.query.bulan ? Number(req.query.bulan) : null;
     const tahun = req.query.tahun ? Number(req.query.tahun) : null;
+    const kelasId = req.query.kelas_id ? Number(req.query.kelas_id) : null;
 
     let query = `SELECT a.id, a.santri_id, a.session_id,
                      COALESCE(a.session_name_snapshot, a.sesi, configured.display_name) AS sesi,
@@ -147,10 +190,20 @@ router.get("/", async (req, res) => {
       paramIdx += 1;
     }
 
+    if (kelasId) {
+      if (!isKelasAllowed(access, kelasId)) {
+        return res.status(403).json({ success: false, error: "Akses kelas ditolak" });
+      }
+      query += ` AND a.kelas_id = $${paramIdx}`;
+      params.push(kelasId);
+      paramIdx += 1;
+    }
+
     if (bulan && tahun) {
-      query += ` AND EXTRACT(MONTH FROM a.tanggal::date) = $${paramIdx}`
-             + ` AND EXTRACT(YEAR FROM a.tanggal::date) = $${paramIdx + 1}`;
-      params.push(bulan, tahun);
+      const startDate = `${tahun}-${String(bulan).padStart(2, "0")}-01`;
+      const endDate = new Date(Date.UTC(tahun, bulan, 1)).toISOString().slice(0, 10);
+      query += ` AND a.tanggal >= $${paramIdx}::date AND a.tanggal < $${paramIdx + 1}::date`;
+      params.push(startDate, endDate);
       paramIdx += 2;
     } else if (bulan) {
       query += ` AND EXTRACT(MONTH FROM a.tanggal::date) = $${paramIdx}`;
@@ -168,6 +221,118 @@ router.get("/", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(err.status || 500).json({ success: false, error: err.message, code: err.code });
+  }
+});
+
+router.post("/batch", async (req, res) => {
+  const handlerStarted = process.hrtime.bigint();
+  let client;
+  try {
+    const access = await loadAccess(req, res);
+    if (!access) return;
+    if (!access.canManage) {
+      return res.status(403).json({ success: false, error: "Role belum memiliki izin kelola absensi" });
+    }
+    if (access.mode === "ALL") {
+      return res.status(400).json({
+        success: false,
+        error: "Pilih unit aktif untuk mengisi absensi",
+        code: "UNIT_REQUIRED",
+      });
+    }
+
+    const receivedCount = Array.isArray(req.body?.entries) ? req.body.entries.length : 0;
+    const entries = normalizeBatchEntries(req.body?.entries);
+    const sessionIds = [...new Set(entries.map((entry) => entry.session_id))];
+    const santriIds = [...new Set(entries.map((entry) => entry.santri_id))];
+
+    client = await pool.connect();
+    const dbStarted = process.hrtime.bigint();
+    await client.query("BEGIN");
+
+    const { rows: sessions } = await client.query(
+      `SELECT id, display_name
+       FROM attendance_sessions
+       WHERE tenant_id = $1 AND unit_id = $2 AND active = true
+         AND id = ANY($3::bigint[])`,
+      [access.tenantId, access.unitId, sessionIds],
+    );
+    const sessionById = new Map(sessions.map((row) => [Number(row.id), row]));
+    if (sessionById.size !== sessionIds.length) {
+      throw Object.assign(new Error("Sesi absensi tidak aktif atau bukan milik unit ini"), {
+        status: 403,
+        code: "CROSS_UNIT_ATTENDANCE_SESSION",
+      });
+    }
+
+    const { rows: contexts } = await client.query(
+      `SELECT su.santri_id, su.id AS santri_unit_id,
+              e.id AS enrollment_id, e.kelas_id
+       FROM santri_units su
+       JOIN LATERAL (
+         SELECT ske.id, ske.kelas_id
+         FROM santri_kelas_enrollments ske
+         WHERE ske.tenant_id = su.tenant_id
+           AND ske.santri_unit_id = su.id
+           AND ske.status = 'active' AND ske.end_date IS NULL
+         ORDER BY ske.id DESC LIMIT 1
+       ) e ON TRUE
+       WHERE su.tenant_id = $1 AND su.unit_id = $2
+         AND su.status = 'active' AND su.left_at IS NULL
+         AND su.santri_id = ANY($3::int[])`,
+      [access.tenantId, access.unitId, santriIds],
+    );
+    const contextBySantriId = new Map(contexts.map((row) => [Number(row.santri_id), row]));
+    if (contextBySantriId.size !== santriIds.length ||
+        contexts.some((context) => !isKelasAllowed(access, context.kelas_id))) {
+      throw Object.assign(new Error("Santri tidak memiliki membership/enrollment aktif pada unit atau kelas ini"), {
+        status: 403,
+        code: "CROSS_UNIT_STUDENT",
+      });
+    }
+
+    const payload = entries.map((entry) => {
+      const session = sessionById.get(entry.session_id);
+      const context = contextBySantriId.get(entry.santri_id);
+      return {
+        ...entry,
+        session_name: session.display_name,
+        santri_unit_id: Number(context.santri_unit_id),
+        enrollment_id: Number(context.enrollment_id),
+        kelas_id: Number(context.kelas_id),
+      };
+    });
+
+    const processedCount = await upsertAttendanceBatch(client, {
+      entries: payload,
+      tenantId: access.tenantId,
+      unitId: access.unitId,
+      actorUserId: req.user?.id || null,
+    });
+    await client.query("COMMIT");
+
+    const dbDurationMs = Number(process.hrtime.bigint() - dbStarted) / 1e6;
+    const handlerDurationMs = Number(process.hrtime.bigint() - handlerStarted) / 1e6;
+    return res.json({
+      success: true,
+      data: {
+        received: receivedCount,
+        processed: processedCount,
+        skipped_duplicates_in_payload: receivedCount - entries.length,
+      },
+      meta: {
+        db_duration_ms: Number(dbDurationMs.toFixed(2)),
+        handler_duration_ms: Number(handlerDurationMs.toFixed(2)),
+      },
+    });
+  } catch (err) {
+    if (client) {
+      try { await client.query("ROLLBACK"); } catch (rollbackError) { console.error(rollbackError); }
+    }
+    console.error(err);
+    return res.status(err.status || 500).json({ success: false, error: err.message, code: err.code });
+  } finally {
+    if (client) client.release();
   }
 });
 

@@ -193,6 +193,8 @@ function AbsensiPage() {
   const [santri, setSantri] = useState([]);
   const [absensi, setAbsensi] = useState({});
   const [absensiLabels, setAbsensiLabels] = useState({});
+  const [dirtyAbsensiKeys, setDirtyAbsensiKeys] = useState(() => new Set());
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
   const [error, setError] = useState("");
   const [sessions, setSessions] = useState([]);
   const [sessionSettingsOpen, setSessionSettingsOpen] = useState(false);
@@ -202,6 +204,8 @@ function AbsensiPage() {
   });
 
   const fetchSeqRef = useRef(0);
+  const saveContextRef = useRef(null);
+  const attendanceSavingRef = useRef(false);
   const canManageAbsensi =
     hasPermission("absensi.manage") ||
     hasPermission("absensi.create") ||
@@ -213,11 +217,20 @@ function AbsensiPage() {
   );
   const displaySessions = sessions.filter((session) => session.active || attendanceSessionIds.has(Number(session.id)));
 
-  const getAbsensi = async (b, t) => {
+  useEffect(() => {
+    saveContextRef.current = { activeUnitId, bulan, tahun, kelasId };
+  }, [activeUnitId, bulan, tahun, kelasId]);
+
+  const getAbsensi = async (b, t, selectedKelasId = kelasId) => {
     const seq = ++fetchSeqRef.current;
+    if (!activeUnitId || !selectedKelasId) {
+      setAbsensi({});
+      setAbsensiLabels({});
+      return;
+    }
     try {
       const response = await api.get("/absensi", {
-        params: { ...scopeParams, bulan: b, tahun: t },
+        params: { ...scopeParams, bulan: b, tahun: t, kelas_id: selectedKelasId },
       });
 
       if (seq !== fetchSeqRef.current) {
@@ -364,6 +377,7 @@ function AbsensiPage() {
     setAbsensi({});
     setKelasId("");
     setAbsensiLabels({});
+    setDirtyAbsensiKeys(new Set());
     getKelas();
     if (activeUnitId) getSessions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,13 +386,15 @@ function AbsensiPage() {
   // Loading scoped attendance synchronizes the table with period/workspace changes.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    getAbsensi(bulan, tahun);
+    setDirtyAbsensiKeys(new Set());
+    getAbsensi(bulan, tahun, kelasId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bulan, tahun, activeUnitId, allUnitsAllowed]);
+  }, [bulan, tahun, kelasId, activeUnitId, allUnitsAllowed]);
 
   const handleAbsensi = (sessionId, santriId, hari, value) => {
     const key = buildKey(sessionId, santriId, bulan, tahun, hari);
     setAbsensi((prev) => ({ ...prev, [key]: value }));
+    setDirtyAbsensiKeys((current) => new Set(current).add(key));
     const currentLabel = sessions.find((session) => Number(session.id) === Number(sessionId))?.display_name;
     if (currentLabel) {
       setAbsensiLabels((prev) => ({ ...prev, [key]: currentLabel }));
@@ -386,17 +402,22 @@ function AbsensiPage() {
   };
 
   const simpanAbsensi = async () => {
+    if (attendanceSavingRef.current) return;
     if (!canManageAbsensi) {
-      setError("Role belum memiliki izin kelola absensi");
+      const message = "Role belum memiliki izin kelola absensi";
+      setError(message);
+      alert(message);
       return;
     }
     if (!activeUnitId) {
-      setError("Pilih satu unit aktif sebelum menyimpan absensi");
+      const message = "Pilih satu unit aktif sebelum menyimpan absensi";
+      setError(message);
+      alert(message);
       return;
     }
 
     const activeSessionIds = new Set(activeSessions.map((session) => Number(session.id)));
-    const entries = Object.entries(absensi).filter(([key, value]) => {
+    const entries = [...dirtyAbsensiKeys].map((key) => [key, absensi[key]]).filter(([key, value]) => {
       const parsed = parseKey(key);
       return value && value !== "" && parsed && activeSessionIds.has(parsed.sessionId);
     });
@@ -406,31 +427,52 @@ function AbsensiPage() {
       return;
     }
 
+    const submittedKeys = new Set(entries.map(([key]) => key));
+    const saveContext = { activeUnitId, bulan, tahun, kelasId };
+    attendanceSavingRef.current = true;
+    setAttendanceSaving(true);
+    setError("");
     try {
       const unitPayload = requireActiveUnitForWrite({ activeUnitId });
-      for (const [key, status] of entries) {
+      const payloadEntries = entries.map(([key, status]) => {
         const parsed = parseKey(key);
-        if (!parsed) continue;
-
         const { sessionId, santriId, bulan: bKey, tahun: tKey, hari } = parsed;
         const tanggal = `${tKey}-${String(bKey).padStart(2, "0")}-${String(hari).padStart(2, "0")}`;
-
-        await api.post("/absensi", {
-          ...unitPayload,
+        return {
           santri_id: santriId,
           tanggal,
           session_id: sessionId,
           status,
-        });
-      }
+        };
+      });
 
-      
-      alert(`Absensi berhasil disimpan (${entries.length} entri).`);
-      
-      
-      await getAbsensi(bulan, tahun);
+      const response = await api.post("/absensi/batch", {
+        ...unitPayload,
+        entries: payloadEntries,
+      }, { timeout: 30000 });
+
+      const processed = response.data?.data?.processed ?? entries.length;
+      alert(`Absensi berhasil disimpan (${processed} entri).`);
+      setDirtyAbsensiKeys((current) => {
+        const next = new Set(current);
+        submittedKeys.forEach((key) => next.delete(key));
+        return next;
+      });
+
+      const current = saveContextRef.current;
+      if (String(current?.activeUnitId) === String(saveContext.activeUnitId) &&
+          Number(current?.bulan) === Number(saveContext.bulan) &&
+          Number(current?.tahun) === Number(saveContext.tahun) &&
+          String(current?.kelasId) === String(saveContext.kelasId)) {
+        void getAbsensi(saveContext.bulan, saveContext.tahun, saveContext.kelasId);
+      }
     } catch (err) {
-      setError(err.response?.data?.error || err.message || "Gagal simpan absensi");
+      const message = err.response?.data?.error || err.message || "Gagal simpan absensi";
+      setError(message);
+      alert(`Gagal menyimpan absensi: ${message}`);
+    } finally {
+      attendanceSavingRef.current = false;
+      setAttendanceSaving(false);
     }
   };
 
@@ -582,7 +624,7 @@ function AbsensiPage() {
               setKelasId(e.target.value);
               getSantri(e.target.value);
             }}
-            disabled={kelas.length === 1}
+            disabled={kelas.length === 1 || attendanceSaving}
           >
             <option value="">Pilih Kelas</option>
             {kelas.map((k) => (
@@ -596,6 +638,7 @@ function AbsensiPage() {
             className="form-select-v3"
             value={bulan}
             onChange={(e) => setBulan(Number(e.target.value))}
+            disabled={attendanceSaving}
           >
             {MONTH_OPTIONS_ID.map(({ value, label }) => (
               <option key={value} value={value}>
@@ -609,6 +652,7 @@ function AbsensiPage() {
             type="number"
             value={tahun}
             onChange={(e) => setTahun(Number(e.target.value))}
+            disabled={attendanceSaving}
           />
           </div>
         </div>
@@ -670,7 +714,7 @@ function AbsensiPage() {
                             onChange={(e) =>
                               handleAbsensi(session.id, s.id, hari, e.target.value)
                             }
-                            disabled={!canManageAbsensi || !session.active}
+                            disabled={!canManageAbsensi || !session.active || attendanceSaving}
                             style={{ border: "none", background: "transparent" }}
                           >
                             <option value="">-</option>
@@ -707,8 +751,8 @@ function AbsensiPage() {
           Export Excel
         </Button>
         {canManageAbsensi ? (
-          <Button variant="primary" onClick={simpanAbsensi}>
-            Simpan Semua Absensi
+          <Button variant="primary" onClick={simpanAbsensi} loading={attendanceSaving} disabled={attendanceSaving}>
+            {attendanceSaving ? "Menyimpan..." : `Simpan Perubahan${dirtyAbsensiKeys.size ? ` (${dirtyAbsensiKeys.size})` : ""}`}
           </Button>
         ) : null}
       </div>
