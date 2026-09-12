@@ -14,7 +14,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#078A46",
-          "image": "./assets/universal-walisantri-icon-1024.png",
+          "image": "./assets/universal-walisantri-splash-1024.png",
           "imageWidth": 220
         }
       ],
@@ -56,7 +56,7 @@
     "android": {
       "package": "com.klikpesantren.wali",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 9,
+      "versionCode": 6,
       "predictiveBackGestureEnabled": true,
       "permissions": [
         "android.permission.INTERNET",
@@ -76,9 +76,8 @@
       ],
       "adaptiveIcon": {
         "backgroundColor": "#078A46",
-        "foregroundImage": "./assets/universal-walisantri-icon-1024.png",
-        "backgroundImage": "./assets/universal-walisantri-icon-1024.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/universal-walisantri-foreground-1024.png",
+        "monochromeImage": "./assets/universal-walisantri-monochrome-1024.png"
       }
     },
     "androidStatusBar": {

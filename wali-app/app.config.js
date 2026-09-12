@@ -42,8 +42,8 @@ module.exports = ({ config }) => {
       adaptiveIcon: {
         ...config.android?.adaptiveIcon,
         foregroundImage: brand.adaptive_foreground || brand.icon,
-        backgroundImage: brand.adaptive_background,
         monochromeImage: brand.adaptive_monochrome,
+        ...(brand.adaptive_background ? { backgroundImage: brand.adaptive_background } : {}),
       },
     },
     androidStatusBar: { ...config.androidStatusBar, backgroundColor: brand.primary_color },

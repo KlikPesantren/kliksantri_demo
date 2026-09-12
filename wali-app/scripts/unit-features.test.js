@@ -66,6 +66,22 @@ test('backend features and module data are guarded by selected child unit', () =
   }
 });
 
+test('Wali wallet reads the canonical ledger schema and preserves unit scope', () => {
+  const routes = read('routes/waliAppRoutes.js');
+  const mutasiRoute = routes.match(/"\/rfid\/mutasi"[\s\S]*?\/\/ ======================/)?.[0] || '';
+
+  assert.match(mutasiRoute, /FROM wallet_transactions wt/);
+  assert.match(mutasiRoute, /JOIN wallet_accounts wa/);
+  assert.match(mutasiRoute, /wa\.status = 'active'/);
+  assert.match(mutasiRoute, /wa\.santri_id = \$1/);
+  assert.match(mutasiRoute, /wt\.tenant_id = \$2/);
+  assert.match(mutasiRoute, /wt\.unit_id = \$3/);
+  assert.match(mutasiRoute, /wt\.balance_after AS saldo_akhir/);
+  assert.match(mutasiRoute, /LEFT JOIN merchant_rfid m/);
+  assert.doesNotMatch(mutasiRoute, /wt\.balance_before/);
+  assert.doesNotMatch(mutasiRoute, /wt\.description/);
+});
+
 test('mobile navigation is capability-driven and fail closed', () => {
   const tabs = fs.readFileSync(path.join(appRoot, 'src', 'navigation', 'MainTabs.jsx'), 'utf8');
   const quick = fs.readFileSync(path.join(appRoot, 'src', 'components', 'home', 'QuickAccessGrid.jsx'), 'utf8');
@@ -208,5 +224,15 @@ test('universal app is WaliSantri and keeps canonical KlikPesantren API', () => 
   const appConfig = JSON.parse(fs.readFileSync(path.join(appRoot, 'app.json'), 'utf8'));
   const easConfig = fs.readFileSync(path.join(appRoot, 'eas.json'), 'utf8');
   assert.equal(appConfig.expo.name, 'WaliSantri');
+  assert.equal(appConfig.expo.android.versionCode, 6);
+  assert.equal(
+    appConfig.expo.android.adaptiveIcon.foregroundImage,
+    './assets/universal-walisantri-foreground-1024.png',
+  );
+  assert.equal(appConfig.expo.android.adaptiveIcon.backgroundImage, undefined);
+  assert.equal(
+    appConfig.expo.plugins[0][1].image,
+    './assets/universal-walisantri-splash-1024.png',
+  );
   assert.match(easConfig, /https:\/\/api\.klikpesantren\.com/);
 });

@@ -1300,13 +1300,16 @@ router.get(
 
           `
           SELECT wt.id, wt.created_at, wt.type AS trx_type,
-            wt.amount AS nominal, wt.balance_before AS saldo_awal,
+            wt.amount AS nominal, NULL::bigint AS saldo_awal,
             wt.balance_after AS saldo_akhir, wt.reference_id AS trx_id,
-            wt.description AS nama_merchant
+            m.nama_merchant
           FROM wallet_transactions wt
           JOIN wallet_accounts wa
             ON wa.id = wt.wallet_account_id AND wa.tenant_id = wt.tenant_id
            AND wa.unit_id = wt.unit_id
+           AND wa.status = 'active'
+          LEFT JOIN merchant_rfid m
+            ON m.id = wt.merchant_id AND m.tenant_id = wt.tenant_id
           WHERE wa.santri_id = $1
             AND wt.tenant_id = $2
             AND wt.unit_id = $3
@@ -1328,6 +1331,7 @@ router.get(
           JOIN wallet_accounts wa
             ON wa.id = wt.wallet_account_id AND wa.tenant_id = wt.tenant_id
            AND wa.unit_id = wt.unit_id
+           AND wa.status = 'active'
           WHERE wa.santri_id = $1
             AND wt.tenant_id = $2
             AND wt.unit_id = $3
